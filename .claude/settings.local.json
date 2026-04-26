@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:siso.com.co)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Bash(git add:*)",
+      "Bash(git config:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(vercel:*)",
+      "Bash(gh api:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)"
+    ]
+  }
+}
