@@ -286,7 +286,7 @@ export default function PortalPage() {
             <div className="flex relative border-b border-slate-200">
               {(["login", "register"] as const).map((m) => (
                 <button key={m} onClick={() => setMode(m)}
-                  className={`relative flex-1 py-3.5 text-sm font-semibold tracking-wide transition-colors duration-200
+                  className={`relative flex-1 py-3.5 text-sm font-semibold tracking-wide text-center transition-colors duration-200
                     ${mode === m ? "text-[hsl(43_78%_36%)]" : "text-slate-400 hover:text-slate-600"}`}>
                   {m === "login" ? "Ingresar" : "Crear cuenta"}
                   {mode === m && (
