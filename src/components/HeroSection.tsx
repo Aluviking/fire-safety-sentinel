@@ -141,7 +141,7 @@ const HeroSection = () => (
           <div className="flex flex-col items-start xl:items-center"
                style={{ gap: "clamp(4px,0.8vh,16px)" }}>
             <h1 className="font-display tracking-[0.14em] text-gradient-gold leading-none
-                           text-[clamp(2rem,8vh,5rem)] xl:text-[clamp(3rem,18vh,9.5rem)]">
+                           text-[clamp(2rem,6vh,5rem)] xl:text-[clamp(3rem,18vh,9.5rem)]">
               SISO
             </h1>
 
@@ -215,12 +215,11 @@ const HeroSection = () => (
               </div>
 
               {/* Nombre | línea punteada | bullets | número */}
-              <div className="min-w-0 flex-1 flex items-center" style={{ gap: "clamp(8px,1.6vw,22px)" }}>
+              <div className="min-w-0 flex-1 flex items-center overflow-hidden" style={{ gap: "clamp(5px,1.2vw,22px)" }}>
 
-                <p className="font-display tracking-[0.14em] leading-tight shrink-0
+                <p className="svc-label-size font-display tracking-[0.14em] leading-tight shrink-0
                                text-[hsl(43_90%_60%)] group-hover:text-[hsl(43_90%_70%)]
-                               transition-colors duration-200"
-                   style={{ fontSize: "clamp(12px,3.4vh,26px)" }}>
+                               transition-colors duration-200">
                   {svc.label}
                 </p>
 
@@ -229,11 +228,17 @@ const HeroSection = () => (
 
                 <ul className="font-body text-white/75 leading-snug shrink-0 text-right
                                group-hover:text-white/92 transition-colors duration-200"
-                    style={{ fontSize: "clamp(10px,1.8vh,14px)", minWidth: "clamp(90px,17vw,280px)" }}>
-                  {svc.subs.map((sub) => <li key={sub}>{sub}</li>)}
+                    style={{ fontSize: "clamp(10px,1.8vh,14px)", minWidth: "clamp(60px,14vw,280px)" }}>
+                  {svc.subs.map((sub) => (
+                    <li key={sub}
+                        className="overflow-hidden text-ellipsis whitespace-nowrap
+                                   xl:whitespace-normal xl:overflow-visible">
+                      {sub}
+                    </li>
+                  ))}
                 </ul>
 
-                <span className="shrink-0 font-display leading-none select-none
+                <span className="hidden xl:inline shrink-0 font-display leading-none select-none
                                  text-primary/10 group-hover:text-primary/24 transition-colors duration-200"
                       style={{ fontSize: "clamp(17px,5vh,44px)" }}>
                   {String(i + 1).padStart(2, "0")}
