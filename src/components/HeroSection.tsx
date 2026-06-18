@@ -15,7 +15,7 @@ const services = [
   { id: "bienestar",   label: "BIENESTAR",   subs: ["Empresarial"],                                                    Icon: ThumbsUp,      href: "#servicios"  },
 ];
 
-/* ─── SVG con puntos tecnológicos — animación sutil de llama ────────────────── */
+/* ─── SVG nodos elegantes — conexión minimalista ────────────────────────────── */
 const ConnectingLines = () => {
   const EPS = [10, 30, 50, 70, 90];
   return (
@@ -28,35 +28,25 @@ const ConnectingLines = () => {
     >
       <defs>
         <radialGradient id="dotGrad" cx="50%" cy="35%" r="60%">
-          <stop offset="0%"   stopColor="hsl(44,90%,68%)" />
-          <stop offset="60%"  stopColor="hsl(38,85%,54%)" />
-          <stop offset="100%" stopColor="hsl(26,80%,46%)" />
+          <stop offset="0%"   stopColor="hsl(44,90%,72%)" />
+          <stop offset="60%"  stopColor="hsl(38,84%,54%)" />
+          <stop offset="100%" stopColor="hsl(26,78%,44%)" />
         </radialGradient>
         <radialGradient id="originGrad" cx="50%" cy="40%" r="55%">
-          <stop offset="0%"   stopColor="hsl(44,90%,70%)" />
-          <stop offset="100%" stopColor="hsl(32,82%,50%)" />
+          <stop offset="0%"   stopColor="hsl(44,90%,74%)" />
+          <stop offset="100%" stopColor="hsl(32,80%,50%)" />
         </radialGradient>
         <clipPath id="svgClip">
           <rect x="0" y="0" width="100" height="100" />
         </clipPath>
         <style>{`
-          .f-dot  { transform-box: fill-box; transform-origin: center; }
-          .f-ring { transform-box: fill-box; transform-origin: center; }
-          @keyframes flamePulse {
-            0%,100% { transform:scale(1);    opacity:0.92; }
-            50%     { transform:scale(1.18); opacity:1;    }
+          @keyframes nodeFade {
+            0%,100% { opacity: 0.28; }
+            50%     { opacity: 0.78; }
           }
-          @keyframes originPulse {
-            0%,100% { transform:scale(1);    opacity:0.85; }
-            50%     { transform:scale(1.22); opacity:1;    }
-          }
-          @keyframes ripple1 {
-            0%   { transform:scale(1);    opacity:0.55; }
-            100% { transform:scale(1.95); opacity:0;    }
-          }
-          @keyframes ripple2 {
-            0%   { transform:scale(1);    opacity:0.35; }
-            100% { transform:scale(1.55); opacity:0;    }
+          @keyframes originFade {
+            0%,100% { opacity: 0.55; }
+            50%     { opacity: 1;    }
           }
         `}</style>
       </defs>
@@ -65,42 +55,32 @@ const ConnectingLines = () => {
       {EPS.map((y, i) => (
         <path key={i}
           d={`M 0,50 C 55,50 45,${y} 100,${y}`}
-          stroke="rgba(255,255,255,0.42)"
-          strokeWidth="1.2"
-          strokeDasharray="3.5 2.5"
+          stroke="rgba(255,255,255,0.32)"
+          strokeWidth="1.1"
+          strokeDasharray="3 2.8"
           vectorEffect="non-scaling-stroke"
         />
       ))}
 
-      {/* Todo el contenido animado clippeado al viewBox */}
       <g clipPath="url(#svgClip)">
-        {/* Dot origen */}
-        <circle cx="2" cy="50" r="3"
+        {/* Nodo origen */}
+        <circle cx="2" cy="50" r="4.2"
+          fill="none" stroke="hsl(43,78%,52%)" strokeWidth="0.45" opacity="0.28" />
+        <circle cx="2" cy="50" r="1.7"
           fill="url(#originGrad)"
-          className="f-dot"
-          style={{ animation: "originPulse 2s ease-in-out infinite" }}
+          style={{ animation: "originFade 3s ease-in-out infinite" }}
         />
 
-        {/* Dots destino — tamaño pequeño, animación sutil */}
+        {/* Nodos destino — anillo estático + dot con fade suave */}
         {EPS.map((y, i) => (
-          <g key={`ep${i}`}>
-            {/* Anillo ripple externo — escala reducida */}
-            <circle cx="97" cy={y} r="2.8"
-              fill="none" stroke="hsl(43,82%,56%)" strokeWidth="0.6"
-              className="f-ring"
-              style={{ animation: `ripple1 2.2s ease-out ${i * 0.3}s infinite` }}
-            />
-            {/* Anillo ripple interno */}
-            <circle cx="97" cy={y} r="2.2"
-              fill="none" stroke="hsl(32,78%,60%)" strokeWidth="0.45"
-              className="f-ring"
-              style={{ animation: `ripple2 2.2s ease-out ${i * 0.3 + 0.8}s infinite` }}
-            />
-            {/* Dot central */}
-            <circle cx="97" cy={y} r="2.4"
+          <g key={`n${i}`}>
+            {/* Anillo exterior — estático, muy sutil */}
+            <circle cx="97" cy={y} r="4.2"
+              fill="none" stroke="hsl(43,78%,52%)" strokeWidth="0.45" opacity="0.25" />
+            {/* Dot central — solo opacidad, sin escala */}
+            <circle cx="97" cy={y} r="1.7"
               fill="url(#dotGrad)"
-              className="f-dot"
-              style={{ animation: `flamePulse 1.7s ease-in-out ${i * 0.25}s infinite` }}
+              style={{ animation: `nodeFade 3s ease-in-out ${i * 0.42}s infinite` }}
             />
           </g>
         ))}
@@ -238,33 +218,33 @@ const HeroSection = () => (
                               group-hover:bg-[hsl(43_78%_50%/0.12)]
                               group-hover:shadow-[0_0_28px_hsl(43_78%_50%/0.25)]
                               transition-all duration-200"
-                   style={{ width: "clamp(42px,12.5vh,98px)", height: "clamp(42px,12.5vh,98px)" }}>
+                   style={{ width: "clamp(38px,10.5vh,82px)", height: "clamp(38px,10.5vh,82px)" }}>
                 <svc.Icon className="text-primary"
-                  style={{ width: "clamp(18px,5.8vh,44px)", height: "clamp(18px,5.8vh,44px)" }} />
+                  style={{ width: "clamp(16px,4.8vh,36px)", height: "clamp(16px,4.8vh,36px)" }} />
               </div>
 
               {/* Nombre | línea punteada | bullets | número */}
-              <div className="min-w-0 flex-1 flex items-center" style={{ gap: "clamp(10px,2vw,30px)" }}>
+              <div className="min-w-0 flex-1 flex items-center" style={{ gap: "clamp(8px,1.6vw,22px)" }}>
 
-                <p className="font-display tracking-[0.16em] leading-tight shrink-0
+                <p className="font-display tracking-[0.14em] leading-tight shrink-0
                                text-[hsl(43_90%_60%)] group-hover:text-[hsl(43_90%_70%)]
                                transition-colors duration-200"
-                   style={{ fontSize: "clamp(14px,4.2vh,35px)" }}>
+                   style={{ fontSize: "clamp(12px,3.4vh,26px)" }}>
                   {svc.label}
                 </p>
 
                 <div className="flex-1 self-center border-b border-dashed border-[hsl(43_78%_50%/0.2)]
                                 group-hover:border-[hsl(43_78%_50%/0.38)] transition-colors duration-200" />
 
-                <ul className="font-body text-white/80 leading-snug shrink-0 text-right
-                               group-hover:text-white/96 transition-colors duration-200"
-                    style={{ fontSize: "clamp(12px,2.2vh,18px)", minWidth: "clamp(140px,22vw,360px)" }}>
+                <ul className="font-body text-white/75 leading-snug shrink-0 text-right
+                               group-hover:text-white/92 transition-colors duration-200"
+                    style={{ fontSize: "clamp(10px,1.8vh,14px)", minWidth: "clamp(120px,19vw,280px)" }}>
                   {svc.subs.map((sub) => <li key={sub}>{sub}</li>)}
                 </ul>
 
                 <span className="shrink-0 font-display leading-none select-none
-                                 text-primary/12 group-hover:text-primary/28 transition-colors duration-200"
-                      style={{ fontSize: "clamp(20px,6vh,58px)" }}>
+                                 text-primary/10 group-hover:text-primary/24 transition-colors duration-200"
+                      style={{ fontSize: "clamp(17px,5vh,44px)" }}>
                   {String(i + 1).padStart(2, "0")}
                 </span>
               </div>
