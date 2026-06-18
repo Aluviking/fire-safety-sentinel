@@ -15,41 +15,48 @@ const services = [
   { id: "bienestar",   label: "BIENESTAR",   subs: ["Empresarial"],                                                    Icon: ThumbsUp,      href: "#servicios"  },
 ];
 
-/* ─── SVG con puntos de llama animados ──────────────────────────────────────── */
+/* ─── SVG con puntos tecnológicos — animación sutil de llama ────────────────── */
 const ConnectingLines = () => {
   const EPS = [10, 30, 50, 70, 90];
   return (
-    <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none">
+    <svg
+      className="w-full h-full"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      fill="none"
+      style={{ overflow: "hidden" }}
+    >
       <defs>
-        {/* Gradiente radial para los dots */}
         <radialGradient id="dotGrad" cx="50%" cy="35%" r="60%">
-          <stop offset="0%"   stopColor="hsl(44,96%,70%)" />
-          <stop offset="55%"  stopColor="hsl(38,92%,55%)" />
-          <stop offset="100%" stopColor="hsl(24,90%,48%)" />
+          <stop offset="0%"   stopColor="hsl(44,90%,68%)" />
+          <stop offset="60%"  stopColor="hsl(38,85%,54%)" />
+          <stop offset="100%" stopColor="hsl(26,80%,46%)" />
         </radialGradient>
-        <radialGradient id="originGrad" cx="50%" cy="35%" r="60%">
-          <stop offset="0%"   stopColor="hsl(44,96%,72%)" />
-          <stop offset="100%" stopColor="hsl(28,90%,50%)" />
+        <radialGradient id="originGrad" cx="50%" cy="40%" r="55%">
+          <stop offset="0%"   stopColor="hsl(44,90%,70%)" />
+          <stop offset="100%" stopColor="hsl(32,82%,50%)" />
         </radialGradient>
+        <clipPath id="svgClip">
+          <rect x="0" y="0" width="100" height="100" />
+        </clipPath>
         <style>{`
           .f-dot  { transform-box: fill-box; transform-origin: center; }
           .f-ring { transform-box: fill-box; transform-origin: center; }
           @keyframes flamePulse {
-            0%,100% { transform:scale(1);    opacity:1;   }
-            45%     { transform:scale(1.42); opacity:0.9; }
-            70%     { transform:scale(1.15); opacity:1;   }
+            0%,100% { transform:scale(1);    opacity:0.92; }
+            50%     { transform:scale(1.18); opacity:1;    }
           }
           @keyframes originPulse {
-            0%,100% { transform:scale(1);    opacity:1; }
-            50%     { transform:scale(1.5);  opacity:0.85; }
+            0%,100% { transform:scale(1);    opacity:0.85; }
+            50%     { transform:scale(1.22); opacity:1;    }
           }
           @keyframes ripple1 {
-            0%   { transform:scale(1);   opacity:0.85; }
-            100% { transform:scale(4.2); opacity:0;    }
+            0%   { transform:scale(1);    opacity:0.55; }
+            100% { transform:scale(1.95); opacity:0;    }
           }
           @keyframes ripple2 {
-            0%   { transform:scale(1);   opacity:0.6; }
-            100% { transform:scale(3);   opacity:0;   }
+            0%   { transform:scale(1);    opacity:0.35; }
+            100% { transform:scale(1.55); opacity:0;    }
           }
         `}</style>
       </defs>
@@ -58,43 +65,46 @@ const ConnectingLines = () => {
       {EPS.map((y, i) => (
         <path key={i}
           d={`M 0,50 C 55,50 45,${y} 100,${y}`}
-          stroke="rgba(255,255,255,0.48)"
-          strokeWidth="1.3"
+          stroke="rgba(255,255,255,0.42)"
+          strokeWidth="1.2"
           strokeDasharray="3.5 2.5"
           vectorEffect="non-scaling-stroke"
         />
       ))}
 
-      {/* Dot origen */}
-      <circle cx="2" cy="50" r="4.5"
-        fill="url(#originGrad)"
-        className="f-dot"
-        style={{ animation: "originPulse 1.9s ease-in-out infinite" }}
-      />
+      {/* Todo el contenido animado clippeado al viewBox */}
+      <g clipPath="url(#svgClip)">
+        {/* Dot origen */}
+        <circle cx="2" cy="50" r="3"
+          fill="url(#originGrad)"
+          className="f-dot"
+          style={{ animation: "originPulse 2s ease-in-out infinite" }}
+        />
 
-      {/* Dots de destino — efecto llama */}
-      {EPS.map((y, i) => (
-        <g key={`ep${i}`}>
-          {/* Anillo exterior */}
-          <circle cx="97" cy={y} r="5"
-            fill="none" stroke="hsl(43,88%,58%)" strokeWidth="0.75"
-            className="f-ring"
-            style={{ animation: `ripple1 2.1s ease-out ${i * 0.31}s infinite` }}
-          />
-          {/* Anillo interior */}
-          <circle cx="97" cy={y} r="4"
-            fill="none" stroke="hsl(30,85%,64%)" strokeWidth="0.55"
-            className="f-ring"
-            style={{ animation: `ripple2 2.1s ease-out ${i * 0.31 + 0.75}s infinite` }}
-          />
-          {/* Dot central con gradiente */}
-          <circle cx="97" cy={y} r="3.5"
-            fill="url(#dotGrad)"
-            className="f-dot"
-            style={{ animation: `flamePulse 1.55s ease-in-out ${i * 0.23}s infinite` }}
-          />
-        </g>
-      ))}
+        {/* Dots destino — tamaño pequeño, animación sutil */}
+        {EPS.map((y, i) => (
+          <g key={`ep${i}`}>
+            {/* Anillo ripple externo — escala reducida */}
+            <circle cx="97" cy={y} r="2.8"
+              fill="none" stroke="hsl(43,82%,56%)" strokeWidth="0.6"
+              className="f-ring"
+              style={{ animation: `ripple1 2.2s ease-out ${i * 0.3}s infinite` }}
+            />
+            {/* Anillo ripple interno */}
+            <circle cx="97" cy={y} r="2.2"
+              fill="none" stroke="hsl(32,78%,60%)" strokeWidth="0.45"
+              className="f-ring"
+              style={{ animation: `ripple2 2.2s ease-out ${i * 0.3 + 0.8}s infinite` }}
+            />
+            {/* Dot central */}
+            <circle cx="97" cy={y} r="2.4"
+              fill="url(#dotGrad)"
+              className="f-dot"
+              style={{ animation: `flamePulse 1.7s ease-in-out ${i * 0.25}s infinite` }}
+            />
+          </g>
+        ))}
+      </g>
     </svg>
   );
 };

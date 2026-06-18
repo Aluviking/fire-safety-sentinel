@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Eye, EyeOff, User, Mail, Lock, RefreshCw, CheckCircle,
-  LogIn, UserPlus, ArrowLeft,
+  ArrowRight, UserPlus, ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import sisoLogo from "@/assets/siso-logo.png";
@@ -139,7 +139,7 @@ function LoginForm({ onSwitch }: { onSwitch: () => void }) {
                    hover:brightness-105 active:scale-[0.97]
                    shadow-[0_4px_20px_hsl(43_78%_50%/0.4)]
                    text-sm tracking-wide">
-        <LogIn className="w-4 h-4" /> Ingresar al Portal
+        Ingresar al Portal <ArrowRight className="w-4 h-4" />
       </button>
 
       <p className="text-center text-sm text-slate-500">
