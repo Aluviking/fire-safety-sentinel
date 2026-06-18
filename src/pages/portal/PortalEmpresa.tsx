@@ -1,7 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Folder, FolderOpen, ChevronDown, Building2 } from "lucide-react";
+import {
+  ChevronLeft, Folder, FolderOpen, ChevronDown, Building2,
+  Upload, Pencil, Lock, ShieldCheck,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { COMPANIES } from "./PortalDashboard";
 import sisoLogo from "@/assets/siso-logo.png";
@@ -56,9 +59,19 @@ type LetraPhva = "P" | "H" | "V" | "A";
 
 /* ─── Folder item ───────────────────────────────────────────────────────────── */
 function FolderItem({
-  name, index, color,
-}: { name: string; index: number; color: string }) {
+  name, index, color, canEdit, canUpload, onOpen,
+}: {
+  name: string; index: number; color: string;
+  canEdit: boolean; canUpload: boolean;
+  onOpen: (name: string) => void;
+}) {
   const [open, setOpen] = useState(false);
+
+  const handleToggle = () => {
+    if (!open) onOpen(name); // log on first open
+    setOpen(!open);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -8 }}
@@ -66,7 +79,7 @@ function FolderItem({
       transition={{ duration: 0.2, delay: index * 0.04 }}
     >
       <button
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl
                    hover:bg-slate-50 transition-all text-left group"
       >
@@ -78,7 +91,8 @@ function FolderItem({
           {name}
         </span>
         <ChevronDown
-          className={`w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          className={`w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       <AnimatePresence>
@@ -90,11 +104,47 @@ function FolderItem({
             transition={{ duration: 0.18 }}
             className="overflow-hidden"
           >
-            <div className="pl-11 pb-2 pr-4">
+            <div className="pl-11 pb-3 pr-4">
               <p className="text-xs text-slate-400 italic py-2 border-l-2 pl-3"
                  style={{ borderColor: color + "60" }}>
                 Carpeta vacía — sin documentos aún.
               </p>
+
+              {/* Action buttons based on permissions */}
+              {(canEdit || canUpload) && (
+                <div className="flex items-center gap-2 mt-1 pl-3">
+                  {canUpload && (
+                    <button
+                      className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg
+                                 border border-slate-200 bg-white text-slate-600
+                                 hover:border-[hsl(43_78%_50%/0.5)] hover:text-[hsl(43_78%_40%)]
+                                 transition-all duration-150"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      Subir archivo
+                    </button>
+                  )}
+                  {canEdit && (
+                    <button
+                      className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg
+                                 border border-slate-200 bg-white text-slate-600
+                                 hover:border-[hsl(43_78%_50%/0.5)] hover:text-[hsl(43_78%_40%)]
+                                 transition-all duration-150"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      Editar carpeta
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Lock indicator for restricted users */}
+              {!canEdit && !canUpload && (
+                <div className="flex items-center gap-1.5 mt-1 pl-3 text-[11px] text-slate-400">
+                  <Lock className="w-3 h-3" />
+                  Solo lectura — sin permisos de edición
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -105,11 +155,14 @@ function FolderItem({
 
 /* ─── PHVA card ─────────────────────────────────────────────────────────────── */
 function PhvaCard({
-  item, active, onToggle,
+  item, active, onToggle, canEdit, canUpload, onFolderOpen,
 }: {
   item: typeof PHVA[number];
   active: boolean;
   onToggle: () => void;
+  canEdit: boolean;
+  canUpload: boolean;
+  onFolderOpen: (folder: string) => void;
 }) {
   return (
     <div
@@ -120,12 +173,10 @@ function PhvaCard({
         boxShadow:   active ? `0 4px 20px ${item.color}22` : undefined,
       }}
     >
-      {/* Header */}
       <button
         onClick={onToggle}
         className="w-full flex items-center gap-5 px-5 py-4 text-left"
       >
-        {/* Big letter */}
         <span
           className="font-display text-5xl leading-none shrink-0 select-none transition-all duration-200"
           style={{ color: active ? item.color : "#cbd5e1" }}
@@ -150,7 +201,6 @@ function PhvaCard({
         </div>
       </button>
 
-      {/* Folder list */}
       <AnimatePresence>
         {active && (
           <motion.div
@@ -162,7 +212,11 @@ function PhvaCard({
           >
             <div className="border-t px-2 py-2" style={{ borderColor: item.border + "60" }}>
               {item.carpetas.map((c: string, i: number) => (
-                <FolderItem key={c} name={c} index={i} color={item.color} />
+                <FolderItem
+                  key={c} name={c} index={i} color={item.color}
+                  canEdit={canEdit} canUpload={canUpload}
+                  onOpen={onFolderOpen}
+                />
               ))}
             </div>
           </motion.div>
@@ -175,13 +229,29 @@ function PhvaCard({
 /* ─── PAGE ──────────────────────────────────────────────────────────────────── */
 export default function PortalEmpresa() {
   const { id } = useParams<{ id: string }>();
-  const { currentUser } = useAuth();
+  const { currentUser, getPermission, permissions, addTrace } = useAuth();
   const navigate = useNavigate();
   const [activePhva, setActivePhva] = useState<LetraPhva | null>(null);
+  const trackedRef = useRef(false);
 
   useEffect(() => {
-    if (!currentUser) navigate("/portal", { replace: true });
-  }, [currentUser, navigate]);
+    if (!currentUser) { navigate("/portal", { replace: true }); return; }
+
+    // Log visit once per mount
+    if (!trackedRef.current && id) {
+      trackedRef.current = true;
+      const co = COMPANIES.find((c) => c.id === id);
+      addTrace({
+        userId:   currentUser.id,
+        userName: currentUser.nombre,
+        userRole: currentUser.role,
+        action:   "view_empresa",
+        empresaId: id,
+        detail:   `Accedió a ${co?.nombre ?? id}`,
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, navigate, id]);
 
   const company = COMPANIES.find((c) => c.id === id);
 
@@ -197,7 +267,45 @@ export default function PortalEmpresa() {
     </div>
   );
 
-  const toggle = (l: LetraPhva) => setActivePhva((p) => p === l ? null : l);
+  /* ── Permission resolution ── */
+  const isAdmin  = currentUser?.role === "admin";
+  const isEquipo = currentUser?.role === "equipo";
+
+  const equipoPerm = isEquipo && id
+    ? getPermission(currentUser!.id, id)
+    : undefined;
+
+  const canEdit   = isAdmin || (isEquipo && !!equipoPerm?.canEdit);
+  const canUpload = isAdmin || (isEquipo && !!equipoPerm?.canUpload)
+    || (currentUser?.role === "cliente" && permissions.some((p) => p.empresaId === id && p.clienteCanUpload));
+
+  /* ── PHVA toggle + trace ── */
+  const toggle = (l: LetraPhva) => {
+    const opening = activePhva !== l;
+    setActivePhva((p) => (p === l ? null : l));
+    if (opening && currentUser && id) {
+      addTrace({
+        userId:   currentUser.id,
+        userName: currentUser.nombre,
+        userRole: currentUser.role,
+        action:   "view_phva",
+        empresaId: id,
+        detail:   `Fase ${l} — ${company.nombre}`,
+      });
+    }
+  };
+
+  const handleFolderOpen = (folder: string) => {
+    if (!currentUser || !id) return;
+    addTrace({
+      userId:   currentUser.id,
+      userName: currentUser.nombre,
+      userRole: currentUser.role,
+      action:   "view_folder",
+      empresaId: id,
+      detail:   `${folder} — ${company.nombre}`,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
@@ -212,19 +320,39 @@ export default function PortalEmpresa() {
               className="w-9 h-9 rounded-full border-2 border-[hsl(43_78%_50%/0.6)]" />
             <span className="font-display tracking-[0.14em] text-gradient-gold text-lg">SISO</span>
           </div>
-          <button onClick={() => navigate("/portal/dashboard")}
-            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-[hsl(43_78%_40%)]
-                       px-3 py-2 rounded-xl hover:bg-amber-50 transition-all font-medium">
-            <ChevronLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Empresas</span>
-          </button>
+
+          <div className="flex items-center gap-3">
+            {/* Permission badge for equipo */}
+            {isEquipo && (
+              <span className={`hidden sm:flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border
+                ${canEdit || canUpload
+                  ? "text-amber-700 border-amber-300 bg-amber-50"
+                  : "text-slate-500 border-slate-200 bg-slate-50"}`}>
+                {canEdit || canUpload ? <ShieldCheck className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                {canEdit && canUpload ? "Editar & Subir" : canEdit ? "Solo editar" : canUpload ? "Solo subir" : "Solo lectura"}
+              </span>
+            )}
+
+            <button
+              onClick={() => navigate("/portal/dashboard")}
+              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-[hsl(43_78%_40%)]
+                         px-3 py-2 rounded-xl hover:bg-amber-50 transition-all font-medium"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Empresas</span>
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         {/* Company header */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }} className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="mb-8"
+        >
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-200
                             flex items-center justify-center shrink-0">
@@ -236,7 +364,6 @@ export default function PortalEmpresa() {
             </div>
           </div>
 
-          {/* PHVA description */}
           <div className="mt-5 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
             <p className="text-sm text-slate-600 leading-relaxed">
               Selecciona una fase del ciclo{" "}
@@ -249,14 +376,19 @@ export default function PortalEmpresa() {
         {/* PHVA cards */}
         <div className="flex flex-col gap-3">
           {PHVA.map((item, idx) => (
-            <motion.div key={item.letra}
+            <motion.div
+              key={item.letra}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: idx * 0.07 }}>
+              transition={{ duration: 0.3, delay: idx * 0.07 }}
+            >
               <PhvaCard
                 item={item}
                 active={activePhva === item.letra}
                 onToggle={() => toggle(item.letra as LetraPhva)}
+                canEdit={canEdit}
+                canUpload={canUpload}
+                onFolderOpen={handleFolderOpen}
               />
             </motion.div>
           ))}

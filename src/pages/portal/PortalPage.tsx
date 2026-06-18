@@ -311,13 +311,24 @@ export default function PortalPage() {
             </div>
           </div>
 
-          {/* Admin hint */}
-          <p className="text-center text-xs text-slate-400 mt-4">
-            Credenciales admin:{" "}
-            <span className="font-mono text-slate-500">admin@siso.com</span>{" "}
-            /{" "}
-            <span className="font-mono text-slate-500">Admin123!</span>
-          </p>
+          {/* Demo credentials */}
+          <div className="mt-4 rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-xs text-slate-400">
+            <p className="font-semibold text-slate-500 mb-2 tracking-wide">Cuentas demo</p>
+            {[
+              { label: "Admin",    email: "admin@siso.com",   pass: "Admin123!"   },
+              { label: "Equipo",   email: "equipo@siso.com",  pass: "Equipo123!"  },
+              { label: "Cliente",  email: "cliente@siso.com", pass: "Cliente123!" },
+            ].map(({ label, email, pass }) => (
+              <div key={label} className="flex items-center gap-2 py-0.5">
+                <span className="w-[46px] shrink-0 text-[10px] font-bold uppercase tracking-widest text-amber-600">
+                  {label}
+                </span>
+                <span className="font-mono text-slate-500">{email}</span>
+                <span className="text-slate-300">/</span>
+                <span className="font-mono text-slate-500">{pass}</span>
+              </div>
+            ))}
+          </div>
         </motion.div>
       </div>
 
