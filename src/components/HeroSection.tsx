@@ -100,9 +100,9 @@ const HeroSection = () => (
       <img src={heroImage} alt="" aria-hidden="true"
         className="w-full h-full object-cover object-[68%_center]"
         loading="eager" fetchPriority="high" />
-      <div className="absolute inset-0 bg-black/58" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/78 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a]/90 via-transparent to-[#0a0a0a]/22" />
+      <div className="absolute inset-0 bg-black/72" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/85 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a]/92 via-transparent to-[#0a0a0a]/30" />
     </div>
 
     {/* Barra dorada izquierda */}
