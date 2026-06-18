@@ -1,4 +1,4 @@
-import { Phone, Mail, MapPin, ArrowUpRight, Shield, FileText, HelpCircle } from "lucide-react";
+import { Phone, Mail, MapPin, ArrowUpRight, Shield, FileText } from "lucide-react";
 
 const IconInstagram = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
@@ -23,13 +23,6 @@ const normativaLinks = [
   { label: "Política de SST",                    href: "#politica-sst" },
 ];
 
-const faqLinks = [
-  { label: "¿Qué es el SG-SST?",             href: "#faq" },
-  { label: "¿Quién debe implementar SST?",    href: "#faq" },
-  { label: "Formación de Brigadas",           href: "#faq" },
-  { label: "Batería de Riesgo Psicosocial",   href: "#faq" },
-  { label: "Más preguntas frecuentes →",      href: "#faq" },
-];
 
 const Footer = () => {
   return (
@@ -38,8 +31,8 @@ const Footer = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-12 lg:px-20 pt-14 sm:pt-20 pb-8 sm:pb-10">
 
-        {/* Grid: 1 col mobile → 2 col sm → 4 col lg */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 mb-12 sm:mb-16">
+        {/* Grid: 1 col mobile → 2 col sm → 3 col lg */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10 mb-12 sm:mb-16">
 
           {/* ── Brand ── */}
           <div className="sm:col-span-2 lg:col-span-1">
@@ -116,29 +109,6 @@ const Footer = () => {
             </div>
             <ul className="space-y-2.5">
               {normativaLinks.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="font-body text-sm text-muted-foreground hover:text-primary transition-colors duration-200 flex items-center gap-1.5 group min-h-0 py-0.5"
-                  >
-                    <span className="w-0 group-hover:w-2.5 h-px bg-primary transition-all duration-200 overflow-hidden shrink-0" />
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* ── FAQ ── */}
-          <div>
-            <div className="flex items-center gap-2 mb-5">
-              <HelpCircle className="w-4 h-4 text-primary/60" />
-              <p className="font-body font-semibold text-[11px] tracking-[0.18em] uppercase text-foreground/40">
-                Preguntas Frecuentes
-              </p>
-            </div>
-            <ul className="space-y-2.5">
-              {faqLinks.map((link) => (
                 <li key={link.label}>
                   <a
                     href={link.href}

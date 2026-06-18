@@ -19,7 +19,7 @@ const services = [
 const ConnectingLines = () => {
   const EPS = [10, 30, 50, 70, 90];
   return (
-    <div className="relative w-full h-full overflow-hidden">
+    <div className="relative w-full h-full overflow-visible">
       <style>{`
         @keyframes nodeFade   { 0%,100% { opacity:0.28; } 50% { opacity:0.78; } }
         @keyframes originFade { 0%,100% { opacity:0.55; } 50% { opacity:1;    } }
@@ -176,7 +176,7 @@ const HeroSection = () => (
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1.3, delay: 0.5 }}
-          className="hidden xl:block xl:w-[160px] 2xl:w-[210px] shrink-0 self-stretch"
+          className="hidden xl:block xl:w-[160px] 2xl:w-[210px] shrink-0 self-stretch relative z-20"
         >
           <ConnectingLines />
         </motion.div>
