@@ -198,11 +198,11 @@ const HeroSection = () => (
               initial={{ opacity: 0, x: 35 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.56, delay: 0.18 + i * 0.08, ease: "easeOut" }}
-              whileHover={{ x: 4 }}
+              whileHover={{ x: 4, scale: 1.013, transition: { type: "spring", stiffness: 520, damping: 28 } }}
               className="flex items-center flex-1 min-h-0
                          border-b border-[hsl(43_78%_50%/0.12)] last:border-0
                          hover:bg-[hsl(43_78%_50%/0.04)]
-                         transition-all duration-200 group"
+                         transition-colors duration-150 group"
               style={{
                 gap:          "clamp(10px,2vh,22px)",
                 paddingLeft:  `calc(clamp(8px, 2vw, 36px) + ${CURVE_VW[i]}vw)`,
@@ -213,12 +213,13 @@ const HeroSection = () => (
               <div className="rounded-full shrink-0 flex items-center justify-center
                               border-2 border-dashed border-[hsl(43_78%_50%/0.55)]
                               bg-[hsl(43_78%_50%/0.06)]
-                              group-hover:border-[hsl(43_78%_50%/0.85)]
-                              group-hover:bg-[hsl(43_78%_50%/0.12)]
-                              group-hover:shadow-[0_0_28px_hsl(43_78%_50%/0.25)]
-                              transition-all duration-200"
+                              group-hover:border-[hsl(43_78%_50%/0.9)]
+                              group-hover:bg-[hsl(43_78%_50%/0.14)]
+                              group-hover:shadow-[0_0_34px_hsl(43_78%_50%/0.35)]
+                              group-hover:scale-[1.16]
+                              transition-all duration-150"
                    style={{ width: "clamp(32px,8.5vh,82px)", height: "clamp(32px,8.5vh,82px)" }}>
-                <svc.Icon className="text-primary"
+                <svc.Icon className="text-primary group-hover:scale-110 transition-transform duration-150"
                   style={{ width: "clamp(13px,3.8vh,36px)", height: "clamp(13px,3.8vh,36px)" }} />
               </div>
 
