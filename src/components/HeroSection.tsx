@@ -156,23 +156,23 @@ const HeroSection = () => (
             {/* Badge 20 años + Tagline */}
             <div className="flex flex-col items-start xl:items-center"
                  style={{ gap: "clamp(4px,0.7vh,10px)" }}>
-              <div className="inline-flex items-center gap-2 px-3.5 rounded-full
+              <div className="inline-flex items-center gap-1.5 px-3 rounded-full
                               border border-[hsl(43_78%_50%/0.45)] bg-[hsl(43_78%_50%/0.09)]"
-                   style={{ paddingTop: "clamp(5px,0.9vh,11px)", paddingBottom: "clamp(5px,0.9vh,11px)" }}>
-                <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
+                   style={{ paddingTop: "clamp(4px,0.75vh,9px)", paddingBottom: "clamp(4px,0.75vh,9px)" }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
                 <span className="font-body font-bold tracking-[0.16em] text-primary uppercase"
-                      style={{ fontSize: "clamp(12px,1.8vh,18px)" }}>
+                      style={{ fontSize: "clamp(11px,1.55vh,15px)" }}>
                   20 AÑOS
                 </span>
-                <span className="text-[hsl(43_78%_50%/0.45)]" style={{ fontSize: "11px" }}>✦</span>
+                <span className="text-[hsl(43_78%_50%/0.45)]" style={{ fontSize: "10px" }}>✦</span>
                 <span className="font-body text-primary/75"
-                      style={{ fontSize: "clamp(12px,1.8vh,18px)" }}>
+                      style={{ fontSize: "clamp(11px,1.55vh,15px)" }}>
                   2006 – 2026
                 </span>
               </div>
 
               <p className="font-body text-muted-foreground/85 leading-snug"
-                 style={{ fontSize: "clamp(13px,1.9vh,19px)" }}>
+                 style={{ fontSize: "clamp(12px,1.6vh,16px)" }}>
                 Asesoría y Gestión Empresarial S.A.S.
               </p>
             </div>
