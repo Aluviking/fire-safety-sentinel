@@ -15,77 +15,63 @@ const services = [
   { id: "bienestar",   label: "BIENESTAR",   subs: ["Empresarial"],                                                    Icon: ThumbsUp,      href: "#servicios"  },
 ];
 
-/* ─── SVG nodos elegantes — conexión minimalista ────────────────────────────── */
+/* ─── Curvas + nodos CSS (sin distorsión oval) ───────────────────────────────── */
 const ConnectingLines = () => {
   const EPS = [10, 30, 50, 70, 90];
   return (
-    <svg
-      className="w-full h-full"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      fill="none"
-      style={{ overflow: "hidden" }}
-    >
-      <defs>
-        <radialGradient id="dotGrad" cx="50%" cy="35%" r="60%">
-          <stop offset="0%"   stopColor="hsl(44,90%,72%)" />
-          <stop offset="60%"  stopColor="hsl(38,84%,54%)" />
-          <stop offset="100%" stopColor="hsl(26,78%,44%)" />
-        </radialGradient>
-        <radialGradient id="originGrad" cx="50%" cy="40%" r="55%">
-          <stop offset="0%"   stopColor="hsl(44,90%,74%)" />
-          <stop offset="100%" stopColor="hsl(32,80%,50%)" />
-        </radialGradient>
-        <clipPath id="svgClip">
-          <rect x="0" y="0" width="100" height="100" />
-        </clipPath>
-        <style>{`
-          @keyframes nodeFade {
-            0%,100% { opacity: 0.28; }
-            50%     { opacity: 0.78; }
-          }
-          @keyframes originFade {
-            0%,100% { opacity: 0.55; }
-            50%     { opacity: 1;    }
-          }
-        `}</style>
-      </defs>
+    <div className="relative w-full h-full overflow-hidden">
+      <style>{`
+        @keyframes nodeFade   { 0%,100% { opacity:0.28; } 50% { opacity:0.78; } }
+        @keyframes originFade { 0%,100% { opacity:0.55; } 50% { opacity:1;    } }
+      `}</style>
 
-      {/* Curvas bezier */}
-      {EPS.map((y, i) => (
-        <path key={i}
-          d={`M 0,50 C 55,50 45,${y} 100,${y}`}
-          stroke="rgba(255,255,255,0.32)"
-          strokeWidth="1.1"
-          strokeDasharray="3 2.8"
-          vectorEffect="non-scaling-stroke"
-        />
-      ))}
-
-      <g clipPath="url(#svgClip)">
-        {/* Nodo origen */}
-        <circle cx="2" cy="50" r="4.2"
-          fill="none" stroke="hsl(43,78%,52%)" strokeWidth="0.45" opacity="0.28" />
-        <circle cx="2" cy="50" r="1.7"
-          fill="url(#originGrad)"
-          style={{ animation: "originFade 3s ease-in-out infinite" }}
-        />
-
-        {/* Nodos destino — anillo estático + dot con fade suave */}
+      {/* SVG solo para curvas — se estira bien con preserveAspectRatio="none" */}
+      <svg
+        className="absolute inset-0 w-full h-full"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        fill="none"
+      >
         {EPS.map((y, i) => (
-          <g key={`n${i}`}>
-            {/* Anillo exterior — estático, muy sutil */}
-            <circle cx="97" cy={y} r="4.2"
-              fill="none" stroke="hsl(43,78%,52%)" strokeWidth="0.45" opacity="0.25" />
-            {/* Dot central — solo opacidad, sin escala */}
-            <circle cx="97" cy={y} r="1.7"
-              fill="url(#dotGrad)"
-              style={{ animation: `nodeFade 3s ease-in-out ${i * 0.42}s infinite` }}
-            />
-          </g>
+          <path
+            key={i}
+            d={`M 0,50 C 55,50 45,${y} 100,${y}`}
+            stroke="rgba(255,255,255,0.32)"
+            strokeWidth="1.1"
+            strokeDasharray="3 2.8"
+            vectorEffect="non-scaling-stroke"
+          />
         ))}
-      </g>
-    </svg>
+      </svg>
+
+      {/* Nodo origen — div CSS, siempre circular */}
+      <div
+        className="absolute left-0 top-1/2"
+        style={{
+          transform: "translate(-50%, -50%)",
+          animation: "originFade 3s ease-in-out infinite",
+        }}
+      >
+        <div className="absolute -inset-[7px] rounded-full border border-[hsl(43,78%,52%)] opacity-30" />
+        <div className="w-[7px] h-[7px] rounded-full bg-gradient-to-br from-[hsl(44,90%,74%)] to-[hsl(32,80%,50%)]" />
+      </div>
+
+      {/* Nodos destino — divs CSS, siempre circulares */}
+      {EPS.map((yPct, i) => (
+        <div
+          key={i}
+          className="absolute right-0"
+          style={{
+            top: `${yPct}%`,
+            transform: "translate(50%, -50%)",
+            animation: `nodeFade 3s ease-in-out ${i * 0.42}s infinite`,
+          }}
+        >
+          <div className="absolute -inset-[7px] rounded-full border border-[hsl(43,78%,52%)] opacity-25" />
+          <div className="w-[7px] h-[7px] rounded-full bg-gradient-to-br from-[hsl(44,90%,72%)] to-[hsl(26,78%,44%)]" />
+        </div>
+      ))}
+    </div>
   );
 };
 
@@ -132,10 +118,10 @@ const HeroSection = () => (
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="flex flex-col items-center text-center
-                     xl:w-[200px] 2xl:w-[240px] xl:shrink-0
-                     xl:justify-center justify-center"
-          style={{ gap: "clamp(6px,1.6vh,16px)" }}
+          className="flex flex-row items-center justify-center
+                     xl:flex-col xl:items-center xl:text-center xl:justify-center
+                     xl:w-[200px] 2xl:w-[240px] xl:shrink-0"
+          style={{ gap: "clamp(10px,2vw,16px)" }}
         >
           {/* Logo */}
           <div className="relative shrink-0">
@@ -145,37 +131,43 @@ const HeroSection = () => (
             <img src={sisoLogo} alt="SISO Logo"
               className="relative rounded-full object-cover
                          border-[3px] border-[hsl(43_78%_50%/0.65)]
-                         shadow-[0_0_80px_hsl(43_78%_50%/0.35),0_0_30px_hsl(43_78%_50%/0.5)]"
-              style={{ width: "clamp(110px,23vh,200px)", height: "clamp(110px,23vh,200px)" }}
+                         shadow-[0_0_80px_hsl(43_78%_50%/0.35),0_0_30px_hsl(43_78%_50%/0.5)]
+                         w-[clamp(48px,10vh,120px)] h-[clamp(48px,10vh,120px)]
+                         xl:w-[clamp(110px,23vh,200px)] xl:h-[clamp(110px,23vh,200px)]"
             />
           </div>
 
-          {/* SISO */}
-          <h1 className="font-display tracking-[0.14em] text-gradient-gold leading-none"
-              style={{ fontSize: "clamp(3rem,18vh,9.5rem)" }}>
-            SISO
-          </h1>
+          {/* SISO + badge + tagline */}
+          <div className="flex flex-col items-start xl:items-center"
+               style={{ gap: "clamp(4px,0.8vh,16px)" }}>
+            <h1 className="font-display tracking-[0.14em] text-gradient-gold leading-none
+                           text-[clamp(2rem,8vh,5rem)] xl:text-[clamp(3rem,18vh,9.5rem)]">
+              SISO
+            </h1>
 
-          {/* Badge 20 años + Tagline — pegados entre sí */}
-          <div className="flex flex-col items-center" style={{ gap: "clamp(5px,0.9vh,10px)" }}>
-            <div className="inline-flex items-center gap-2 px-3 rounded-full
-                            border border-[hsl(43_78%_50%/0.45)] bg-[hsl(43_78%_50%/0.09)]"
-                 style={{ paddingTop: "clamp(4px,0.7vh,8px)", paddingBottom: "clamp(4px,0.7vh,8px)" }}>
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
-              <span className="font-body font-bold tracking-[0.18em] text-primary uppercase"
-                    style={{ fontSize: "clamp(9px,1.3vh,12px)" }}>
-                20 AÑOS
-              </span>
-              <span className="text-[hsl(43_78%_50%/0.45)]" style={{ fontSize: "9px" }}>✦</span>
-              <span className="font-body text-primary/75" style={{ fontSize: "clamp(9px,1.3vh,12px)" }}>
-                2006 – 2026
-              </span>
+            {/* Badge 20 años + Tagline */}
+            <div className="flex flex-col items-start xl:items-center"
+                 style={{ gap: "clamp(4px,0.7vh,10px)" }}>
+              <div className="inline-flex items-center gap-1.5 px-2.5 rounded-full
+                              border border-[hsl(43_78%_50%/0.45)] bg-[hsl(43_78%_50%/0.09)]"
+                   style={{ paddingTop: "clamp(3px,0.6vh,8px)", paddingBottom: "clamp(3px,0.6vh,8px)" }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+                <span className="font-body font-bold tracking-[0.16em] text-primary uppercase"
+                      style={{ fontSize: "clamp(8px,1.1vh,12px)" }}>
+                  20 AÑOS
+                </span>
+                <span className="text-[hsl(43_78%_50%/0.45)]" style={{ fontSize: "8px" }}>✦</span>
+                <span className="font-body text-primary/75"
+                      style={{ fontSize: "clamp(8px,1.1vh,12px)" }}>
+                  2006 – 2026
+                </span>
+              </div>
+
+              <p className="font-body text-muted-foreground/85 leading-snug"
+                 style={{ fontSize: "clamp(9px,1.2vh,13px)" }}>
+                Asesoría y Gestión Empresarial S.A.S.
+              </p>
             </div>
-
-            <p className="font-body text-muted-foreground/85 leading-snug max-w-[220px]"
-               style={{ fontSize: "clamp(10px,1.4vh,13px)" }}>
-              Asesoría y Gestión Empresarial S.A.S.
-            </p>
           </div>
         </motion.div>
 
@@ -217,9 +209,9 @@ const HeroSection = () => (
                               group-hover:bg-[hsl(43_78%_50%/0.12)]
                               group-hover:shadow-[0_0_28px_hsl(43_78%_50%/0.25)]
                               transition-all duration-200"
-                   style={{ width: "clamp(38px,10.5vh,82px)", height: "clamp(38px,10.5vh,82px)" }}>
+                   style={{ width: "clamp(32px,8.5vh,82px)", height: "clamp(32px,8.5vh,82px)" }}>
                 <svc.Icon className="text-primary"
-                  style={{ width: "clamp(16px,4.8vh,36px)", height: "clamp(16px,4.8vh,36px)" }} />
+                  style={{ width: "clamp(13px,3.8vh,36px)", height: "clamp(13px,3.8vh,36px)" }} />
               </div>
 
               {/* Nombre | línea punteada | bullets | número */}
@@ -237,7 +229,7 @@ const HeroSection = () => (
 
                 <ul className="font-body text-white/75 leading-snug shrink-0 text-right
                                group-hover:text-white/92 transition-colors duration-200"
-                    style={{ fontSize: "clamp(10px,1.8vh,14px)", minWidth: "clamp(120px,19vw,280px)" }}>
+                    style={{ fontSize: "clamp(10px,1.8vh,14px)", minWidth: "clamp(90px,17vw,280px)" }}>
                   {svc.subs.map((sub) => <li key={sub}>{sub}</li>)}
                 </ul>
 
