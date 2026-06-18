@@ -8,7 +8,7 @@ import sisoLogo from "@/assets/siso-logo.png";
 import heroImage from "@/assets/hero-firefighter.jpg";
 
 /* Curva horizontal de los servicios: arco suave izq → centro → izq (en vw) */
-const CURVE_VW = [0, 1.4, 2.8, 1.4, 0];
+const CURVE_VW = [0, 2.2, 4.4, 2.2, 0];
 
 const services = [
   { id: "asesoria",    label: "ASESORÍA",    subs: ["ISO 9001", "ISO 14001", "ISO 45001", "SIG"],                        Icon: MessageCircle, href: "#svc-asesoria"    },
@@ -21,6 +21,9 @@ const services = [
 /* ─── Curvas + nodos CSS (sin distorsión oval) ───────────────────────────────── */
 const ConnectingLines = () => {
   const EPS = [10, 30, 50, 70, 90];
+  // Extensión extra en unidades SVG más allá de x=100, proporcional a CURVE_VW
+  const EXTEND_X = [0, 18, 36, 18, 0];
+
   return (
     <div className="relative w-full h-full overflow-visible">
       <style>{`
@@ -28,17 +31,18 @@ const ConnectingLines = () => {
         @keyframes originFade { 0%,100% { opacity:0.55; } 50% { opacity:1;    } }
       `}</style>
 
-      {/* SVG solo para curvas — se estira bien con preserveAspectRatio="none" */}
+      {/* SVG solo para curvas — overflow visible para que se extienda al panel de servicios */}
       <svg
         className="absolute inset-0 w-full h-full"
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
         fill="none"
+        overflow="visible"
       >
         {EPS.map((y, i) => (
           <path
             key={i}
-            d={`M 0,50 C 55,50 45,${y} 100,${y}`}
+            d={`M 0,50 C 55,50 45,${y} ${100 + EXTEND_X[i]},${y}`}
             stroke="rgba(255,255,255,0.32)"
             strokeWidth="1.1"
             strokeDasharray="3 2.8"
@@ -59,14 +63,15 @@ const ConnectingLines = () => {
         <div className="w-[7px] h-[7px] rounded-full bg-gradient-to-br from-[hsl(44,90%,74%)] to-[hsl(32,80%,50%)]" />
       </div>
 
-      {/* Nodos destino — divs CSS, siempre circulares */}
+      {/* Nodos destino — desplazados horizontalmente según la curva de cada fila */}
       {EPS.map((yPct, i) => (
         <div
           key={i}
-          className="absolute right-0"
+          className="absolute"
           style={{
             top: `${yPct}%`,
-            transform: "translate(50%, -50%)",
+            left: `calc(100% + ${CURVE_VW[i]}vw)`,
+            transform: "translate(-50%, -50%)",
             animation: `nodeFade 3s ease-in-out ${i * 0.42}s infinite`,
           }}
         >
