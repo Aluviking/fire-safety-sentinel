@@ -1,6 +1,4 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ServiceDrawer } from "./ServiceDrawer";
+import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
   MessageCircle, Heart, ClipboardCheck, BookOpen, ThumbsUp,
@@ -10,11 +8,11 @@ import sisoLogo from "@/assets/siso-logo.png";
 import heroImage from "@/assets/hero-firefighter.jpg";
 
 const services = [
-  { id: "asesoria",    label: "ASESORÍA",    subs: ["Sistema Integrados de Gestión"],                                Icon: MessageCircle, href: "#servicios"  },
-  { id: "consultoria", label: "CONSULTORÍA", subs: ["Gestión en Salud", "Gestión del Riesgo", "Gestión de Amenazas"], Icon: Heart,         href: "#servicios"  },
-  { id: "auditoria",   label: "AUDITORÍA",   subs: ["Auditorias Internas y Externas de Seguridad"],                   Icon: ClipboardCheck, href: "#auditorias" },
-  { id: "formacion",   label: "FORMACIÓN",   subs: ["Cursos", "Diplomados", "Seminarios"],                            Icon: BookOpen,      href: "#programas"  },
-  { id: "bienestar",   label: "BIENESTAR",   subs: ["Empresarial"],                                                    Icon: ThumbsUp,      href: "#servicios"  },
+  { id: "asesoria",    label: "ASESORÍA",    subs: ["ISO 9001", "ISO 14001", "ISO 45001", "SIG"],                        Icon: MessageCircle, href: "#svc-asesoria"    },
+  { id: "consultoria", label: "CONSULTORÍA", subs: ["Gestión en Salud", "Gestión del Riesgo", "Gestión de Amenazas"],    Icon: Heart,         href: "#svc-consultoria" },
+  { id: "auditoria",   label: "AUDITORÍA",   subs: ["Internas", "Externas", "Gap Analysis", "Seguimiento"],              Icon: ClipboardCheck, href: "#svc-auditoria"  },
+  { id: "formacion",   label: "FORMACIÓN",   subs: ["Cursos", "Diplomados", "Seminarios"],                               Icon: BookOpen,      href: "#svc-formacion"   },
+  { id: "bienestar",   label: "BIENESTAR",   subs: ["Clima Laboral", "Salud Mental", "Actividades"],                     Icon: ThumbsUp,      href: "#svc-bienestar"   },
 ];
 
 /* ─── Curvas + nodos CSS (sin distorsión oval) ───────────────────────────────── */
@@ -78,9 +76,7 @@ const ConnectingLines = () => {
 };
 
 /* ─── HERO ──────────────────────────────────────────────────────────────────── */
-function HeroSection() {
-  const [openService, setOpenService] = useState<string | null>(null);
-  return (
+const HeroSection = () => (
   <section
     id="inicio"
     className="relative isolate h-[100svh] min-h-[560px] flex flex-col overflow-hidden bg-[#0a0a0a]"
@@ -188,15 +184,14 @@ function HeroSection() {
         {/* ── SERVICIOS ── */}
         <div className="flex-1 flex flex-col min-h-0">
           {services.map((svc, i) => (
-            <motion.button
+            <motion.a
               key={svc.id}
-              type="button"
-              onClick={() => setOpenService(svc.id)}
+              href={svc.href}
               initial={{ opacity: 0, x: 35 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.56, delay: 0.18 + i * 0.08, ease: "easeOut" }}
               whileHover={{ x: 4 }}
-              className="flex items-center flex-1 min-h-0 w-full text-left cursor-pointer
+              className="flex items-center flex-1 min-h-0
                          border-b border-[hsl(43_78%_50%/0.12)] last:border-0
                          hover:bg-[hsl(43_78%_50%/0.04)]
                          transition-all duration-200 group"
@@ -249,7 +244,7 @@ function HeroSection() {
                   {String(i + 1).padStart(2, "0")}
                 </span>
               </div>
-            </motion.button>
+            </motion.a>
           ))}
 
           {/* ── BOTONES CTA ── */}
@@ -358,14 +353,7 @@ function HeroSection() {
       </motion.div>
 
     </div>
-
-    <AnimatePresence>
-      {openService && (
-        <ServiceDrawer serviceId={openService} onClose={() => setOpenService(null)} />
-      )}
-    </AnimatePresence>
   </section>
-  );
-}
+);
 
 export default HeroSection;

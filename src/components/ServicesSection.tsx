@@ -1,67 +1,83 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import {
-  BookOpen, HeartPulse, Layers, Users, Monitor, Flame,
-  ShieldCheck, ArrowRight,
-  HardHat, Zap, Lock, BarChart2, Eye, Scale, GraduationCap,
-  ClipboardCheck, AlertCircle, Brain,
+  MessageCircle, Heart, ClipboardCheck, BookOpen, ThumbsUp,
+  ArrowRight, GraduationCap,
+  HardHat, Zap, Lock, BarChart2, Eye, Scale,
+  ShieldCheck, Brain, AlertCircle,
 } from "lucide-react";
 
-/* ── Servicios principales ── */
+/* ── Servicios principales (5 líneas SISO) ── */
 const mainServices = [
   {
+    id: "svc-asesoria",
+    icon: MessageCircle,
+    title: "ASESORÍA",
+    subtitle: "Normas ISO & Sistemas de Gestión",
+    description:
+      "Acompañamiento especializado para diseñar, implementar y certificar sistemas de gestión alineados con estándares internacionales.",
+    tags: ["ISO 9001", "ISO 14001", "ISO 45001 / 18001", "Sistema Integrado", "ISO 27001", "Otras normas"],
+    accent: "border-l-[hsl(43_78%_50%)]",
+    iconBg: "bg-[hsl(43_78%_50%/0.12)] group-hover:bg-[hsl(43_78%_50%/0.22)]",
+    iconColor: "text-primary",
+    tagColor: "bg-[hsl(43_78%_50%/0.1)] text-primary/80 border-[hsl(43_78%_50%/0.2)]",
+    campusHref: null,
+  },
+  {
+    id: "svc-consultoria",
+    icon: Heart,
+    title: "CONSULTORÍA",
+    subtitle: "Gestión en Salud, Riesgo y Amenazas",
+    description:
+      "Diagnóstico, diseño e implementación de programas para proteger la salud de su talento humano y controlar los riesgos en el entorno laboral.",
+    tags: ["Gestión en Salud", "Vigilancia Epidemiológica", "Gestión del Riesgo", "Planes de Emergencia", "Gestión de Amenazas"],
+    accent: "border-l-[hsl(43_92%_64%)]",
+    iconBg: "bg-[hsl(43_92%_64%/0.12)] group-hover:bg-[hsl(43_92%_64%/0.22)]",
+    iconColor: "text-accent",
+    tagColor: "bg-[hsl(43_92%_64%/0.08)] text-accent/80 border-[hsl(43_92%_64%/0.2)]",
+    campusHref: null,
+  },
+  {
+    id: "svc-auditoria",
+    icon: ClipboardCheck,
+    title: "AUDITORÍA",
+    subtitle: "Evaluación y Mejora Continua",
+    description:
+      "Verificación sistemática del cumplimiento normativo por auditores certificados. Desde el diagnóstico inicial hasta el seguimiento post-auditoría.",
+    tags: ["Auditorías Internas", "Auditorías Externas", "Gap Analysis", "Seguimiento y Mejora"],
+    accent: "border-l-[hsl(43_78%_50%)]",
+    iconBg: "bg-[hsl(43_78%_50%/0.12)] group-hover:bg-[hsl(43_78%_50%/0.22)]",
+    iconColor: "text-primary",
+    tagColor: "bg-[hsl(43_78%_50%/0.1)] text-primary/80 border-[hsl(43_78%_50%/0.2)]",
+    campusHref: null,
+  },
+  {
+    id: "svc-formacion",
     icon: BookOpen,
-    title: "FORMACIÓN DE BRIGADAS",
+    title: "FORMACIÓN",
+    subtitle: "Cursos · Diplomados · Seminarios",
     description:
-      "Procesos formativos estructurados para fortalecer la capacidad de respuesta ante emergencias, alineados con la normativa vigente y las mejores prácticas en gestión del riesgo.",
-    accent: "border-l-[hsl(43_78%_50%)]",
-    iconBg: "bg-[hsl(43_78%_50%/0.12)] group-hover:bg-[hsl(43_78%_50%/0.22)]",
-    iconColor: "text-primary",
-  },
-  {
-    icon: HeartPulse,
-    title: "CONSULTORÍA EN SALUD LABORAL",
-    description:
-      "Bienestar físico, mental y emocional: pausas activas, jornadas de salud, batería de riesgo psicosocial e implementación de Sistemas de Vigilancia Epidemiológica.",
+      "Capacitación certificada en SST, gestión de riesgos y normativa laboral, disponible presencial y en nuestra plataforma de Campus Virtual.",
+    tags: ["Primeros Auxilios", "Brigadas de Emergencia", "Trabajo en Alturas", "Diplomados SST", "Seminarios"],
     accent: "border-l-[hsl(43_92%_64%)]",
     iconBg: "bg-[hsl(43_92%_64%/0.12)] group-hover:bg-[hsl(43_92%_64%/0.22)]",
     iconColor: "text-accent",
+    tagColor: "bg-[hsl(43_92%_64%/0.08)] text-accent/80 border-[hsl(43_92%_64%/0.2)]",
+    campusHref: "https://site2.q10.com/login?ReturnUrl=%2F&aplentId=0d310659-db68-4e7b-af78-aa3ab62eb1f2",
   },
   {
-    icon: Layers,
-    title: "ASESORÍA EN SIG",
+    id: "svc-bienestar",
+    icon: ThumbsUp,
+    title: "BIENESTAR",
+    subtitle: "Clima Laboral & Salud Integral",
     description:
-      "Sistemas de Gestión Integrados que unifican Calidad, Medio Ambiente y SST en una sola estructura, optimizando operaciones y garantizando cumplimiento normativo.",
+      "Programas que fortalecen la cultura del autocuidado, mejoran el clima organizacional y potencian el desempeño del equipo humano.",
+    tags: ["Bienestar Empresarial", "Actividades Deportivas", "Clima Laboral", "Salud Mental", "Riesgo Psicosocial"],
     accent: "border-l-[hsl(43_78%_50%)]",
     iconBg: "bg-[hsl(43_78%_50%/0.12)] group-hover:bg-[hsl(43_78%_50%/0.22)]",
     iconColor: "text-primary",
-  },
-  {
-    icon: Users,
-    title: "BIENESTAR EMPRESARIAL",
-    description:
-      "Programas que fortalecen la cultura del autocuidado, mejoran el clima laboral y potencian el desempeño del equipo humano de su organización.",
-    accent: "border-l-[hsl(43_92%_64%)]",
-    iconBg: "bg-[hsl(43_92%_64%/0.12)] group-hover:bg-[hsl(43_92%_64%/0.22)]",
-    iconColor: "text-accent",
-  },
-  {
-    icon: Monitor,
-    title: "CAMPUS VIRTUAL",
-    description:
-      "Plataforma e-learning con cursos especializados en SST, gestión de riesgos y normativa laboral, accesibles en cualquier momento y lugar.",
-    accent: "border-l-[hsl(43_78%_50%)]",
-    iconBg: "bg-[hsl(43_78%_50%/0.12)] group-hover:bg-[hsl(43_78%_50%/0.22)]",
-    iconColor: "text-primary",
-  },
-  {
-    icon: Flame,
-    title: "PROTECCIÓN CONTRA INCENDIOS",
-    description:
-      "Planes de evacuación, protocolos de respuesta y formación de equipos para actuar de manera coordinada y eficiente ante emergencias por incendio.",
-    accent: "border-l-[hsl(43_92%_64%)]",
-    iconBg: "bg-[hsl(43_92%_64%/0.12)] group-hover:bg-[hsl(43_92%_64%/0.22)]",
-    iconColor: "text-accent",
+    tagColor: "bg-[hsl(43_78%_50%/0.1)] text-primary/80 border-[hsl(43_78%_50%/0.2)]",
+    campusHref: null,
   },
 ];
 
@@ -95,7 +111,7 @@ const catalog = [
     category: "BIENESTAR LABORAL",
     color: "hsl(160 60% 40%)",
     colorMuted: "hsl(160 60% 40% / 0.12)",
-    icon: HeartPulse,
+    icon: Heart,
     services: [
       { icon: BarChart2,      name: "Estudios de Puestos de Trabajo", desc: "Análisis ergonómico y de condiciones de trabajo para optimizar el ambiente laboral." },
       { icon: Eye,            name: "Sistemas de Vigilancia",         desc: "Vigilancia epidemiológica y seguimiento de indicadores de salud ocupacional." },
@@ -108,7 +124,6 @@ const catalog = [
 const ServicesSection = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
-
 
   return (
     <section
@@ -152,30 +167,71 @@ const ServicesSection = () => {
             const Icon = service.icon;
             return (
               <motion.div
-                key={service.title}
+                key={service.id}
+                id={service.id}
                 initial={{ opacity: 0, y: 28 }}
                 animate={isInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.55, delay: i * 0.08 }}
-                className={`group relative glass-card border-l-2 ${service.accent} rounded-2xl p-7 sm:p-8 hover:glass-card-hover transition-all duration-300 overflow-hidden cursor-default`}
+                className={`group relative glass-card border-l-2 ${service.accent} rounded-2xl p-7 sm:p-8
+                            hover:glass-card-hover transition-all duration-300 overflow-hidden`}
               >
                 <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-[hsl(43_78%_50%/0.05)] to-transparent" />
 
                 <div className="relative z-10 flex flex-col h-full">
-                  <div className={`w-14 h-14 rounded-xl ${service.iconBg} flex items-center justify-center mb-5 transition-colors duration-300`}>
+                  {/* Icon */}
+                  <div className={`w-14 h-14 rounded-xl ${service.iconBg} flex items-center justify-center mb-4 transition-colors duration-300`}>
                     <Icon className={`w-7 h-7 ${service.iconColor}`} />
                   </div>
 
-                  <h3 className="font-display text-xl md:text-2xl text-foreground mb-3 tracking-wide leading-tight">
+                  {/* Title + subtitle */}
+                  <h3 className="font-display text-xl md:text-2xl text-foreground leading-tight tracking-wide">
                     {service.title}
                   </h3>
+                  <p className="font-body text-xs text-primary/60 font-semibold tracking-[0.12em] uppercase mt-0.5 mb-3">
+                    {service.subtitle}
+                  </p>
 
-                  <p className="font-body text-base text-muted-foreground leading-relaxed flex-1">
+                  {/* Description */}
+                  <p className="font-body text-sm text-muted-foreground leading-relaxed flex-1">
                     {service.description}
                   </p>
 
-                  <div className="mt-6 flex items-center gap-1.5 text-primary font-body font-semibold text-sm opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-300">
-                    Solicitar información
-                    <ArrowRight className="w-4 h-4" />
+                  {/* Sub-category tags */}
+                  <div className="flex flex-wrap gap-1.5 mt-4">
+                    {service.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className={`inline-block font-body text-[11px] font-medium px-2 py-0.5 rounded-full border ${service.tagColor}`}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* CTA */}
+                  <div className="mt-5">
+                    {service.campusHref ? (
+                      <a
+                        href={service.campusHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
+                                   font-body font-bold text-sm text-black
+                                   bg-gradient-to-r from-[hsl(40_82%_46%)] to-[hsl(44_80%_54%)]
+                                   hover:brightness-105 transition-all duration-200
+                                   shadow-[0_3px_14px_hsl(43_78%_50%/0.3)]"
+                      >
+                        <GraduationCap className="w-4 h-4" />
+                        Ir al Campus Virtual
+                      </a>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-primary font-body font-semibold text-sm
+                                      opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0
+                                      transition-all duration-300">
+                        Solicitar información
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -183,7 +239,7 @@ const ServicesSection = () => {
           })}
         </div>
 
-        {/* ── Catalog toggle ── */}
+        {/* ── Catalog ── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -268,7 +324,9 @@ const ServicesSection = () => {
                   <div className="px-5 pb-5">
                     <a
                       href="#contacto"
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-body font-bold text-sm text-primary border border-[hsl(43_78%_50%/0.25)] hover:bg-[hsl(43_78%_50%/0.08)] hover:border-[hsl(43_78%_50%/0.45)] transition-all"
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-body font-bold text-sm
+                                 text-primary border border-[hsl(43_78%_50%/0.25)]
+                                 hover:bg-[hsl(43_78%_50%/0.08)] hover:border-[hsl(43_78%_50%/0.45)] transition-all"
                     >
                       Solicitar información
                       <ArrowRight className="w-4 h-4" />
