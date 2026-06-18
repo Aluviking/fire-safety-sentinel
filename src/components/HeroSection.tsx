@@ -7,6 +7,9 @@ import {
 import sisoLogo from "@/assets/siso-logo.png";
 import heroImage from "@/assets/hero-firefighter.jpg";
 
+/* Curva horizontal de los servicios: arco suave izq → centro → izq (en vw) */
+const CURVE_VW = [0, 1.4, 2.8, 1.4, 0];
+
 const services = [
   { id: "asesoria",    label: "ASESORÍA",    subs: ["ISO 9001", "ISO 14001", "ISO 45001", "SIG"],                        Icon: MessageCircle, href: "#svc-asesoria"    },
   { id: "consultoria", label: "CONSULTORÍA", subs: ["Gestión en Salud", "Gestión del Riesgo", "Gestión de Amenazas"],    Icon: Heart,         href: "#svc-consultoria" },
@@ -197,7 +200,7 @@ const HeroSection = () => (
                          transition-all duration-200 group"
               style={{
                 gap:          "clamp(10px,2vh,22px)",
-                paddingLeft:  "clamp(8px,2vw,36px)",
+                paddingLeft:  `calc(clamp(8px, 2vw, 36px) + ${CURVE_VW[i]}vw)`,
                 paddingRight: "clamp(8px,2vw,36px)",
               }}
             >
