@@ -153,18 +153,18 @@ const HeroSection = () => (
                    style={{ paddingTop: "clamp(3px,0.6vh,8px)", paddingBottom: "clamp(3px,0.6vh,8px)" }}>
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
                 <span className="font-body font-bold tracking-[0.16em] text-primary uppercase"
-                      style={{ fontSize: "clamp(8px,1.1vh,12px)" }}>
+                      style={{ fontSize: "clamp(10px,1.4vh,14px)" }}>
                   20 AÑOS
                 </span>
-                <span className="text-[hsl(43_78%_50%/0.45)]" style={{ fontSize: "8px" }}>✦</span>
+                <span className="text-[hsl(43_78%_50%/0.45)]" style={{ fontSize: "9px" }}>✦</span>
                 <span className="font-body text-primary/75"
-                      style={{ fontSize: "clamp(8px,1.1vh,12px)" }}>
+                      style={{ fontSize: "clamp(10px,1.4vh,14px)" }}>
                   2006 – 2026
                 </span>
               </div>
 
               <p className="font-body text-muted-foreground/85 leading-snug"
-                 style={{ fontSize: "clamp(9px,1.2vh,13px)" }}>
+                 style={{ fontSize: "clamp(11px,1.5vh,15px)" }}>
                 Asesoría y Gestión Empresarial S.A.S.
               </p>
             </div>
