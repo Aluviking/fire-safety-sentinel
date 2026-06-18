@@ -1,4 +1,6 @@
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ServiceDrawer } from "./ServiceDrawer";
 import { Link } from "react-router-dom";
 import {
   MessageCircle, Heart, ClipboardCheck, BookOpen, ThumbsUp,
@@ -76,7 +78,9 @@ const ConnectingLines = () => {
 };
 
 /* ─── HERO ──────────────────────────────────────────────────────────────────── */
-const HeroSection = () => (
+function HeroSection() {
+  const [openService, setOpenService] = useState<string | null>(null);
+  return (
   <section
     id="inicio"
     className="relative isolate h-[100svh] min-h-[560px] flex flex-col overflow-hidden bg-[#0a0a0a]"
@@ -184,14 +188,15 @@ const HeroSection = () => (
         {/* ── SERVICIOS ── */}
         <div className="flex-1 flex flex-col min-h-0">
           {services.map((svc, i) => (
-            <motion.a
+            <motion.button
               key={svc.id}
-              href={svc.href}
+              type="button"
+              onClick={() => setOpenService(svc.id)}
               initial={{ opacity: 0, x: 35 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.56, delay: 0.18 + i * 0.08, ease: "easeOut" }}
               whileHover={{ x: 4 }}
-              className="flex items-center flex-1 min-h-0
+              className="flex items-center flex-1 min-h-0 w-full text-left cursor-pointer
                          border-b border-[hsl(43_78%_50%/0.12)] last:border-0
                          hover:bg-[hsl(43_78%_50%/0.04)]
                          transition-all duration-200 group"
@@ -244,7 +249,7 @@ const HeroSection = () => (
                   {String(i + 1).padStart(2, "0")}
                 </span>
               </div>
-            </motion.a>
+            </motion.button>
           ))}
 
           {/* ── BOTONES CTA ── */}
@@ -353,7 +358,14 @@ const HeroSection = () => (
       </motion.div>
 
     </div>
+
+    <AnimatePresence>
+      {openService && (
+        <ServiceDrawer serviceId={openService} onClose={() => setOpenService(null)} />
+      )}
+    </AnimatePresence>
   </section>
-);
+  );
+}
 
 export default HeroSection;
