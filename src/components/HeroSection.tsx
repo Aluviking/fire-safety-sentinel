@@ -79,10 +79,10 @@ const ConnectingLines = () => {
 const HeroSection = () => (
   <section
     id="inicio"
-    className="relative h-[100svh] min-h-[560px] flex flex-col overflow-hidden bg-[#0a0a0a]"
+    className="relative isolate h-[100svh] min-h-[560px] flex flex-col overflow-hidden bg-[#0a0a0a]"
   >
     {/* Bombero de fondo */}
-    <div className="absolute inset-0 pointer-events-none">
+    <div className="absolute inset-0 z-0 pointer-events-none">
       <img src={heroImage} alt="" aria-hidden="true"
         className="w-full h-full object-cover object-[68%_center]"
         loading="eager" fetchPriority="high" />
@@ -92,10 +92,10 @@ const HeroSection = () => (
     </div>
 
     {/* Barra dorada izquierda */}
-    <div className="absolute left-0 top-0 bottom-0 w-[5px] bg-gradient-to-b from-[hsl(43_78%_50%)] via-[hsl(43_78%_50%/0.65)] to-transparent pointer-events-none" />
+    <div className="absolute z-[1] left-0 top-0 bottom-0 w-[5px] bg-gradient-to-b from-[hsl(43_78%_50%)] via-[hsl(43_78%_50%/0.65)] to-transparent pointer-events-none" />
 
     {/* Glow ambiente */}
-    <div className="absolute top-1/3 left-[22%] w-[480px] h-[480px] rounded-full bg-[hsl(43_78%_50%/0.055)] blur-[130px] pointer-events-none" />
+    <div className="absolute z-[1] top-1/3 left-[22%] w-[480px] h-[480px] rounded-full bg-[hsl(43_78%_50%/0.055)] blur-[130px] pointer-events-none" />
 
     {/* CONTENIDO */}
     <div
