@@ -172,10 +172,9 @@ const HeroSection = () => (
               </span>
             </div>
 
-            <p className="font-body text-muted-foreground/85 leading-snug max-w-[200px]"
+            <p className="font-body text-muted-foreground/85 leading-snug max-w-[220px]"
                style={{ fontSize: "clamp(10px,1.4vh,13px)" }}>
-              Asesoría &amp; Gestión Empresarial<br />
-              en Seguridad y Salud en el Trabajo
+              Asesoría y Gestión Empresarial S.A.S.
             </p>
           </div>
         </motion.div>

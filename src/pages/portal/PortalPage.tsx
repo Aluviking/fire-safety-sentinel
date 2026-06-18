@@ -283,14 +283,19 @@ export default function PortalPage() {
           {/* Card */}
           <div className="bg-white rounded-2xl shadow-[0_4px_32px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden">
             {/* Tabs */}
-            <div className="flex border-b border-slate-200">
+            <div className="flex relative border-b border-slate-200">
               {(["login", "register"] as const).map((m) => (
                 <button key={m} onClick={() => setMode(m)}
-                  className={`flex-1 py-4 text-sm font-semibold tracking-wide transition-all duration-200
-                    ${mode === m
-                      ? "text-[hsl(43_78%_40%)] border-b-2 border-[hsl(43_78%_50%)] bg-amber-50/50"
-                      : "text-slate-500 hover:text-slate-700"}`}>
+                  className={`relative flex-1 py-3.5 text-sm font-semibold tracking-wide transition-colors duration-200
+                    ${mode === m ? "text-[hsl(43_78%_36%)]" : "text-slate-400 hover:text-slate-600"}`}>
                   {m === "login" ? "Ingresar" : "Crear cuenta"}
+                  {mode === m && (
+                    <motion.span
+                      layoutId="tab-line"
+                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-[hsl(43_78%_48%)] rounded-t-full"
+                      transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                    />
+                  )}
                 </button>
               ))}
             </div>
