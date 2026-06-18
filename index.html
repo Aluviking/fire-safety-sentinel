@@ -24,16 +24,6 @@
 
   <body>
     <div id="root"></div>
-    <!-- GitHub Pages SPA: restore path from 404 redirect -->
-    <script>
-      (function() {
-        var r = new URLSearchParams(window.location.search).get('r');
-        if (r) {
-          var base = window.location.pathname.replace(/\/$/, '');
-          window.history.replaceState(null, null, base + '/' + r + window.location.hash);
-        }
-      })();
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
