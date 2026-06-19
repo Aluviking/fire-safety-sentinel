@@ -56,7 +56,7 @@ const Footer = () => {
             </a>
 
             <p className="font-body text-sm text-muted-foreground leading-relaxed max-w-[240px] mb-5">
-              Asesoría y Gestión Empresarial SAS. Expertos en SST, cumplimiento normativo y gestión integrada del riesgo.
+              Asesoría y Gestión Empresarial S.A.S. Expertos en SST, cumplimiento normativo y gestión integrada del riesgo.
             </p>
 
             <div className="space-y-3 mb-6">
@@ -155,7 +155,7 @@ const Footer = () => {
         {/* Bottom bar */}
         <div className="flex flex-col items-center gap-3 sm:gap-2">
           <p className="font-body text-xs text-muted-foreground/50 text-center">
-            © {new Date().getFullYear()} SISO — Asesoría y Gestión Empresarial SAS. Todos los derechos reservados.
+            © {new Date().getFullYear()} SISO — Asesoría y Gestión Empresarial S.A.S. Todos los derechos reservados.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
             <a href="#datos" className="font-body text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors min-h-0">
