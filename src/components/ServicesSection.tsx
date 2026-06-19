@@ -162,7 +162,7 @@ const ServicesSection = () => {
         </motion.div>
 
         {/* ── Main services grid ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 sm:gap-5">
           {mainServices.map((service, i) => {
             const Icon = service.icon;
             return (
@@ -173,7 +173,8 @@ const ServicesSection = () => {
                 animate={isInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.55, delay: i * 0.08 }}
                 className={`group relative glass-card border-l-2 ${service.accent} rounded-2xl p-7 sm:p-8
-                            hover:glass-card-hover transition-all duration-300 overflow-hidden`}
+                            hover:glass-card-hover transition-all duration-300 overflow-hidden
+                            ${i < 3 ? "lg:col-span-2" : "lg:col-span-3"}`}
               >
                 <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-[hsl(43_78%_50%/0.05)] to-transparent" />
 
