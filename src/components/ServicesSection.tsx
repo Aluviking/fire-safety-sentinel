@@ -185,15 +185,15 @@ const ServicesSection = () => {
                   </div>
 
                   {/* Title + subtitle */}
-                  <h3 className="font-display text-xl md:text-2xl text-foreground leading-tight tracking-wide">
+                  <h3 className="font-display text-2xl md:text-3xl text-foreground leading-tight tracking-wide">
                     {service.title}
                   </h3>
-                  <p className="font-body text-xs text-primary/60 font-semibold tracking-[0.12em] uppercase mt-0.5 mb-3">
+                  <p className="font-body text-sm text-primary/60 font-semibold tracking-[0.12em] uppercase mt-0.5 mb-3">
                     {service.subtitle}
                   </p>
 
                   {/* Description */}
-                  <p className="font-body text-sm text-muted-foreground leading-relaxed flex-1">
+                  <p className="font-body text-base text-muted-foreground leading-relaxed flex-1">
                     {service.description}
                   </p>
 
@@ -202,7 +202,7 @@ const ServicesSection = () => {
                     {service.tags.map((tag) => (
                       <span
                         key={tag}
-                        className={`inline-block font-body text-[11px] font-medium px-2 py-0.5 rounded-full border ${service.tagColor}`}
+                        className={`inline-block font-body text-xs font-medium px-2.5 py-0.5 rounded-full border ${service.tagColor}`}
                       >
                         {tag}
                       </span>
@@ -309,10 +309,10 @@ const ServicesSection = () => {
                             <SvcIcon className="w-4 h-4" style={{ color: cat.color }} />
                           </div>
                           <div>
-                            <p className="font-body font-semibold text-[15px] text-foreground leading-tight">
+                            <p className="font-body font-semibold text-base text-foreground leading-tight">
                               {svc.name}
                             </p>
-                            <p className="font-body text-[13px] text-muted-foreground mt-1 leading-relaxed">
+                            <p className="font-body text-sm text-muted-foreground mt-1 leading-relaxed">
                               {svc.desc}
                             </p>
                           </div>

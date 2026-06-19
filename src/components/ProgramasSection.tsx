@@ -73,8 +73,8 @@ const ProgramasSection = () => {
           </p>
         </motion.div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Grid — 6 col: primeras 3 en col-span-2, últimas 2 en col-span-3 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
           {programs.map((program, i) => {
             const Icon = program.icon;
             return (
@@ -83,8 +83,8 @@ const ProgramasSection = () => {
                 initial={{ opacity: 0, y: 28 }}
                 animate={isInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ duration: 0.55, delay: i * 0.09 }}
-                className={`group relative glass-card rounded-2xl overflow-hidden hover:glass-card-hover transition-all duration-300 flex flex-col${
-                  i === 4 ? " lg:col-start-2" : ""
+                className={`group relative glass-card rounded-2xl overflow-hidden hover:glass-card-hover transition-all duration-300 flex flex-col ${
+                  i < 3 ? "lg:col-span-2" : "lg:col-span-3"
                 }`}
               >
                 {/* Top gold accent bar */}
@@ -93,27 +93,27 @@ const ProgramasSection = () => {
                 <div className="relative z-10 flex flex-col flex-1 p-7">
                   {/* Tag + Icon row */}
                   <div className="flex items-center justify-between mb-5">
-                    <span className="inline-block text-[10px] font-body font-bold px-3 py-1 rounded-full bg-[hsl(43_78%_50%/0.12)] text-primary tracking-[0.12em] uppercase">
+                    <span className="inline-block text-xs font-body font-bold px-3 py-1 rounded-full bg-[hsl(43_78%_50%/0.12)] text-primary tracking-[0.12em] uppercase">
                       {program.tag}
                     </span>
-                    <div className="w-10 h-10 rounded-xl bg-[hsl(43_78%_50%/0.1)] flex items-center justify-center group-hover:bg-[hsl(43_78%_50%/0.2)] transition-colors">
-                      <Icon className="w-5 h-5 text-primary" />
+                    <div className="w-11 h-11 rounded-xl bg-[hsl(43_78%_50%/0.1)] flex items-center justify-center group-hover:bg-[hsl(43_78%_50%/0.2)] transition-colors">
+                      <Icon className="w-6 h-6 text-primary" />
                     </div>
                   </div>
 
-                  <h3 className="font-display text-lg md:text-xl text-foreground mb-3 tracking-wide leading-tight">
+                  <h3 className="font-display text-xl md:text-2xl text-foreground mb-3 tracking-wide leading-tight">
                     {program.title}
                   </h3>
-                  <p className="font-body text-sm text-muted-foreground leading-relaxed flex-1">
+                  <p className="font-body text-base text-muted-foreground leading-relaxed flex-1">
                     {program.description}
                   </p>
 
                   <a
                     href="#contacto"
-                    className="mt-6 inline-flex items-center gap-1.5 text-primary font-body font-semibold text-[13px] hover:gap-2.5 transition-all"
+                    className="mt-6 inline-flex items-center gap-1.5 text-primary font-body font-semibold text-sm hover:gap-2.5 transition-all"
                   >
                     Solicitar información
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <ArrowRight className="w-4 h-4" />
                   </a>
                 </div>
               </motion.div>
