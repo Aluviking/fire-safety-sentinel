@@ -333,33 +333,6 @@ const HeroSection = () => (
 
       </div>
 
-      {/* STATS */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.9, delay: 1.0 }}
-        className="flex flex-wrap border-t border-[hsl(43_78%_50%/0.15)]"
-        style={{ marginTop: "clamp(4px,0.8vh,10px)", paddingTop: "clamp(4px,0.8vh,10px)" }}
-      >
-        {[
-          { value: "500+", label: "Brigadas formadas" },
-          { value: "20",   label: "Años de experiencia" },
-          { value: "98%",  label: "Satisfacción cliente" },
-        ].map((s, i) => (
-          <div key={s.label} className="flex items-center">
-            {i > 0 && (
-              <div className="bg-[hsl(43_78%_50%/0.2)]"
-                   style={{ width:"1px", height:"clamp(18px,2.8vh,32px)", margin:"0 clamp(14px,2.5vw,30px)" }} />
-            )}
-            <div>
-              <p className="font-display text-gradient-gold leading-none"
-                 style={{ fontSize: "clamp(16px,3.4vh,30px)" }}>{s.value}</p>
-              <p className="font-body text-muted-foreground tracking-wide"
-                 style={{ fontSize: "clamp(9px,1vh,11px)", marginTop: "clamp(1px,0.3vh,4px)" }}>{s.label}</p>
-            </div>
-          </div>
-        ))}
-      </motion.div>
 
     </div>
   </section>
