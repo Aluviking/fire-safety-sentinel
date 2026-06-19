@@ -68,7 +68,7 @@ const ProgramasSection = () => {
             NUESTROS{" "}
             <span className="text-gradient-gold">PROGRAMAS</span>
           </h2>
-          <p className="font-body text-muted-foreground mt-4 text-sm md:text-base max-w-lg leading-relaxed">
+          <p className="font-body text-muted-foreground mt-4 text-sm md:text-base whitespace-nowrap">
             Programas diseñados para cumplir la normativa colombiana e internacional, adaptados a las necesidades de su organización.
           </p>
         </motion.div>
