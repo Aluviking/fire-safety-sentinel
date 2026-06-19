@@ -11,7 +11,7 @@ import heroImage from "@/assets/hero-firefighter.jpg";
 const CURVE_VW = [0, 2.2, 4.4, 2.2, 0];
 
 const services = [
-  { id: "asesoria",    label: "ASESORÍA",    subs: ["ISO 9001", "ISO 14001", "ISO 45001", "SIG"],                        Icon: MessageCircle, href: "#svc-asesoria"    },
+  { id: "asesoria",    label: "ASESORÍA",    subs: ["Normas ISO", "Sistema de Gestión", "Integrado"],                   Icon: MessageCircle, href: "#svc-asesoria"    },
   { id: "consultoria", label: "CONSULTORÍA", subs: ["Gestión en Salud", "Gestión del Riesgo", "Gestión de Amenazas"],    Icon: Heart,         href: "#svc-consultoria" },
   { id: "auditoria",   label: "AUDITORÍA",   subs: ["Internas", "Externas", "Gap Analysis", "Seguimiento"],              Icon: ClipboardCheck, href: "#svc-auditoria"  },
   { id: "formacion",   label: "FORMACIÓN",   subs: ["Cursos", "Diplomados", "Seminarios"],                               Icon: BookOpen,      href: "#svc-formacion"   },
@@ -237,7 +237,7 @@ const HeroSection = () => (
 
                 <ul className="font-body text-white/75 leading-snug shrink-0 text-right
                                group-hover:text-white/92 transition-colors duration-200"
-                    style={{ fontSize: "clamp(10px,1.8vh,14px)", minWidth: "clamp(60px,14vw,280px)" }}>
+                    style={{ fontSize: "clamp(11px,2vh,16px)", minWidth: "clamp(60px,14vw,280px)" }}>
                   {svc.subs.map((sub) => (
                     <li key={sub}
                         className="overflow-hidden text-ellipsis whitespace-nowrap
