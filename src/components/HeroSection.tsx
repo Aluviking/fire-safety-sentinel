@@ -171,7 +171,7 @@ const HeroSection = () => (
                 </span>
               </div>
 
-              <p className="font-body text-muted-foreground/85 leading-snug"
+              <p className="font-body text-muted-foreground/85 whitespace-nowrap"
                  style={{ fontSize: "clamp(12px,1.6vh,16px)" }}>
                 Asesoría y Gestión Empresarial S.A.S.
               </p>
