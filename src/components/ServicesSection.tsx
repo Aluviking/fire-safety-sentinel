@@ -54,11 +54,12 @@ const formacionTagModals: Record<string, TagModalContent> = {
   },
   "Técnico Laboral": {
     title: "Técnico Laboral",
-    description: "Programas con titulación oficial reconocida para obtener certificación técnica.",
+    description: "Programas técnicos en 1 año con metodología PAT (Presencialidad Asistida por Tecnología). Titulación oficial reconocida.",
     items: [
-      { name: "Técnico Laboral en SST",          desc: "Programa certificado con titulación oficial en Seguridad y Salud en el Trabajo." },
-      { name: "Técnico en Gestión Ambiental",     desc: "Formación técnica para la gestión de aspectos e impactos ambientales en empresas." },
-      { name: "Técnico en Emergencias",           desc: "Certificación técnica para la gestión y coordinación de planes de emergencia empresarial." },
+      { name: "TAE · Técnico Laboral en Auxiliar de Enfermería", desc: "Con énfasis en APH (Atención Prehospitalaria). Formación para soporte vital básico y atención de urgencias." },
+      { name: "TSST · Técnico en Seguridad y Salud en el Trabajo", desc: "Con énfasis en TAR (Tareas de Alto Riesgo). Gestión integral del SG-SST y control de riesgos laborales." },
+      { name: "TAF · Técnico Auxiliar en Servicios Farmacéuticos", desc: "Formación en dispensación, almacenamiento y control de medicamentos en establecimientos farmacéuticos." },
+      { name: "TAEC · Técnico Auxiliar en Cosmetología y Estética", desc: "Técnicas y protocolos de belleza, cuidado corporal y estética profesional con aval institucional." },
     ],
   },
 };
