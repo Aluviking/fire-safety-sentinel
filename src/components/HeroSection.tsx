@@ -13,9 +13,9 @@ const CURVE_VW = [0, 2.2, 4.4, 2.2, 0];
 const services = [
   { id: "asesoria",    label: "ASESORÍA",    subs: ["Normas ISO", "Sistema de Gestión", "Integrado"],                   Icon: MessageCircle, href: "#svc-asesoria"    },
   { id: "consultoria", label: "CONSULTORÍA", subs: ["Gestión en Salud", "Gestión del Riesgo", "Gestión de Amenazas"],    Icon: Heart,         href: "#svc-consultoria" },
-  { id: "auditoria",   label: "AUDITORÍA",   subs: ["Internas", "Externas", "Gap Analysis", "Seguimiento"],              Icon: ClipboardCheck, href: "#svc-auditoria"  },
+  { id: "auditoria",   label: "AUDITORÍA",   subs: ["Internas", "Externas", "Ciberseguridad", "Seguimiento"],          Icon: ClipboardCheck, href: "#svc-auditoria"  },
   { id: "formacion",   label: "FORMACIÓN",   subs: ["Cursos", "Diplomados", "Seminarios"],                               Icon: BookOpen,      href: "#svc-formacion"   },
-  { id: "bienestar",   label: "BIENESTAR",   subs: ["Clima Laboral", "Salud Mental", "Actividades"],                     Icon: ThumbsUp,      href: "#svc-bienestar"   },
+  { id: "bienestar",   label: "BIENESTAR",   subs: ["Coaching Indoor", "Coaching Outdoor"],                             Icon: ThumbsUp,      href: "#svc-bienestar"   },
 ];
 
 /* ─── Curvas + nodos CSS (sin distorsión oval) ───────────────────────────────── */
@@ -273,7 +273,7 @@ const HeroSection = () => (
             <Link
               to="/portal"
               className="group relative flex-1 min-w-[160px] overflow-hidden
-                         flex items-center gap-0
+                         flex items-center
                          bg-gradient-to-r from-[hsl(40_82%_46%)] to-[hsl(44_80%_54%)]
                          text-black font-body font-extrabold
                          shadow-[0_4px_22px_hsl(43_78%_50%/0.45),inset_0_1px_0_rgba(255,255,255,0.28)]
@@ -282,16 +282,18 @@ const HeroSection = () => (
               style={{
                 borderRadius: "clamp(8px,1.1vh,13px)",
                 fontSize: "clamp(11px,1.7vh,15px)",
+                minHeight: "clamp(36px,5vh,52px)",
               }}
             >
-              {/* Icon badge */}
-              <span className="flex items-center justify-center bg-black/18 self-stretch shrink-0
+              {/* Icon badge — left, z-10 so it sits above the centered text */}
+              <span className="relative z-10 flex items-center justify-center bg-black/18 self-stretch shrink-0
                                border-r border-black/12"
-                    style={{ padding: "clamp(9px,1.5vh,16px) clamp(12px,1.5vw,18px)" }}>
+                    style={{ padding: "0 clamp(10px,1.4vw,16px)" }}>
                 <Building2 style={{ width: "clamp(15px,2.1vh,20px)", height: "clamp(15px,2.1vh,20px)" }} />
               </span>
-              <span className="flex-1 text-center tracking-[0.08em] uppercase"
-                    style={{ padding: "clamp(9px,1.5vh,16px) clamp(10px,1.2vw,16px)" }}>
+              {/* Text absolutely centered across the full button width */}
+              <span className="absolute inset-0 flex items-center justify-center
+                               tracking-[0.08em] uppercase pointer-events-none">
                 Portal Empresarial
               </span>
               {/* Shimmer */}
@@ -307,7 +309,7 @@ const HeroSection = () => (
               target="_blank"
               rel="noopener noreferrer"
               className="group relative flex-1 min-w-[140px] overflow-hidden
-                         flex items-center gap-0
+                         flex items-center
                          bg-[#0f0f0f] border-2 border-[hsl(43_78%_50%/0.65)]
                          text-[hsl(43_85%_63%)] font-body font-extrabold
                          hover:border-[hsl(43_78%_50%)] hover:bg-[hsl(43_78%_50%/0.07)]
@@ -316,15 +318,16 @@ const HeroSection = () => (
               style={{
                 borderRadius: "clamp(8px,1.1vh,13px)",
                 fontSize: "clamp(11px,1.7vh,15px)",
+                minHeight: "clamp(36px,5vh,52px)",
               }}
             >
-              <span className="flex items-center justify-center bg-[hsl(43_78%_50%/0.1)] self-stretch shrink-0
+              <span className="relative z-10 flex items-center justify-center bg-[hsl(43_78%_50%/0.1)] self-stretch shrink-0
                                border-r border-[hsl(43_78%_50%/0.25)]"
-                    style={{ padding: "clamp(9px,1.5vh,16px) clamp(12px,1.5vw,18px)" }}>
+                    style={{ padding: "0 clamp(10px,1.4vw,16px)" }}>
                 <GraduationCap style={{ width: "clamp(15px,2.1vh,20px)", height: "clamp(15px,2.1vh,20px)" }} />
               </span>
-              <span className="flex-1 text-center tracking-[0.08em] uppercase"
-                    style={{ padding: "clamp(9px,1.5vh,16px) clamp(10px,1.2vw,16px)" }}>
+              <span className="absolute inset-0 flex items-center justify-center
+                               tracking-[0.08em] uppercase pointer-events-none">
                 Campus Virtual
               </span>
             </a>
