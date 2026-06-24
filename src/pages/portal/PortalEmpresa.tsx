@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, Folder, FolderOpen, ChevronDown, Building2,
-  Upload, Pencil, Lock, ShieldCheck,
+  Upload, Pencil, Lock, ShieldCheck, LogOut,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { COMPANIES } from "./PortalDashboard";
@@ -229,7 +229,7 @@ function PhvaCard({
 /* ─── PAGE ──────────────────────────────────────────────────────────────────── */
 export default function PortalEmpresa() {
   const { id } = useParams<{ id: string }>();
-  const { currentUser, getPermission, permissions, addTrace } = useAuth();
+  const { currentUser, logout, getPermission, permissions, addTrace } = useAuth();
   const navigate = useNavigate();
   const [activePhva, setActivePhva] = useState<LetraPhva | null>(null);
   const trackedRef = useRef(false);
@@ -333,13 +333,23 @@ export default function PortalEmpresa() {
               </span>
             )}
 
+            {currentUser?.role !== "cliente" && (
+              <button
+                onClick={() => navigate("/portal/dashboard")}
+                className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-[hsl(43_78%_40%)]
+                           px-3 py-2 rounded-xl hover:bg-amber-50 transition-all font-medium"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Empresas</span>
+              </button>
+            )}
             <button
-              onClick={() => navigate("/portal/dashboard")}
-              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-[hsl(43_78%_40%)]
-                         px-3 py-2 rounded-xl hover:bg-amber-50 transition-all font-medium"
+              onClick={() => { logout(); navigate("/portal"); }}
+              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-600
+                         px-3 py-2 rounded-xl hover:bg-red-50 transition-all font-medium"
             >
-              <ChevronLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Empresas</span>
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Salir</span>
             </button>
           </div>
         </div>

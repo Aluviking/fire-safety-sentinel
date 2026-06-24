@@ -1,8 +1,8 @@
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import {
-  MessageCircle, Heart, ClipboardCheck, BookOpen, ThumbsUp,
-  ArrowRight, GraduationCap, X, Images,
+  Heart, ClipboardCheck, BookOpen, ThumbsUp,
+  GraduationCap, X, Images,
   HardHat, Zap, Lock, BarChart2, Eye, Scale,
   ShieldCheck, Brain, AlertCircle,
 } from "lucide-react";
@@ -66,21 +66,6 @@ const formacionTagModals: Record<string, TagModalContent> = {
 
 /* ── Servicios principales (5 líneas SISO) ── */
 const mainServices = [
-  {
-    id: "svc-asesoria",
-    icon: MessageCircle,
-    title: "ASESORÍA",
-    subtitle: "Normas ISO & Sistemas de Gestión",
-    description:
-      "Acompañamiento especializado para diseñar, implementar y certificar sistemas de gestión alineados con estándares internacionales.",
-    tags: ["ISO 9001", "ISO 14001", "ISO 45001 / 18001", "Sistema Integrado", "ISO 27001", "Otras normas"],
-    accent: "border-l-[hsl(43_78%_50%)]",
-    iconBg: "bg-[hsl(43_78%_50%/0.12)] group-hover:bg-[hsl(43_78%_50%/0.22)]",
-    iconColor: "text-primary",
-    tagColor: "bg-[hsl(43_78%_50%/0.1)] text-primary/80 border-[hsl(43_78%_50%/0.2)]",
-    waMessage: "Hola, buenas tardes. Estoy interesado/a en los servicios de *Asesoría* en Normas ISO y Sistemas de Gestión. ¿Me podrían brindar más información?",
-    campusHref: null,
-  },
   {
     id: "svc-consultoria",
     icon: Heart,
@@ -286,7 +271,7 @@ const ServicesSection = () => {
                 transition={{ duration: 0.55, delay: i * 0.08 }}
                 className={`group relative glass-card border-l-2 ${service.accent} rounded-2xl p-7 sm:p-8
                             hover:glass-card-hover transition-all duration-700 overflow-hidden
-                            ${i < 3 ? "lg:col-span-2" : "lg:col-span-3"}
+                            lg:col-span-3
                             ${highlightId === service.id
                               ? "ring-2 ring-[hsl(43_90%_60%/0.8)] shadow-[0_0_0_1px_hsl(43_90%_60%/0.3),0_0_55px_hsl(43_78%_50%/0.45)] scale-[1.012]"
                               : ""}`}
