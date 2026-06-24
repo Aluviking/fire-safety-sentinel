@@ -155,9 +155,12 @@ const ServicesSection = () => {
           const el = document.getElementById(hash);
           if (!el) return;
 
+          let hasBeenVisible = false;
           observer = new IntersectionObserver(
             ([entry]) => {
-              if (!entry.isIntersecting) {
+              if (entry.isIntersecting) {
+                hasBeenVisible = true;
+              } else if (hasBeenVisible) {
                 setHighlightId(null);
                 observer?.disconnect();
                 observer = null;
