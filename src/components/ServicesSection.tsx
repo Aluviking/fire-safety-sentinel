@@ -1,8 +1,8 @@
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import {
   MessageCircle, Heart, ClipboardCheck, BookOpen, ThumbsUp,
-  ArrowRight, GraduationCap,
+  ArrowRight, GraduationCap, X, Images,
   HardHat, Zap, Lock, BarChart2, Eye, Scale,
   ShieldCheck, Brain, AlertCircle,
 } from "lucide-react";
@@ -14,6 +14,54 @@ const WhatsAppIcon = () => (
     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
   </svg>
 );
+
+type TagModalContent = {
+  title: string;
+  description: string;
+  items: { name: string; desc: string }[];
+};
+
+const formacionTagModals: Record<string, TagModalContent> = {
+  "Cursos": {
+    title: "Cursos de Formación",
+    description: "Programas cortos de capacitación con certificación en SST y normativa laboral.",
+    items: [
+      { name: "Primeros Auxilios",        desc: "Atención pre-hospitalaria y soporte vital básico certificado por organismo avalado." },
+      { name: "Trabajo en Alturas",       desc: "Certificación obligatoria según Resolución 4272 de 2021 para trabajo seguro en alturas." },
+      { name: "Brigadas de Emergencia",   desc: "Formación de brigadistas para respuesta ante incendios, evacuación y primeros auxilios." },
+      { name: "Riesgo Eléctrico (RETIE)", desc: "Identificación y control del riesgo eléctrico en instalaciones industriales y comerciales." },
+      { name: "Espacios Confinados",      desc: "Protocolos de seguridad para acceso, permanencia y rescate en espacios confinados." },
+      { name: "Manejo Manual de Cargas",  desc: "Técnicas ergonómicas para la manipulación segura de cargas y prevención de lesiones." },
+    ],
+  },
+  "Diplomados": {
+    title: "Diplomados",
+    description: "Programas intensivos de mayor profundidad técnica y académica en SST.",
+    items: [
+      { name: "Diplomado en SST",                  desc: "Formación integral de 120 horas en Sistema de Gestión de Seguridad y Salud en el Trabajo." },
+      { name: "Diplomado Sistemas de Gestión ISO",  desc: "Diseño, implementación y auditoría de sistemas integrados ISO 9001, 14001 y 45001." },
+      { name: "Diplomado Gestión del Riesgo",       desc: "Metodologías para identificación, valoración y control de riesgos laborales." },
+    ],
+  },
+  "Seminarios": {
+    title: "Seminarios",
+    description: "Eventos académicos de actualización normativa y mejores prácticas del sector.",
+    items: [
+      { name: "Actualización Normativa SST",     desc: "Novedades en legislación de seguridad laboral colombiana y tendencias internacionales." },
+      { name: "Gestión de Emergencias",           desc: "Planificación, simulacros y respuesta efectiva ante emergencias empresariales." },
+      { name: "Liderazgo y Cultura Preventiva",   desc: "Herramientas para construir una sólida cultura de autocuidado en la organización." },
+    ],
+  },
+  "Técnico Laboral": {
+    title: "Técnico Laboral",
+    description: "Programas con titulación oficial reconocida para obtener certificación técnica.",
+    items: [
+      { name: "Técnico Laboral en SST",          desc: "Programa certificado con titulación oficial en Seguridad y Salud en el Trabajo." },
+      { name: "Técnico en Gestión Ambiental",     desc: "Formación técnica para la gestión de aspectos e impactos ambientales en empresas." },
+      { name: "Técnico en Emergencias",           desc: "Certificación técnica para la gestión y coordinación de planes de emergencia empresarial." },
+    ],
+  },
+};
 
 /* ── Servicios principales (5 líneas SISO) ── */
 const mainServices = [
@@ -66,10 +114,10 @@ const mainServices = [
     id: "svc-formacion",
     icon: BookOpen,
     title: "FORMACIÓN",
-    subtitle: "Cursos · Diplomados · Seminarios",
+    subtitle: "",
     description:
       "Capacitación certificada en SST, gestión de riesgos y normativa laboral, disponible presencial y en nuestra plataforma de Campus Virtual.",
-    tags: ["Primeros Auxilios", "Brigadas de Emergencia", "Trabajo en Alturas", "Diplomados SST", "Seminarios"],
+    tags: ["Cursos", "Diplomados", "Seminarios", "Técnico Laboral"],
     accent: "border-l-[hsl(43_92%_64%)]",
     iconBg: "bg-[hsl(43_92%_64%/0.12)] group-hover:bg-[hsl(43_92%_64%/0.22)]",
     iconColor: "text-accent",
@@ -141,6 +189,9 @@ const ServicesSection = () => {
   /* ── Highlight al navegar desde el hero ── */
   const [highlightId, setHighlightId] = useState<string | null>(null);
 
+  /* ── Modal de formación ── */
+  const [openModal, setOpenModal] = useState<TagModalContent | null>(null);
+
   useEffect(() => {
     let observer: IntersectionObserver | null = null;
 
@@ -182,6 +233,7 @@ const ServicesSection = () => {
   }, []);
 
   return (
+    <>
     <section
       id="servicios"
       className="section-padding relative overflow-hidden"
@@ -250,26 +302,51 @@ const ServicesSection = () => {
                   <h3 className="font-display text-2xl md:text-3xl text-foreground leading-tight tracking-wide">
                     {service.title}
                   </h3>
-                  <p className="font-body text-sm text-primary/60 font-semibold tracking-[0.12em] uppercase mt-0.5 mb-3">
-                    {service.subtitle}
-                  </p>
+                  {service.subtitle && (
+                    <p className="font-body text-sm text-primary/60 font-semibold tracking-[0.12em] uppercase mt-0.5 mb-3">
+                      {service.subtitle}
+                    </p>
+                  )}
+
+                  {/* Tags de formación — van ANTES de la descripción */}
+                  {service.id === "svc-formacion" && (
+                    <div className="flex flex-wrap gap-1.5 mt-3 mb-4">
+                      {service.tags.map((tag) => {
+                        const modal = formacionTagModals[tag];
+                        return modal ? (
+                          <button
+                            key={tag}
+                            onClick={() => setOpenModal(modal)}
+                            className={`inline-flex items-center gap-1 font-body text-xs font-semibold px-3 py-1 rounded-full border cursor-pointer
+                                        transition-all duration-150 hover:scale-105 active:scale-95
+                                        ${service.tagColor}`}
+                          >
+                            {tag}
+                            <span className="opacity-60 text-[10px]">↗</span>
+                          </button>
+                        ) : null;
+                      })}
+                    </div>
+                  )}
 
                   {/* Description */}
                   <p className="font-body text-base text-muted-foreground leading-relaxed flex-1">
                     {service.description}
                   </p>
 
-                  {/* Sub-category tags */}
-                  <div className="flex flex-wrap gap-1.5 mt-4">
-                    {service.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className={`inline-block font-body text-xs font-medium px-2.5 py-0.5 rounded-full border ${service.tagColor}`}
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+                  {/* Sub-category tags (todas las demás cards) */}
+                  {service.id !== "svc-formacion" && (
+                    <div className="flex flex-wrap gap-1.5 mt-4">
+                      {service.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className={`inline-block font-body text-xs font-medium px-2.5 py-0.5 rounded-full border ${service.tagColor}`}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   {/* CTA */}
                   <div className="mt-5 flex flex-col gap-2">
@@ -408,6 +485,92 @@ const ServicesSection = () => {
         </motion.div>
       </div>
     </section>
+
+      {/* ── Modal de formación ── */}
+      <AnimatePresence mode="wait">
+        {openModal && (
+          <motion.div
+            key="modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-6"
+            onClick={() => setOpenModal(null)}
+          >
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+
+            {/* Panel */}
+            <motion.div
+              key="modal-panel"
+              initial={{ opacity: 0, y: 40, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 40, scale: 0.97 }}
+              transition={{ type: "spring", damping: 28, stiffness: 280 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative z-10 w-full sm:max-w-lg
+                         bg-[hsl(35_9%_10%)] border border-[hsl(43_78%_50%/0.25)]
+                         rounded-t-3xl sm:rounded-2xl
+                         max-h-[88vh] sm:max-h-[80vh] flex flex-col
+                         shadow-[0_0_80px_hsl(43_78%_50%/0.12)]"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4 p-6 pb-4 border-b border-[hsl(43_78%_50%/0.15)]">
+                <div>
+                  <h3 className="font-display text-2xl sm:text-3xl text-foreground leading-tight">
+                    {openModal.title}
+                  </h3>
+                  <p className="font-body text-sm text-muted-foreground mt-1 leading-relaxed">
+                    {openModal.description}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setOpenModal(null)}
+                  className="shrink-0 w-8 h-8 rounded-full
+                             bg-[hsl(43_78%_50%/0.08)] border border-[hsl(43_78%_50%/0.2)]
+                             flex items-center justify-center text-primary
+                             hover:bg-[hsl(43_78%_50%/0.18)] transition-colors duration-150"
+                  aria-label="Cerrar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Items */}
+              <div className="overflow-y-auto p-6 space-y-3">
+                {openModal.items.map((item) => (
+                  <div
+                    key={item.name}
+                    className="p-4 rounded-xl bg-[hsl(43_78%_50%/0.05)] border border-[hsl(43_78%_50%/0.12)]
+                               hover:bg-[hsl(43_78%_50%/0.09)] transition-colors duration-150"
+                  >
+                    <p className="font-body font-semibold text-sm text-foreground">{item.name}</p>
+                    <p className="font-body text-sm text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 pt-4 border-t border-[hsl(43_78%_50%/0.15)]">
+                <a
+                  href="#galeria"
+                  onClick={() => setOpenModal(null)}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl
+                             font-body font-bold text-sm text-primary
+                             border border-[hsl(43_78%_50%/0.35)] bg-[hsl(43_78%_50%/0.07)]
+                             hover:bg-[hsl(43_78%_50%/0.15)] hover:border-[hsl(43_78%_50%/0.65)]
+                             transition-all duration-200"
+                >
+                  <Images className="w-4 h-4 shrink-0" />
+                  Ver galería
+                </a>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
