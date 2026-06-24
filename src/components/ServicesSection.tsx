@@ -54,7 +54,7 @@ const mainServices = [
     subtitle: "Evaluación y Mejora Continua",
     description:
       "Verificación sistemática del cumplimiento normativo por auditores certificados. Desde el diagnóstico inicial hasta el seguimiento post-auditoría.",
-    tags: ["Auditorías Internas", "Auditorías Externas", "Gap Analysis", "Seguimiento y Mejora"],
+    tags: ["Auditorías Internas", "Auditorías Externas", "Ciberseguridad", "Seguimiento y Mejora"],
     accent: "border-l-[hsl(43_78%_50%)]",
     iconBg: "bg-[hsl(43_78%_50%/0.12)] group-hover:bg-[hsl(43_78%_50%/0.22)]",
     iconColor: "text-primary",
@@ -84,7 +84,7 @@ const mainServices = [
     subtitle: "Clima Laboral & Salud Integral",
     description:
       "Programas que fortalecen la cultura del autocuidado, mejoran el clima organizacional y potencian el desempeño del equipo humano.",
-    tags: ["Bienestar Empresarial", "Actividades Deportivas", "Clima Laboral", "Salud Mental", "Riesgo Psicosocial"],
+    tags: ["Coaching Indoor", "Coaching Outdoor", "Clima Laboral", "Salud Mental", "Riesgo Psicosocial"],
     accent: "border-l-[hsl(43_78%_50%)]",
     iconBg: "bg-[hsl(43_78%_50%/0.12)] group-hover:bg-[hsl(43_78%_50%/0.22)]",
     iconColor: "text-primary",
@@ -275,9 +275,10 @@ const ServicesSection = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
-                                 font-body font-bold text-sm text-white
-                                 bg-[#25D366] hover:bg-[#1ebe5d] transition-all duration-200
-                                 shadow-[0_3px_14px_rgba(37,211,102,0.28)]"
+                                 font-body font-bold text-sm text-primary
+                                 border border-[hsl(43_78%_50%/0.35)] bg-[hsl(43_78%_50%/0.07)]
+                                 hover:bg-[hsl(43_78%_50%/0.15)] hover:border-[hsl(43_78%_50%/0.65)]
+                                 transition-all duration-200"
                     >
                       <WhatsAppIcon />
                       Escríbenos al WhatsApp

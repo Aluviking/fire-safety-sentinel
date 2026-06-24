@@ -13,9 +13,9 @@ const CURVE_VW = [0, 2.2, 4.4, 2.2, 0];
 const services = [
   { id: "asesoria",    label: "ASESORÍA",    subs: ["Normas ISO", "Sistema de Gestión", "Integrado"],                   Icon: MessageCircle, href: "#svc-asesoria"    },
   { id: "consultoria", label: "CONSULTORÍA", subs: ["Gestión en Salud", "Gestión del Riesgo", "Gestión de Amenazas"],    Icon: Heart,         href: "#svc-consultoria" },
-  { id: "auditoria",   label: "AUDITORÍA",   subs: ["Internas", "Externas", "Ciberseguridad", "Seguimiento"],          Icon: ClipboardCheck, href: "#svc-auditoria"  },
+  { id: "auditoria",   label: "AUDITORÍA",   subs: ["Internas", "Externas", "Seguimiento"],                            Icon: ClipboardCheck, href: "#svc-auditoria"  },
   { id: "formacion",   label: "FORMACIÓN",   subs: ["Cursos", "Diplomados", "Seminarios"],                               Icon: BookOpen,      href: "#svc-formacion"   },
-  { id: "bienestar",   label: "BIENESTAR",   subs: ["Coaching Indoor", "Coaching Outdoor"],                             Icon: ThumbsUp,      href: "#svc-bienestar"   },
+  { id: "bienestar",   label: "BIENESTAR",   subs: ["Coaching"],                                                         Icon: ThumbsUp,      href: "#svc-bienestar"   },
 ];
 
 /* ─── Curvas + nodos CSS (sin distorsión oval) ───────────────────────────────── */
