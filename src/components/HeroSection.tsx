@@ -11,7 +11,7 @@ import heroImage from "@/assets/hero-firefighter.jpg";
 const CURVE_VW = [0, 2.2, 4.4, 2.2, 0];
 
 const services = [
-  { id: "asesoria",    label: "ASESORÍA",    subs: ["Normas ISO", "Sistema de Gestión", "Integrado"],                   Icon: MessageCircle, href: "#svc-asesoria"    },
+  { id: "asesoria",    label: "ASESORÍA",    subs: ["Normas ISO", "Sistema de Gestión", "Integrado"],                   Icon: MessageCircle, href: "#auditorias"      },
   { id: "consultoria", label: "CONSULTORÍA", subs: ["Gestión en Salud", "Gestión del Riesgo", "Gestión de Amenazas"],    Icon: Heart,         href: "#svc-consultoria" },
   { id: "auditoria",   label: "AUDITORÍA",   subs: ["Internas", "Externas", "Seguimiento"],                            Icon: ClipboardCheck, href: "#svc-auditoria"  },
   { id: "formacion",   label: "FORMACIÓN",   subs: ["Cursos", "Diplomados", "Seminarios"],                               Icon: BookOpen,      href: "#svc-formacion"   },

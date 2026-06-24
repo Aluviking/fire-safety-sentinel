@@ -150,6 +150,7 @@ const catalog = [
     color: "hsl(43 78% 50%)",
     colorMuted: "hsl(43 78% 50% / 0.12)",
     icon: ShieldCheck,
+    waMessage: "Hola, buenas tardes. Estoy interesado/a en los servicios de *Gestión & Consultoría* (SG-SST, Auditorías, Planes de Emergencia). ¿Me podrían brindar más información?",
     services: [
       { icon: ClipboardCheck, name: "Diseño SG-SST",         desc: "Diseño e implementación del Sistema de Gestión en Seguridad y Salud en el Trabajo." },
       { icon: BarChart2,      name: "Auditorías Internas",   desc: "Evaluación sistemática del cumplimiento normativo y mejora continua de procesos." },
@@ -162,6 +163,7 @@ const catalog = [
     color: "hsl(25 80% 55%)",
     colorMuted: "hsl(25 80% 55% / 0.12)",
     icon: HardHat,
+    waMessage: "Hola, buenas tardes. Estoy interesado/a en los servicios de *Seguridad Industrial* (Trabajo en Alturas, Espacios Confinados, Riesgo Eléctrico). ¿Me podrían brindar más información?",
     services: [
       { icon: HardHat,  name: "Trabajo en Alturas",        desc: "Certificación y entrenamiento para trabajo seguro en alturas según norma RETIE." },
       { icon: Lock,     name: "Espacios Confinados",       desc: "Protocolos de entrada, rescate y permisos para espacios de acceso restringido." },
@@ -174,6 +176,7 @@ const catalog = [
     color: "hsl(160 60% 40%)",
     colorMuted: "hsl(160 60% 40% / 0.12)",
     icon: Heart,
+    waMessage: "Hola, buenas tardes. Estoy interesado/a en los servicios de *Bienestar Laboral* (Ergonomía, Vigilancia Epidemiológica, Capacitación). ¿Me podrían brindar más información?",
     services: [
       { icon: BarChart2,      name: "Estudios de Puestos de Trabajo", desc: "Análisis ergonómico y de condiciones de trabajo para optimizar el ambiente laboral." },
       { icon: Eye,            name: "Sistemas de Vigilancia",         desc: "Vigilancia epidemiológica y seguimiento de indicadores de salud ocupacional." },
@@ -470,13 +473,17 @@ const ServicesSection = () => {
                   {/* CTA */}
                   <div className="px-5 pb-5">
                     <a
-                      href="#contacto"
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-body font-bold text-sm
-                                 text-primary border border-[hsl(43_78%_50%/0.25)]
-                                 hover:bg-[hsl(43_78%_50%/0.08)] hover:border-[hsl(43_78%_50%/0.45)] transition-all"
+                      href={`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(cat.waMessage)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
+                                 font-body font-bold text-sm text-primary
+                                 border border-[hsl(43_78%_50%/0.35)] bg-[hsl(43_78%_50%/0.07)]
+                                 hover:bg-[hsl(43_78%_50%/0.15)] hover:border-[hsl(43_78%_50%/0.65)]
+                                 transition-all duration-200"
                     >
-                      Solicitar información
-                      <ArrowRight className="w-4 h-4" />
+                      <WhatsAppIcon />
+                      Escríbenos al WhatsApp
                     </a>
                   </div>
                 </motion.div>
