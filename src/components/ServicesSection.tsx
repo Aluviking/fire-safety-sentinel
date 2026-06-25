@@ -1,8 +1,8 @@
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import {
-  Heart, ClipboardCheck, BookOpen, ThumbsUp,
-  GraduationCap, X, Images,
+  Heart, ClipboardCheck, ThumbsUp,
+  GraduationCap,
   HardHat, Zap, Lock, BarChart2, Eye, Scale,
   ShieldCheck, Brain, AlertCircle,
 } from "lucide-react";
@@ -15,56 +15,7 @@ const WhatsAppIcon = () => (
   </svg>
 );
 
-type TagModalContent = {
-  title: string;
-  description: string;
-  items: { name: string; desc: string }[];
-};
-
-const formacionTagModals: Record<string, TagModalContent> = {
-  "Cursos": {
-    title: "Cursos de Formación",
-    description: "Programas cortos de capacitación con certificación en SST y normativa laboral.",
-    items: [
-      { name: "Primeros Auxilios",        desc: "Atención pre-hospitalaria y soporte vital básico certificado por organismo avalado." },
-      { name: "Trabajo en Alturas",       desc: "Certificación obligatoria según Resolución 4272 de 2021 para trabajo seguro en alturas." },
-      { name: "Brigadas de Emergencia",   desc: "Formación de brigadistas para respuesta ante incendios, evacuación y primeros auxilios." },
-      { name: "Riesgo Eléctrico (RETIE)", desc: "Identificación y control del riesgo eléctrico en instalaciones industriales y comerciales." },
-      { name: "Espacios Confinados",      desc: "Protocolos de seguridad para acceso, permanencia y rescate en espacios confinados." },
-      { name: "Manejo Manual de Cargas",  desc: "Técnicas ergonómicas para la manipulación segura de cargas y prevención de lesiones." },
-    ],
-  },
-  "Diplomados": {
-    title: "Diplomados",
-    description: "Programas intensivos de mayor profundidad técnica y académica en SST.",
-    items: [
-      { name: "Diplomado en SST",                  desc: "Formación integral de 120 horas en Sistema de Gestión de Seguridad y Salud en el Trabajo." },
-      { name: "Diplomado Sistemas de Gestión ISO",  desc: "Diseño, implementación y auditoría de sistemas integrados ISO 9001, 14001 y 45001." },
-      { name: "Diplomado Gestión del Riesgo",       desc: "Metodologías para identificación, valoración y control de riesgos laborales." },
-    ],
-  },
-  "Seminarios": {
-    title: "Seminarios",
-    description: "Eventos académicos de actualización normativa y mejores prácticas del sector.",
-    items: [
-      { name: "Actualización Normativa SST",     desc: "Novedades en legislación de seguridad laboral colombiana y tendencias internacionales." },
-      { name: "Gestión de Emergencias",           desc: "Planificación, simulacros y respuesta efectiva ante emergencias empresariales." },
-      { name: "Liderazgo y Cultura Preventiva",   desc: "Herramientas para construir una sólida cultura de autocuidado en la organización." },
-    ],
-  },
-  "Técnico Laboral": {
-    title: "Técnico Laboral",
-    description: "Programas técnicos en 1 año con metodología PAT (Presencialidad Asistida por Tecnología). Titulación oficial reconocida.",
-    items: [
-      { name: "TAE · Técnico Laboral en Auxiliar de Enfermería", desc: "Con énfasis en APH (Atención Prehospitalaria). Formación para soporte vital básico y atención de urgencias." },
-      { name: "TSST · Técnico en Seguridad y Salud en el Trabajo", desc: "Con énfasis en TAR (Tareas de Alto Riesgo). Gestión integral del SG-SST y control de riesgos laborales." },
-      { name: "TAF · Técnico Auxiliar en Servicios Farmacéuticos", desc: "Formación en dispensación, almacenamiento y control de medicamentos en establecimientos farmacéuticos." },
-      { name: "TAEC · Técnico Auxiliar en Cosmetología y Estética", desc: "Técnicas y protocolos de belleza, cuidado corporal y estética profesional con aval institucional." },
-    ],
-  },
-};
-
-/* ── Servicios principales (5 líneas SISO) ── */
+/* ── Servicios principales ── */
 const mainServices = [
   {
     id: "svc-consultoria",
@@ -79,7 +30,6 @@ const mainServices = [
     iconColor: "text-accent",
     tagColor: "bg-[hsl(43_92%_64%/0.08)] text-accent/80 border-[hsl(43_92%_64%/0.2)]",
     waMessage: "Hola, buenas tardes. Estoy interesado/a en los servicios de *Consultoría* en Gestión en Salud, Riesgo y Amenazas. ¿Me podrían brindar más información?",
-    campusHref: null,
   },
   {
     id: "svc-auditoria",
@@ -94,22 +44,6 @@ const mainServices = [
     iconColor: "text-primary",
     tagColor: "bg-[hsl(43_78%_50%/0.1)] text-primary/80 border-[hsl(43_78%_50%/0.2)]",
     waMessage: "Hola, buenas tardes. Estoy interesado/a en los servicios de *Auditoría* (Interna, Externa y Seguimiento). ¿Me podrían brindar más información?",
-    campusHref: null,
-  },
-  {
-    id: "svc-formacion",
-    icon: BookOpen,
-    title: "FORMACIÓN",
-    subtitle: "",
-    description:
-      "Capacitación certificada en SST, gestión de riesgos y normativa laboral, disponible presencial y en nuestra plataforma de Campus Virtual.",
-    tags: ["Cursos", "Diplomados", "Seminarios", "Técnico Laboral"],
-    accent: "border-l-[hsl(43_92%_64%)]",
-    iconBg: "bg-[hsl(43_92%_64%/0.12)] group-hover:bg-[hsl(43_92%_64%/0.22)]",
-    iconColor: "text-accent",
-    tagColor: "bg-[hsl(43_92%_64%/0.08)] text-accent/80 border-[hsl(43_92%_64%/0.2)]",
-    waMessage: "Hola, buenas tardes. Estoy interesado/a en los servicios de *Formación* (Cursos, Diplomados y Seminarios). ¿Me podrían brindar más información?",
-    campusHref: "https://site2.q10.com/login?ReturnUrl=%2F&aplentId=0d310659-db68-4e7b-af78-aa3ab62eb1f2",
   },
   {
     id: "svc-bienestar",
@@ -124,7 +58,6 @@ const mainServices = [
     iconColor: "text-primary",
     tagColor: "bg-[hsl(43_78%_50%/0.1)] text-primary/80 border-[hsl(43_78%_50%/0.2)]",
     waMessage: "Hola, buenas tardes. Estoy interesado/a en los servicios de *Bienestar Empresarial* (Coaching Indoor y Outdoor). ¿Me podrían brindar más información?",
-    campusHref: null,
   },
 ];
 
@@ -178,9 +111,6 @@ const ServicesSection = () => {
   /* ── Highlight al navegar desde el hero ── */
   const [highlightId, setHighlightId] = useState<string | null>(null);
 
-  /* ── Modal de formación ── */
-  const [openModal, setOpenModal] = useState<TagModalContent | null>(null);
-
   useEffect(() => {
     let observer: IntersectionObserver | null = null;
 
@@ -222,7 +152,6 @@ const ServicesSection = () => {
   }, []);
 
   return (
-    <>
     <section
       id="servicios"
       className="section-padding relative overflow-hidden"
@@ -271,7 +200,7 @@ const ServicesSection = () => {
                 transition={{ duration: 0.55, delay: i * 0.08 }}
                 className={`group relative glass-card border-l-2 ${service.accent} rounded-2xl p-7 sm:p-8
                             hover:glass-card-hover transition-all duration-700 overflow-hidden
-                            lg:col-span-3
+                            lg:col-span-2
                             ${highlightId === service.id
                               ? "ring-2 ring-[hsl(43_90%_60%/0.8)] shadow-[0_0_0_1px_hsl(43_90%_60%/0.3),0_0_55px_hsl(43_78%_50%/0.45)] scale-[1.012]"
                               : ""}`}
@@ -297,48 +226,25 @@ const ServicesSection = () => {
                     </p>
                   )}
 
-                  {/* Tags de formación — van ANTES de la descripción */}
-                  {service.id === "svc-formacion" && (
-                    <div className="flex flex-wrap gap-1.5 mt-3 mb-4">
-                      {service.tags.map((tag) => {
-                        const modal = formacionTagModals[tag];
-                        return modal ? (
-                          <button
-                            key={tag}
-                            onClick={() => setOpenModal(modal)}
-                            className={`inline-flex items-center gap-1 font-body text-xs font-semibold px-3 py-1 rounded-full border cursor-pointer
-                                        transition-all duration-150 hover:scale-105 active:scale-95
-                                        ${service.tagColor}`}
-                          >
-                            {tag}
-                            <span className="opacity-60 text-[10px]">↗</span>
-                          </button>
-                        ) : null;
-                      })}
-                    </div>
-                  )}
-
                   {/* Description */}
                   <p className="font-body text-base text-muted-foreground leading-relaxed flex-1">
                     {service.description}
                   </p>
 
-                  {/* Sub-category tags (todas las demás cards) */}
-                  {service.id !== "svc-formacion" && (
-                    <div className="flex flex-wrap gap-1.5 mt-4">
-                      {service.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className={`inline-block font-body text-xs font-medium px-2.5 py-0.5 rounded-full border ${service.tagColor}`}
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  {/* Sub-category tags */}
+                  <div className="flex flex-wrap gap-1.5 mt-4">
+                    {service.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className={`inline-block font-body text-xs font-medium px-2.5 py-0.5 rounded-full border ${service.tagColor}`}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
 
                   {/* CTA */}
-                  <div className="mt-5 flex flex-col gap-2">
+                  <div className="mt-5">
                     <a
                       href={`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(service.waMessage)}`}
                       target="_blank"
@@ -352,21 +258,6 @@ const ServicesSection = () => {
                       <WhatsAppIcon />
                       Escríbenos al WhatsApp
                     </a>
-                    {service.campusHref && (
-                      <a
-                        href={service.campusHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
-                                   font-body font-bold text-sm text-black
-                                   bg-gradient-to-r from-[hsl(40_82%_46%)] to-[hsl(44_80%_54%)]
-                                   hover:brightness-105 transition-all duration-200
-                                   shadow-[0_3px_14px_hsl(43_78%_50%/0.3)]"
-                      >
-                        <GraduationCap className="w-4 h-4" />
-                        Ir al Campus Virtual
-                      </a>
-                    )}
                   </div>
                 </div>
               </motion.div>
@@ -478,92 +369,6 @@ const ServicesSection = () => {
         </motion.div>
       </div>
     </section>
-
-      {/* ── Modal de formación ── */}
-      <AnimatePresence mode="wait">
-        {openModal && (
-          <motion.div
-            key="modal-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-6"
-            onClick={() => setOpenModal(null)}
-          >
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-
-            {/* Panel */}
-            <motion.div
-              key="modal-panel"
-              initial={{ opacity: 0, y: 40, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 40, scale: 0.97 }}
-              transition={{ type: "spring", damping: 28, stiffness: 280 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative z-10 w-full sm:max-w-lg
-                         bg-[hsl(35_9%_10%)] border border-[hsl(43_78%_50%/0.25)]
-                         rounded-t-3xl sm:rounded-2xl
-                         max-h-[88vh] sm:max-h-[80vh] flex flex-col
-                         shadow-[0_0_80px_hsl(43_78%_50%/0.12)]"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between gap-4 p-6 pb-4 border-b border-[hsl(43_78%_50%/0.15)]">
-                <div>
-                  <h3 className="font-display text-2xl sm:text-3xl text-foreground leading-tight">
-                    {openModal.title}
-                  </h3>
-                  <p className="font-body text-sm text-muted-foreground mt-1 leading-relaxed">
-                    {openModal.description}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setOpenModal(null)}
-                  className="shrink-0 w-8 h-8 rounded-full
-                             bg-[hsl(43_78%_50%/0.08)] border border-[hsl(43_78%_50%/0.2)]
-                             flex items-center justify-center text-primary
-                             hover:bg-[hsl(43_78%_50%/0.18)] transition-colors duration-150"
-                  aria-label="Cerrar"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Items */}
-              <div className="overflow-y-auto p-6 space-y-3">
-                {openModal.items.map((item) => (
-                  <div
-                    key={item.name}
-                    className="p-4 rounded-xl bg-[hsl(43_78%_50%/0.05)] border border-[hsl(43_78%_50%/0.12)]
-                               hover:bg-[hsl(43_78%_50%/0.09)] transition-colors duration-150"
-                  >
-                    <p className="font-body font-semibold text-sm text-foreground">{item.name}</p>
-                    <p className="font-body text-sm text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Footer */}
-              <div className="p-6 pt-4 border-t border-[hsl(43_78%_50%/0.15)]">
-                <a
-                  href="#galeria"
-                  onClick={() => setOpenModal(null)}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl
-                             font-body font-bold text-sm text-primary
-                             border border-[hsl(43_78%_50%/0.35)] bg-[hsl(43_78%_50%/0.07)]
-                             hover:bg-[hsl(43_78%_50%/0.15)] hover:border-[hsl(43_78%_50%/0.65)]
-                             transition-all duration-200"
-                >
-                  <Images className="w-4 h-4 shrink-0" />
-                  Ver galería
-                </a>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
   );
 };
 
