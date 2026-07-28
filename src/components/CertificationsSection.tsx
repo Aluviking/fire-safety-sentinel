@@ -1,6 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { BadgeCheck, ShieldCheck } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 
 const certs = [
   { name: "IADC",      sub: "Rig Pass",         detail: "International Association of Drilling Contractors" },
@@ -120,22 +120,6 @@ const CertificationsSection = () => {
               <CertCard key={i} name={c.name} sub={c.sub} detail={c.detail} />
             ))}
           </div>
-        </div>
-      </motion.div>
-
-      {/* Badge bottom */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={isInView ? { opacity: 1 } : {}}
-        transition={{ duration: 0.6, delay: 0.6 }}
-        className="text-center mt-12"
-      >
-        <div className="inline-flex items-center gap-3 px-7 py-3.5 rounded-full
-                        bg-[hsl(43_78%_50%/0.08)] border border-[hsl(43_78%_50%/0.3)]">
-          <ShieldCheck className="w-5 h-5 text-primary shrink-0" />
-          <span className="font-body text-sm font-semibold text-foreground/80 tracking-wide">
-            20 años cumpliendo estándares de clase mundial · 2006 – 2026
-          </span>
         </div>
       </motion.div>
 

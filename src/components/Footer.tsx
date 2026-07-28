@@ -1,8 +1,9 @@
+import { Link } from "react-router-dom";
 import { Phone, Mail, MapPin, Shield } from "lucide-react";
 import sisoLogo from "@/assets/siso-logo.png";
 
 const WA_NUMBER = "573181800010";
-const WA_MESSAGE = "Hola, buenas tardes. Estoy interesado/a en los servicios de SISO. ¿Me podrían brindar más información?";
+const WA_MESSAGE = "¡Hola! Gracias por contactarnos. Te damos la bienvenida a SISO. Estamos para ayudarte. ¿En qué podemos ayudarte hoy?";
 
 const WhatsAppIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 shrink-0">
@@ -25,11 +26,8 @@ const IconFacebook = () => (
 );
 
 const normativaLinks = [
-  { label: "Política de Privacidad",             href: "#privacidad" },
-  { label: "Política de Tratamiento de Datos",   href: "#datos" },
-  { label: "Términos y Condiciones",             href: "#terminos" },
-  { label: "Reglamento Interno SST",             href: "#reglamento" },
-  { label: "Política de SST",                    href: "#politica-sst" },
+  { label: "Política de Tratamiento de Datos",   href: "/politica-tratamiento-datos" },
+  { label: "Política de SST",                    href: "/politica-sst" },
 ];
 
 const colLabel = "font-body font-semibold text-[11px] tracking-[0.18em] uppercase text-foreground/50 mb-5 flex items-center gap-2";
@@ -94,7 +92,28 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* ── Col 2: Contacto ── */}
+          {/* ── Col 2: Normativa ── */}
+          <div>
+            <p className={colLabel}>
+              <Shield className="w-3.5 h-3.5 text-primary/60" />
+              Normativa &amp; Legal
+            </p>
+            <ul className="space-y-2.5">
+              {normativaLinks.map((link) => (
+                <li key={link.label}>
+                  <Link
+                    to={link.href}
+                    className="font-body text-sm text-muted-foreground hover:text-primary transition-colors duration-200 flex items-center gap-1.5 group min-h-0 py-0.5"
+                  >
+                    <span className="w-0 group-hover:w-2.5 h-px bg-primary transition-all duration-200 overflow-hidden shrink-0" />
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* ── Col 3: Contacto ── */}
           <div>
             <p className={colLabel}>
               <Phone className="w-3.5 h-3.5 text-primary/60" />
@@ -106,9 +125,9 @@ const Footer = () => {
                 <Phone className="w-4 h-4 text-[hsl(43_78%_50%/0.7)] shrink-0" />
                 +57 318 180 0010
               </a>
-              <a href="mailto:info@siso.com.co" className="flex items-center gap-2.5 text-sm font-body text-muted-foreground hover:text-primary active:text-primary/70 transition-colors min-h-0">
+              <a href="mailto:gerencia@siso.com.co" className="flex items-center gap-2.5 text-sm font-body text-muted-foreground hover:text-primary active:text-primary/70 transition-colors min-h-0">
                 <Mail className="w-4 h-4 text-[hsl(43_78%_50%/0.7)] shrink-0" />
-                info@siso.com.co
+                gerencia@siso.com.co
               </a>
               <div className="flex items-center gap-2.5 text-sm font-body text-muted-foreground">
                 <MapPin className="w-4 h-4 text-[hsl(43_78%_50%/0.7)] shrink-0" />
@@ -131,62 +150,24 @@ const Footer = () => {
             </a>
           </div>
 
-          {/* ── Col 3: Normativa ── */}
-          <div>
-            <p className={colLabel}>
-              <Shield className="w-3.5 h-3.5 text-primary/60" />
-              Normativa &amp; Legal
-            </p>
-            <ul className="space-y-2.5">
-              {normativaLinks.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="font-body text-sm text-muted-foreground hover:text-primary transition-colors duration-200 flex items-center gap-1.5 group min-h-0 py-0.5"
-                  >
-                    <span className="w-0 group-hover:w-2.5 h-px bg-primary transition-all duration-200 overflow-hidden shrink-0" />
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
         </div>
 
         {/* Divider */}
         <div className="h-px bg-gradient-to-r from-transparent via-[hsl(35_10%_18%)] to-transparent mb-5" />
 
         {/* Bottom bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          {/* Left: copyright + quick links */}
-          <div className="flex flex-col gap-1.5">
-            <p className="font-body text-[13px] text-muted-foreground/80">
-              © {new Date().getFullYear()} SISO — Asesoría y Gestión Empresarial S.A.S.
-            </p>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <a href="#datos" className="font-body text-[12px] text-muted-foreground/65 hover:text-muted-foreground transition-colors">
-                Política de Datos
-              </a>
-              <span className="text-muted-foreground/35">·</span>
-              <a href="#terminos" className="font-body text-[12px] text-muted-foreground/65 hover:text-muted-foreground transition-colors">
-                Términos
-              </a>
-              <span className="text-muted-foreground/35">·</span>
-              <span className="font-body text-[12px] text-muted-foreground/55">
-                SST · Colombia · 20 Años
-              </span>
-            </div>
-          </div>
+        <div className="flex flex-col items-center text-center gap-1.5">
+          <p className="font-body text-[13px] text-muted-foreground/80">
+            © {new Date().getFullYear()} SISO — Asesoría y Gestión Empresarial S.A.S. Todos los derechos reservados.
+          </p>
 
-          {/* Right: Powered by */}
-          <p className="font-body text-[12px] text-muted-foreground/60 shrink-0">
+          <p className="font-body text-[12px] text-muted-foreground/60">
             Powered by{" "}
             <a
               href="https://www.rubikcontroldigital.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-[#9B1B30] hover:text-[#C0253F] transition-colors"
+              className="font-semibold text-white hover:text-white/80 transition-colors"
             >
               Rubik Control Digital
             </a>

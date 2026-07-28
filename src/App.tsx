@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import PoliticaTratamientoDatos from "./pages/PoliticaTratamientoDatos";
+import PoliticaSST from "./pages/PoliticaSST";
 import PortalPage from "./pages/portal/PortalPage";
 import PortalDashboard from "./pages/portal/PortalDashboard";
 import PortalEmpresa from "./pages/portal/PortalEmpresa";
@@ -21,6 +23,8 @@ const App = () => (
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/politica-tratamiento-datos" element={<PoliticaTratamientoDatos />} />
+            <Route path="/politica-sst" element={<PoliticaSST />} />
             <Route path="/portal" element={<PortalPage />} />
             <Route path="/portal/dashboard" element={<PortalDashboard />} />
             <Route path="/portal/empresa/:id" element={<PortalEmpresa />} />

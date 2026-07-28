@@ -51,7 +51,7 @@ const TestimonialsSection = () => {
             <span className="w-5 sm:w-6 h-px bg-primary" />
           </span>
           <h2 className="font-display text-4xl sm:text-5xl md:text-6xl text-foreground">
-            TESTIMONIOS
+            EXPERIENCIAS
           </h2>
         </motion.div>
 

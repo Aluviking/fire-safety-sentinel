@@ -8,7 +8,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const WA_HREF = "https://wa.me/573181800010?text=" + encodeURIComponent("Hola, buenas tardes. Estoy interesado/a en los servicios de SISO. ¿Me podrían brindar más información?");
+const WA_HREF = "https://wa.me/573181800010?text=" + encodeURIComponent("¡Hola! Gracias por contactarnos. Te damos la bienvenida a SISO. Estamos para ayudarte. ¿En qué podemos ayudarte hoy?");
 
 const contacts = [
   { icon: Phone,        label: "Llámenos",    value: "+57 318 180 0010",  href: WA_HREF },
@@ -35,13 +35,6 @@ const CTASection = () => {
           transition={{ duration: 0.6 }}
           className="mb-8 sm:mb-10"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[hsl(43_78%_50%/0.25)] bg-[hsl(43_78%_50%/0.07)] mb-5 sm:mb-6">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
-            <span className="text-primary font-body font-bold text-[10px] sm:text-xs tracking-[0.15em] uppercase whitespace-nowrap">
-              20 Años de Excelencia · 2006–2026
-            </span>
-          </div>
-
           <h2
             className="font-display text-foreground leading-[0.88]"
             style={{ fontSize: "clamp(2.4rem, 8vw, 5.5rem)" }}
