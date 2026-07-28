@@ -6,23 +6,26 @@ const PoliticaTratamientoDatos = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-[hsl(43_78%_50%/0.15)] bg-[hsl(30_8%_4%)]">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <img src={sisoLogo} alt="SISO Logo" className="w-10 h-10 rounded-full object-cover glow-gold-sm" />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-sm font-body text-muted-foreground hover:text-primary transition-colors justify-self-start"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Atrás
+          </Link>
+
+          <Link to="/" className="flex flex-col items-center gap-2 group justify-self-center">
+            <img src={sisoLogo} alt="SISO Logo" className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover glow-gold-sm group-hover:scale-105 transition-transform duration-300" />
             <span
-              className="font-display text-xl tracking-[0.1em] bg-clip-text text-transparent"
+              className="font-display text-2xl sm:text-3xl tracking-[0.1em] bg-clip-text text-transparent"
               style={{ backgroundImage: "linear-gradient(135deg, hsl(40 75% 42%), hsl(43 78% 56%), hsl(43 92% 68%))" }}
             >
               SISO
             </span>
           </Link>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1.5 text-sm font-body text-muted-foreground hover:text-primary transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver al inicio
-          </Link>
+
+          <span aria-hidden="true" />
         </div>
       </header>
 

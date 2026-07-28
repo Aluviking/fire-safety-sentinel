@@ -44,15 +44,15 @@ const Footer = () => {
 
           {/* ── Col 1: Brand ── */}
           <div>
-            <a href="#inicio" className="flex items-center gap-3 mb-5 group w-fit min-h-0">
+            <a href="#inicio" className="flex items-center gap-4 mb-6 group w-fit min-h-0">
               <img
                 src={sisoLogo}
                 alt="SISO Logo"
-                className="w-12 h-12 rounded-full object-cover glow-gold-sm shrink-0 group-hover:scale-105 transition-transform duration-300"
+                className="w-24 h-24 rounded-full object-cover glow-gold-sm shrink-0 group-hover:scale-105 transition-transform duration-300"
               />
               <div>
                 <span
-                  className="font-display text-[24px] tracking-[0.1em] block leading-none bg-clip-text text-transparent"
+                  className="font-display text-[34px] tracking-[0.1em] block leading-none bg-clip-text text-transparent"
                   style={{ backgroundImage: "linear-gradient(135deg, hsl(40 75% 42%), hsl(43 78% 56%), hsl(43 92% 68%))" }}
                 >
                   SISO
@@ -62,10 +62,6 @@ const Footer = () => {
                 </span>
               </div>
             </a>
-
-            <p className="font-body text-sm text-muted-foreground leading-relaxed mb-6">
-              Asesoría y Gestión Empresarial S.A.S. Expertos en SST, cumplimiento normativo y gestión integrada del riesgo en Colombia.
-            </p>
 
             {/* Social media */}
             <div className="flex items-center gap-3">

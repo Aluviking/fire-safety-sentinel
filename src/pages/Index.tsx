@@ -12,6 +12,7 @@ import CertificationsSection from "@/components/CertificationsSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
 import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 const Index = () => {
   return (
@@ -30,6 +31,7 @@ const Index = () => {
       <StatsSection />
       <ClientsSection />
       <Footer />
+      <ScrollToTopButton />
     </div>
   );
 };
