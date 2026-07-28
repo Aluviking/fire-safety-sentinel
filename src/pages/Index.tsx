@@ -13,6 +13,7 @@ import TestimonialsSection from "@/components/TestimonialsSection";
 import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
+import WhatsAppFloatButton from "@/components/WhatsAppFloatButton";
 
 const Index = () => {
   return (
@@ -32,6 +33,7 @@ const Index = () => {
       <ClientsSection />
       <Footer />
       <ScrollToTopButton />
+      <WhatsAppFloatButton />
     </div>
   );
 };

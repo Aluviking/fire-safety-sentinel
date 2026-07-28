@@ -141,8 +141,6 @@ const HeroSection = () => (
           {/* Logo */}
           <div className="relative shrink-0">
             <div className="absolute -inset-5 rounded-full bg-[hsl(43_78%_50%/0.16)] blur-2xl pointer-events-none" />
-            <div className="absolute -inset-2.5 rounded-full border-2 border-dashed border-[hsl(43_78%_50%/0.28)] pointer-events-none" />
-            <div className="absolute -inset-1 rounded-full border border-[hsl(43_78%_50%/0.5)] pointer-events-none" />
             <img src={sisoLogo} alt="SISO Logo"
               className="relative rounded-full object-cover
                          border-[3px] border-[hsl(43_78%_50%/0.65)]
