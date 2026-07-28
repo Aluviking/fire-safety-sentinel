@@ -1,28 +1,35 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
-  MessageCircle, Heart, ClipboardCheck, BookOpen, ThumbsUp,
+  MessageCircle, Heart, ClipboardCheck, BookOpen, ThumbsUp, Users,
   Building2, GraduationCap,
 } from "lucide-react";
 import sisoLogo from "@/assets/siso-logo.png";
 import heroImage from "@/assets/hero-firefighter.jpg";
 
-/* Curva horizontal de los servicios: arco suave izq → centro → izq (en vw) */
-const CURVE_VW = [0, 2.2, 4.4, 2.2, 0];
-
 const services = [
+  { id: "quienes-somos", label: "QUIÉNES SOMOS", subs: ["Historia y Trayectoria"],                                        Icon: Users,         href: "#quienes-somos"   },
   { id: "asesoria",    label: "ASESORÍA",    subs: ["Normas ISO", "Sistema de Gestión", "Integrado"],                   Icon: MessageCircle, href: "#auditorias"      },
+  { id: "formacion",   label: "FORMACIÓN",   subs: ["Cursos", "Diplomados", "Seminarios"],                               Icon: BookOpen,      href: "#formacion"       },
   { id: "consultoria", label: "CONSULTORÍA", subs: ["Gestión en Salud", "Gestión del Riesgo", "Gestión de Amenazas"],    Icon: Heart,         href: "#svc-consultoria" },
   { id: "auditoria",   label: "AUDITORÍA",   subs: ["Internas", "Externas", "Seguimiento"],                            Icon: ClipboardCheck, href: "#svc-auditoria"  },
-  { id: "formacion",   label: "FORMACIÓN",   subs: ["Cursos", "Diplomados", "Seminarios"],                               Icon: BookOpen,      href: "#svc-formacion"   },
   { id: "bienestar",   label: "BIENESTAR",   subs: ["Coaching"],                                                         Icon: ThumbsUp,      href: "#svc-bienestar"   },
 ];
 
+/* Curva horizontal de los servicios: arco suave izq → centro → izq (en vw).
+   Generada a partir de N filas para que se adapte si se agregan/quitan servicios. */
+const N_SVC = services.length;
+const CURVE_MAX = 4.4;
+const CURVE_CENTER = (N_SVC - 1) / 2;
+const CURVE_VW = Array.from({ length: N_SVC }, (_, i) =>
+  CURVE_MAX * (1 - Math.abs(i - CURVE_CENTER) / CURVE_CENTER)
+);
+
 /* ─── Curvas + nodos CSS (sin distorsión oval) ───────────────────────────────── */
 const ConnectingLines = () => {
-  const EPS = [10, 30, 50, 70, 90];
+  const EPS = Array.from({ length: N_SVC }, (_, i) => (100 * (i + 0.5)) / N_SVC);
   // Extensión extra en unidades SVG más allá de x=100, proporcional a CURVE_VW
-  const EXTEND_X = [0, 18, 36, 18, 0];
+  const EXTEND_X = CURVE_VW.map((v) => v * (90 / 11));
 
   return (
     <div className="relative w-full h-full overflow-visible">

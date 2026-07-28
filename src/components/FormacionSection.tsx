@@ -1,6 +1,6 @@
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useRef, useState } from "react";
-import { GraduationCap, X } from "lucide-react";
+import { GraduationCap, X, Award } from "lucide-react";
 import heroImage from "@/assets/hero-firefighter.jpg";
 
 const WA_NUMBER = "573181800010";
@@ -64,6 +64,11 @@ const formacionTagModals: Record<string, TagModalContent> = {
 
 const formacionTags = ["Cursos", "Diplomados", "Seminarios", "Técnico Laboral"];
 
+const certificaciones = [
+  { title: "RCP y DEA", issuer: "Certificado por ACES INTERNACIONAL" },
+  { title: "Stop the Bleed", issuer: "Certificado por el Colegio Americano de Cirujanos" },
+];
+
 const FormacionSection = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-80px" });
@@ -91,13 +96,43 @@ const FormacionSection = () => {
               <span className="w-6 h-px bg-primary" />
               Capacitación Certificada en SST
             </span>
-            <h2 className="font-display text-4xl sm:text-5xl md:text-6xl mt-3 mb-5 text-foreground leading-[0.9]">
+            <h2
+              className="font-display mt-3 mb-5 text-foreground leading-[0.9] whitespace-nowrap"
+              style={{ fontSize: "clamp(1.9rem, 5.2vw, 3.75rem)" }}
+            >
               FORMA<span className="text-gradient-gold">CIÓN</span>
             </h2>
-            <p className="font-body text-muted-foreground leading-relaxed mb-7 text-[14px] sm:text-[15px]">
-              Capacitación certificada en SST, gestión de riesgos y normativa laboral,
-              disponible presencial y en nuestra plataforma de Campus Virtual.
+            <p className="font-body text-muted-foreground leading-relaxed mb-5 text-[14px] sm:text-[15px]">
+              Proceso educativo continuo, sistemático y participativo de manera presencial
+              como virtual en nuestra plataforma Q10, que desarrolla habilidades y
+              competencias para promover, proteger y mantener la salud y el bienestar de
+              las personas. Con certificaciones internacionales como:
             </p>
+
+            {/* Certificaciones internacionales */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-7">
+              {certificaciones.map((cert, i) => (
+                <motion.div
+                  key={cert.title}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={isInView ? { opacity: 1, y: 0 } : {}}
+                  transition={{ duration: 0.3, delay: 0.3 + i * 0.08 }}
+                  className="flex items-start gap-3 glass-card rounded-xl p-3.5 border border-[hsl(43_78%_50%/0.12)]"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-[hsl(43_78%_50%/0.15)] flex items-center justify-center shrink-0">
+                    <Award className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-body text-sm font-semibold text-foreground leading-tight">
+                      {cert.title}
+                    </p>
+                    <p className="font-body text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                      {cert.issuer}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
 
             {/* Tag buttons */}
             <div className="flex flex-wrap gap-2 mb-8">
@@ -212,62 +247,67 @@ const FormacionSection = () => {
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
             />
 
-            {/* Sheet / Card */}
-            <motion.div
-              key="modal"
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 40 }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="fixed z-50
-                         bottom-0 inset-x-0 rounded-t-2xl
-                         sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2
-                         sm:w-full sm:max-w-lg sm:rounded-2xl
-                         bg-[hsl(30_8%_10%)] border border-[hsl(43_78%_50%/0.18)]
-                         shadow-[0_0_60px_hsl(43_78%_50%/0.12)]
-                         max-h-[80vh] flex flex-col"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between p-5 border-b border-white/5 shrink-0">
-                <div>
-                  <h3 className="font-display text-xl text-gradient-gold">{modal.title}</h3>
-                  <p className="font-body text-xs text-muted-foreground mt-1">{modal.description}</p>
-                </div>
-                <button
-                  onClick={() => setActiveModal(null)}
-                  className="ml-4 p-1.5 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground shrink-0"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Items */}
-              <div className="overflow-y-auto p-5 space-y-3 flex-1">
-                {modal.items.map((item) => (
-                  <div key={item.name} className="glass-card rounded-xl p-4 border border-[hsl(43_78%_50%/0.1)]">
-                    <p className="font-body text-sm font-semibold text-foreground mb-1">{item.name}</p>
-                    <p className="font-body text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+            {/* Centering wrapper — plain (non-motion) so it isn't fighting the
+                inline transform Framer Motion puts on the sheet below for its
+                y-slide animation; centering here is done with flexbox instead
+                of top/left + translate, which used to collide with that inline
+                transform and left the modal pinned off-center on desktop. */}
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
+              {/* Sheet / Card */}
+              <motion.div
+                key="modal"
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 40 }}
+                transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                className="pointer-events-auto w-full rounded-t-2xl
+                           sm:w-full sm:max-w-lg sm:rounded-2xl sm:mx-4
+                           bg-[hsl(30_8%_10%)] border border-[hsl(43_78%_50%/0.18)]
+                           shadow-[0_0_60px_hsl(43_78%_50%/0.12)]
+                           max-h-[85vh] flex flex-col"
+              >
+                {/* Header */}
+                <div className="flex items-start justify-between p-5 border-b border-white/5 shrink-0">
+                  <div>
+                    <h3 className="font-display text-xl text-gradient-gold">{modal.title}</h3>
+                    <p className="font-body text-xs text-muted-foreground mt-1">{modal.description}</p>
                   </div>
-                ))}
-              </div>
+                  <button
+                    onClick={() => setActiveModal(null)}
+                    className="ml-4 p-1.5 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
 
-              {/* Footer */}
-              <div className="p-5 border-t border-white/5 shrink-0">
-                <a
-                  href={CAMPUS_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl
-                             font-body font-bold text-sm text-background
-                             bg-gradient-to-r from-[hsl(43_78%_50%)] to-[hsl(43_78%_42%)]
-                             hover:from-[hsl(43_78%_56%)] hover:to-[hsl(43_78%_48%)]
-                             transition-all duration-200"
-                >
-                  <GraduationCap className="w-4 h-4" />
-                  Ir al Campus Virtual
-                </a>
-              </div>
-            </motion.div>
+                {/* Items */}
+                <div className="overflow-y-auto p-5 space-y-3 flex-1">
+                  {modal.items.map((item) => (
+                    <div key={item.name} className="glass-card rounded-xl p-4 border border-[hsl(43_78%_50%/0.1)]">
+                      <p className="font-body text-sm font-semibold text-foreground mb-1">{item.name}</p>
+                      <p className="font-body text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer */}
+                <div className="p-5 border-t border-white/5 shrink-0">
+                  <a
+                    href={CAMPUS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl
+                               font-body font-bold text-sm text-background
+                               bg-gradient-to-r from-[hsl(43_78%_50%)] to-[hsl(43_78%_42%)]
+                               hover:from-[hsl(43_78%_56%)] hover:to-[hsl(43_78%_48%)]
+                               transition-all duration-200"
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    Ir al Campus Virtual
+                  </a>
+                </div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
