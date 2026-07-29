@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
   MessageCircle, Heart, ClipboardCheck, BookOpen, ThumbsUp, Users,
-  Building2, GraduationCap,
+  GraduationCap,
 } from "lucide-react";
 import sisoLogo from "@/assets/siso-logo.png";
 import heroImage from "@/assets/hero-firefighter.jpg";
@@ -274,40 +274,6 @@ const HeroSection = () => (
               paddingRight: "clamp(8px,2vw,36px)",
             }}
           >
-            {/* Portal Empresarial — sólido dorado con shimmer */}
-            <Link
-              to="/portal"
-              className="group relative flex-1 min-w-[160px] overflow-hidden
-                         flex items-center
-                         bg-gradient-to-r from-[hsl(40_82%_46%)] to-[hsl(44_80%_54%)]
-                         text-black font-body font-extrabold
-                         shadow-[0_4px_22px_hsl(43_78%_50%/0.45),inset_0_1px_0_rgba(255,255,255,0.28)]
-                         hover:shadow-[0_6px_30px_hsl(43_78%_50%/0.62)]
-                         hover:brightness-105 active:scale-[0.97] transition-all duration-200"
-              style={{
-                borderRadius: "clamp(8px,1.1vh,13px)",
-                fontSize: "clamp(11px,1.7vh,15px)",
-                minHeight: "clamp(36px,5vh,52px)",
-              }}
-            >
-              {/* Icon badge — left, z-10 so it sits above the centered text */}
-              <span className="relative z-10 flex items-center justify-center bg-black/18 self-stretch shrink-0
-                               border-r border-black/12"
-                    style={{ padding: "0 clamp(10px,1.4vw,16px)" }}>
-                <Building2 style={{ width: "clamp(15px,2.1vh,20px)", height: "clamp(15px,2.1vh,20px)" }} />
-              </span>
-              {/* Text absolutely centered across the full button width */}
-              <span className="absolute inset-0 flex items-center justify-center
-                               tracking-[0.08em] uppercase pointer-events-none">
-                Portal Empresarial
-              </span>
-              {/* Shimmer */}
-              <span className="absolute inset-0 -skew-x-12 -translate-x-full
-                               group-hover:translate-x-full pointer-events-none
-                               bg-gradient-to-r from-transparent via-white/22 to-transparent
-                               transition-transform duration-700" />
-            </Link>
-
             {/* Campus Virtual — oscuro con borde dorado */}
             <a
               href="https://site2.q10.com/login?ReturnUrl=%2F&aplentId=0d310659-db68-4e7b-af78-aa3ab62eb1f2"
