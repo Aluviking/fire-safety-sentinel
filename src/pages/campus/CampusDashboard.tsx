@@ -436,9 +436,9 @@ function DashboardHome({ user, onNavigate }: { user: CampusUser; onNavigate: (na
         </h2>
         <div className="grid sm:grid-cols-3 gap-3">
           {[
-            { icon: Shield,    label: "ISO 45001 — SST",       hrs: "40h", lvl: "Intermedio" },
+            { icon: Shield,    label: "ISO 45001 · SST",       hrs: "40h", lvl: "Intermedio" },
             { icon: Award,     label: "Gestión del Riesgo",     hrs: "32h", lvl: "Avanzado"   },
-            { icon: Briefcase, label: "PESV — Seguridad Vial",  hrs: "24h", lvl: "Básico"     },
+            { icon: Briefcase, label: "PESV · Seguridad Vial",  hrs: "24h", lvl: "Básico"     },
           ].map(({ icon: Icon, label, hrs, lvl }) => (
             <div key={label}
                  className="flex items-center gap-4 rounded-2xl bg-white border border-slate-200 shadow-sm
@@ -735,7 +735,7 @@ export default function CampusDashboard() {
       <footer className="bg-white border-t border-slate-200 py-4 px-6 flex items-center justify-between">
         <GFOLogoSmall className="opacity-70" />
         <p className="text-slate-400 text-[10px] tracking-wide">
-          © {new Date().getFullYear()} GFO Academy — Campus Virtual
+          © {new Date().getFullYear()} GFO Academy. Campus Virtual
         </p>
         <Link to="/" className="text-slate-400 hover:text-slate-600 text-xs transition-colors">
           Volver a SISO

@@ -81,7 +81,7 @@ function loadUsers(): User[] {
       const missing = SEEDS.filter((s) => !ids.has(s.id));
       return [...missing, ...parsed];
     }
-  } catch {}
+  } catch { /* ignore malformed stored data */ }
   return [...SEEDS];
 }
 
@@ -91,7 +91,7 @@ function loadPerms(): Permission[] {
   try {
     const raw = localStorage.getItem(PERMS_KEY);
     if (raw) return JSON.parse(raw) as Permission[];
-  } catch {}
+  } catch { /* ignore malformed stored data */ }
   return [];
 }
 
@@ -101,7 +101,7 @@ function loadTrace(): TraceEntry[] {
   try {
     const raw = localStorage.getItem(TRACE_KEY);
     if (raw) return JSON.parse(raw) as TraceEntry[];
-  } catch {}
+  } catch { /* ignore malformed stored data */ }
   return [];
 }
 
@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const raw = localStorage.getItem(SESSION_KEY);
       if (raw) return JSON.parse(raw) as User;
-    } catch {}
+    } catch { /* ignore malformed stored data */ }
     return null;
   });
 

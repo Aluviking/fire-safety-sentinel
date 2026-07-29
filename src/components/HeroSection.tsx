@@ -240,9 +240,9 @@ const HeroSection = () => (
                 <div className="flex-1 self-center border-b border-dashed border-[hsl(43_78%_50%/0.2)]
                                 group-hover:border-[hsl(43_78%_50%/0.38)] transition-colors duration-200" />
 
-                <ul className="font-body text-white/75 leading-snug shrink-0 text-right
+                <ul className="font-body text-white/75 leading-snug min-w-0 text-right
                                group-hover:text-white/92 transition-colors duration-200"
-                    style={{ fontSize: "clamp(11px,2vh,16px)", minWidth: "clamp(60px,14vw,280px)" }}>
+                    style={{ fontSize: "clamp(11px,2vh,16px)", width: "clamp(60px,14vw,280px)" }}>
                   {svc.subs.map((sub) => (
                     <li key={sub}
                         className="overflow-hidden text-ellipsis whitespace-nowrap
@@ -295,8 +295,8 @@ const HeroSection = () => (
                     style={{ padding: "0 clamp(10px,1.4vw,16px)" }}>
                 <Building2 style={{ width: "clamp(15px,2.1vh,20px)", height: "clamp(15px,2.1vh,20px)" }} />
               </span>
-              <span className="absolute inset-0 flex items-center justify-center
-                               tracking-[0.08em] uppercase pointer-events-none">
+              <span className="relative z-10 flex-1 flex items-center justify-center
+                               tracking-[0.08em] uppercase pointer-events-none px-1">
                 Portal Empresarial
               </span>
               <span className="absolute inset-0 -skew-x-12 -translate-x-full
@@ -328,8 +328,8 @@ const HeroSection = () => (
                     style={{ padding: "0 clamp(10px,1.4vw,16px)" }}>
                 <GraduationCap style={{ width: "clamp(15px,2.1vh,20px)", height: "clamp(15px,2.1vh,20px)" }} />
               </span>
-              <span className="absolute inset-0 flex items-center justify-center
-                               tracking-[0.08em] uppercase pointer-events-none">
+              <span className="relative z-10 flex-1 flex items-center justify-center
+                               tracking-[0.08em] uppercase pointer-events-none px-1">
                 Campus Virtual
               </span>
             </a>

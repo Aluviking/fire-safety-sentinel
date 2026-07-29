@@ -107,7 +107,7 @@ function FolderItem({
             <div className="pl-11 pb-3 pr-4">
               <p className="text-xs text-slate-400 italic py-2 border-l-2 pl-3"
                  style={{ borderColor: color + "60" }}>
-                Carpeta vacía — sin documentos aún.
+                Carpeta vacía, sin documentos aún.
               </p>
 
               {/* Action buttons based on permissions */}
@@ -142,7 +142,7 @@ function FolderItem({
               {!canEdit && !canUpload && (
                 <div className="flex items-center gap-1.5 mt-1 pl-3 text-[11px] text-slate-400">
                   <Lock className="w-3 h-3" />
-                  Solo lectura — sin permisos de edición
+                  Solo lectura, sin permisos de edición
                 </div>
               )}
             </div>
@@ -290,7 +290,7 @@ export default function PortalEmpresa() {
         userRole: currentUser.role,
         action:   "view_phva",
         empresaId: id,
-        detail:   `Fase ${l} — ${company.nombre}`,
+        detail:   `Fase ${l} · ${company.nombre}`,
       });
     }
   };
@@ -303,7 +303,7 @@ export default function PortalEmpresa() {
       userRole: currentUser.role,
       action:   "view_folder",
       empresaId: id,
-      detail:   `${folder} — ${company.nombre}`,
+      detail:   `${folder} · ${company.nombre}`,
     });
   };
 

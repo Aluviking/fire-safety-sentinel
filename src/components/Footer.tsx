@@ -22,7 +22,7 @@ const normativaLinks = [
   { label: "Política de SST",                    href: "/politica-sst" },
 ];
 
-const colLabel = "font-body font-semibold text-[11px] tracking-[0.18em] uppercase text-foreground/50 mb-5 flex items-center gap-2";
+const colLabel = "font-body font-semibold text-[11px] tracking-[0.18em] uppercase text-foreground/50 mb-5 flex items-center justify-center sm:justify-start gap-2";
 
 const Footer = () => {
   return (
@@ -35,7 +35,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 sm:gap-8 mb-12 sm:mb-16">
 
           {/* ── Col 1: Brand ── */}
-          <div>
+          <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
             <a href="#inicio" className="flex items-center gap-4 mb-6 group w-fit min-h-0">
               <img
                 src={sisoLogo}
@@ -56,7 +56,7 @@ const Footer = () => {
             </a>
 
             {/* Social media */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center sm:justify-start gap-3">
               <a
                 href="https://www.instagram.com/sisoasesoria?igsh=c3dkZzJhNW1qaDF2"
                 target="_blank"
@@ -81,7 +81,7 @@ const Footer = () => {
           </div>
 
           {/* ── Col 2: Normativa ── */}
-          <div>
+          <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
             <p className={colLabel}>
               <Shield className="w-3.5 h-3.5 text-primary/60" />
               Normativa &amp; Legal
@@ -91,7 +91,7 @@ const Footer = () => {
                 <li key={link.label}>
                   <Link
                     to={link.href}
-                    className="font-body text-sm text-muted-foreground hover:text-primary transition-colors duration-200 flex items-center gap-1.5 group min-h-0 py-0.5"
+                    className="font-body text-sm text-muted-foreground hover:text-primary transition-colors duration-200 flex items-center justify-center sm:justify-start gap-1.5 group min-h-0 py-0.5"
                   >
                     <span className="w-0 group-hover:w-2.5 h-px bg-primary transition-all duration-200 overflow-hidden shrink-0" />
                     {link.label}
@@ -102,22 +102,22 @@ const Footer = () => {
           </div>
 
           {/* ── Col 3: Contacto ── */}
-          <div>
+          <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
             <p className={colLabel}>
               <Phone className="w-3.5 h-3.5 text-primary/60" />
               Contacto
             </p>
 
             <div className="space-y-3.5 mb-6">
-              <a href="tel:+573181800010" className="flex items-center gap-2.5 text-sm font-body text-muted-foreground hover:text-primary active:text-primary/70 transition-colors min-h-0">
+              <a href="tel:+573181800010" className="flex items-center justify-center sm:justify-start gap-2.5 text-sm font-body text-muted-foreground hover:text-primary active:text-primary/70 transition-colors min-h-0">
                 <Phone className="w-4 h-4 text-[hsl(43_78%_50%/0.7)] shrink-0" />
                 +57 318 180 0010
               </a>
-              <a href="mailto:gerencia@siso.com.co" className="flex items-center gap-2.5 text-sm font-body text-muted-foreground hover:text-primary active:text-primary/70 transition-colors min-h-0">
+              <a href="mailto:gerencia@siso.com.co" className="flex items-center justify-center sm:justify-start gap-2.5 text-sm font-body text-muted-foreground hover:text-primary active:text-primary/70 transition-colors min-h-0">
                 <Mail className="w-4 h-4 text-[hsl(43_78%_50%/0.7)] shrink-0" />
                 gerencia@siso.com.co
               </a>
-              <div className="flex items-center gap-2.5 text-sm font-body text-muted-foreground">
+              <div className="flex items-center justify-center sm:justify-start gap-2.5 text-sm font-body text-muted-foreground">
                 <MapPin className="w-4 h-4 text-[hsl(43_78%_50%/0.7)] shrink-0" />
                 Colombia
               </div>
@@ -146,7 +146,7 @@ const Footer = () => {
         {/* Bottom bar */}
         <div className="flex flex-col items-center text-center gap-1.5">
           <p className="font-body text-[13px] text-muted-foreground/80">
-            © {new Date().getFullYear()} SISO — Asesoría y Gestión Empresarial S.A.S. Todos los derechos reservados.
+            © {new Date().getFullYear()} SISO. Asesoría y Gestión Empresarial S.A.S. Todos los derechos reservados.
           </p>
 
           <p className="font-body text-[12px] text-muted-foreground/60">

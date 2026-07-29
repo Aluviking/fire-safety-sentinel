@@ -143,7 +143,7 @@ function TabUsuarios() {
                            text-slate-700 cursor-pointer focus:outline-none flex-1
                            focus:border-[hsl(43_78%_45%)]"
               >
-                <option value="">— Sin asignar —</option>
+                <option value="">Sin asignar</option>
                 {COMPANIES.map((c) => (
                   <option key={c.id} value={c.id}>{c.nombre}</option>
                 ))}

@@ -80,7 +80,7 @@ function CaptchaWidget({
             type="number"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder="—"
+            placeholder="0"
             className={`w-20 text-center bg-white border rounded-xl py-2.5 text-sm font-bold text-slate-800
                         outline-none transition-all shadow-sm
                         ${error ? "border-red-400 focus:ring-2 focus:ring-red-200"
@@ -340,7 +340,7 @@ export default function PortalPage() {
 
       {/* Footer strip */}
       <div className="py-4 text-center text-xs text-slate-400 border-t border-slate-200">
-        © {new Date().getFullYear()} SISO — Asesoría &amp; Gestión Empresarial en SST
+        © {new Date().getFullYear()} SISO. Asesoría &amp; Gestión Empresarial en SST
       </div>
     </div>
   );

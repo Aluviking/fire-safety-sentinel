@@ -47,7 +47,7 @@ const PoliticaSST = () => {
         <div className="space-y-10 font-body text-[15px] text-muted-foreground leading-relaxed">
           <section>
             <p>
-              SISO — Asesoría y Gestión Empresarial S.A.S., con 20 años de trayectoria (2006–2026) acompañando
+              SISO, Asesoría y Gestión Empresarial S.A.S., con 20 años de trayectoria (2006–2026) acompañando
               a entidades públicas y privadas en la gestión integral de la Seguridad y Salud en el Trabajo,
               declara su compromiso con el bienestar de sus colaboradores, contratistas, aprendices y visitantes,
               en cumplimiento del Decreto 1072 de 2015, la Resolución 0312 de 2019 y demás normativa vigente

@@ -56,7 +56,7 @@ export default function CampusLogin() {
     try {
       const raw = localStorage.getItem(CAMPUS_SESSION);
       if (raw) navigate("/campus/dashboard", { replace: true });
-    } catch {}
+    } catch { /* ignore malformed stored data */ }
   }, [navigate]);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -364,7 +364,7 @@ export default function CampusLogin() {
 
         {/* Footer */}
         <p className="absolute bottom-5 text-slate-400 text-[10px] tracking-[0.18em]">
-          © {new Date().getFullYear()} GFO Academy — Gestión y Formación Organizacional
+          © {new Date().getFullYear()} GFO Academy. Gestión y Formación Organizacional
         </p>
       </motion.div>
     </div>

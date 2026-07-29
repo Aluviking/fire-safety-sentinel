@@ -48,7 +48,7 @@ const PoliticaTratamientoDatos = () => {
           <section>
             <h2 className="font-display text-2xl text-foreground mb-3">1. Responsable del tratamiento</h2>
             <p>
-              SISO — Asesoría y Gestión Empresarial S.A.S. (en adelante, "SISO"), con domicilio en Colombia,
+              SISO, Asesoría y Gestión Empresarial S.A.S. (en adelante, "SISO"), con domicilio en Colombia,
               es responsable del tratamiento de los datos personales que sus clientes, contratistas, aspirantes,
               estudiantes y usuarios del sitio web le suministran en el marco de sus servicios de asesoría,
               consultoría, auditoría, formación y bienestar en Seguridad y Salud en el Trabajo (SST).

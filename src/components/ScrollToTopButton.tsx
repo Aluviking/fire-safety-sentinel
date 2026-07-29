@@ -1,16 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
 import { ArrowUp } from "lucide-react";
+import { useScrollPastSection } from "@/hooks/use-scroll-past-section";
 
 const ScrollToTopButton = () => {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setVisible(window.scrollY > 500);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  const visible = useScrollPastSection("quienes-somos");
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
