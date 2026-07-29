@@ -30,13 +30,6 @@ const BienestarSection = () => {
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[hsl(43_78%_50%/0.25)] bg-[hsl(43_78%_50%/0.07)] mb-5 sm:mb-6">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
-            <span className="text-primary font-body font-bold text-[10px] sm:text-xs tracking-[0.15em] uppercase whitespace-nowrap">
-              Bienestar
-            </span>
-          </div>
-
           <h2
             className="font-display text-foreground leading-[0.9] mb-5 sm:mb-6"
             style={{ fontSize: "clamp(2rem, 6vw, 4rem)" }}
@@ -62,9 +55,9 @@ const BienestarSection = () => {
           {bienestarItems.map((item) => (
             <span
               key={item}
-              className="inline-block font-body text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-full border
-                         bg-[hsl(43_78%_50%/0.1)] text-primary/80 border-[hsl(43_78%_50%/0.2)]"
+              className="inline-flex items-center gap-1.5 font-body text-xs sm:text-sm font-semibold px-2 text-primary/80"
             >
+              <span className="w-1 h-1 rounded-full bg-primary/60 shrink-0" />
               {item}
             </span>
           ))}

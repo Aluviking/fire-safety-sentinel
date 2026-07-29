@@ -57,7 +57,7 @@ const CertificationsSection = () => {
   const loopItems = [...certs, ...certs, ...certs];
 
   return (
-    <section id="certificaciones" className="py-20 sm:py-28 relative overflow-hidden bg-[hsl(30_8%_6%)]" ref={ref}>
+    <section id="certificaciones" className="py-14 sm:py-20 relative overflow-hidden bg-[hsl(30_8%_6%)]" ref={ref}>
 
       {/* Líneas decorativas */}
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[hsl(43_78%_50%/0.3)] to-transparent" />
@@ -75,14 +75,6 @@ const CertificationsSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-14"
         >
-          <div className="inline-flex items-center gap-3 mb-5">
-            <div className="h-px w-10 bg-gradient-to-r from-transparent to-[hsl(43_78%_50%/0.5)]" />
-            <span className="font-body text-xs font-bold tracking-[0.22em] uppercase text-primary/55">
-              Respaldo internacional
-            </span>
-            <div className="h-px w-10 bg-gradient-to-l from-transparent to-[hsl(43_78%_50%/0.5)]" />
-          </div>
-
           <h2 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-foreground leading-[0.9] mb-4">
             CERTIFICACIONES{" "}
             <span className="text-gradient-gold">DE EXCELENCIA</span>

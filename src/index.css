@@ -136,11 +136,6 @@
     background-size: 48px 48px;
   }
 
-  /* ══ LABEL ══ */
-  .section-label {
-    @apply inline-flex items-center gap-2 text-primary font-body font-semibold text-xs tracking-[0.2em] uppercase;
-  }
-
   /* ══ SERVICE LABEL SIZE — mobile max 18px, xl+ max 26px ══ */
   .svc-label-size { font-size: clamp(11px, 2.2vh, 18px); }
   @media (min-width: 1280px) {
@@ -149,7 +144,7 @@
 
   /* ══ PADDING ADAPTIVO ══ */
   .section-padding {
-    @apply py-14 px-4 sm:py-20 sm:px-6 md:py-24 md:px-12 lg:px-20;
+    @apply py-10 px-4 sm:py-14 sm:px-6 md:py-16 md:px-12 lg:px-20;
   }
 
   /* ══ MARQUEE ══ */

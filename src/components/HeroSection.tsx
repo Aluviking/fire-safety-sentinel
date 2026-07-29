@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   MessageCircle, Heart, ClipboardCheck, BookOpen, ThumbsUp, Users,
@@ -11,7 +12,7 @@ const services = [
   { id: "quienes-somos", label: "QUIÉNES SOMOS", subs: ["Historia y Trayectoria"],                                        Icon: Users,         href: "#quienes-somos"   },
   { id: "asesoria",    label: "ASESORÍA",    subs: ["Normas ISO", "Sistema de Gestión", "Integrado"],                   Icon: MessageCircle, href: "#auditorias"      },
   { id: "formacion",   label: "FORMACIÓN",   subs: ["Cursos", "Diplomados", "Seminarios"],                               Icon: BookOpen,      href: "#formacion"       },
-  { id: "consultoria", label: "CONSULTORÍA", subs: ["Gestión en Salud", "Gestión del Riesgo", "Gestión de Amenazas"],    Icon: Heart,         href: "#svc-consultoria" },
+  { id: "consultoria", label: "CONSULTORÍA", subs: ["Gestión en Salud", "Gestión del Riesgo", "Gestión de Amenazas"],    Icon: Heart,         href: "#servicios" },
   { id: "auditoria",   label: "AUDITORÍA",   subs: ["Internas", "Externas", "Seguimiento"],                            Icon: ClipboardCheck, href: "#svc-auditoria"  },
   { id: "bienestar",   label: "BIENESTAR",   subs: ["Coaching"],                                                         Icon: ThumbsUp,      href: "#svc-bienestar"   },
 ];
@@ -26,8 +27,14 @@ const CURVE_VW = Array.from({ length: N_SVC }, (_, i) =>
 );
 
 /* ─── Curvas + nodos CSS (sin distorsión oval) ───────────────────────────────── */
-const ConnectingLines = () => {
-  const EPS = Array.from({ length: N_SVC }, (_, i) => (100 * (i + 0.5)) / N_SVC);
+/* rowsFraction: qué fracción de la altura total del contenedor (self-stretch,
+   igual a la altura completa de la columna de servicios) ocupan realmente las
+   6 filas — el resto es el bloque de botones CTA debajo. Sin esto, los puntos
+   se calculaban como si las 6 filas llenaran el 100% de esa altura, cuando en
+   realidad los botones CTA se quedan con una porción al final, desalineando
+   cada punto progresivamente (más notorio cuanto más abajo la fila). */
+const ConnectingLines = ({ rowsFraction = 1 }: { rowsFraction?: number }) => {
+  const EPS = Array.from({ length: N_SVC }, (_, i) => (rowsFraction * 100 * (i + 0.5)) / N_SVC);
   // Extensión extra en unidades SVG más allá de x=100, proporcional a CURVE_VW
   const EXTEND_X = CURVE_VW.map((v) => v * (90 / 11));
 
@@ -91,7 +98,33 @@ const ConnectingLines = () => {
 };
 
 /* ─── HERO ──────────────────────────────────────────────────────────────────── */
-const HeroSection = () => (
+const HeroSection = () => {
+  // Mide qué fracción de la columna de servicios (self-stretch, la misma altura
+  // que usan las curvas/puntos) ocupan realmente las 6 filas, para que los
+  // puntos de ConnectingLines no asuman que llenan el 100% cuando el bloque
+  // de botones CTA debajo también consume parte de esa altura.
+  const outerRef = useRef<HTMLDivElement>(null);
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const [rowsFraction, setRowsFraction] = useState(1);
+
+  useEffect(() => {
+    const update = () => {
+      const outerH = outerRef.current?.getBoundingClientRect().height;
+      const rowsH = rowsRef.current?.getBoundingClientRect().height;
+      if (outerH && rowsH) setRowsFraction(rowsH / outerH);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    if (outerRef.current) ro.observe(outerRef.current);
+    if (rowsRef.current) ro.observe(rowsRef.current);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  return (
   <section
     id="inicio"
     className="relative isolate h-[100svh] min-h-[560px] flex flex-col overflow-hidden bg-[#0a0a0a]"
@@ -191,11 +224,12 @@ const HeroSection = () => (
           transition={{ duration: 1.3, delay: 0.5 }}
           className="hidden xl:block xl:w-[160px] 2xl:w-[210px] shrink-0 self-stretch relative z-20"
         >
-          <ConnectingLines />
+          <ConnectingLines rowsFraction={rowsFraction} />
         </motion.div>
 
         {/* ── SERVICIOS ── */}
-        <div className="flex-1 flex flex-col min-h-0">
+        <div ref={outerRef} className="flex-1 flex flex-col min-h-0">
+          <div ref={rowsRef} className="flex-1 flex flex-col min-h-0">
           {services.map((svc, i) => (
             <motion.a
               key={svc.id}
@@ -253,13 +287,14 @@ const HeroSection = () => (
                 </ul>
 
                 <span className="hidden xl:inline shrink-0 font-display leading-none select-none
-                                 text-primary/10 group-hover:text-primary/24 transition-colors duration-200"
+                                 text-primary/30 group-hover:text-primary/50 transition-colors duration-200"
                       style={{ fontSize: "clamp(17px,5vh,44px)" }}>
                   {String(i + 1).padStart(2, "0")}
                 </span>
               </div>
             </motion.a>
           ))}
+          </div>
 
           {/* ── BOTONES CTA ── */}
           <motion.div
@@ -341,6 +376,7 @@ const HeroSection = () => (
 
     </div>
   </section>
-);
+  );
+};
 
 export default HeroSection;

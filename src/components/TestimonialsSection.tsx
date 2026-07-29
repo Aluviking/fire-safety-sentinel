@@ -45,11 +45,6 @@ const TestimonialsSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-10 sm:mb-14"
         >
-          <span className="section-label justify-center mb-4 block">
-            <span className="w-5 sm:w-6 h-px bg-primary" />
-            Lo que dicen de nosotros
-            <span className="w-5 sm:w-6 h-px bg-primary" />
-          </span>
           <h2 className="font-display text-4xl sm:text-5xl md:text-6xl text-foreground">
             EXPERIENCIAS
           </h2>

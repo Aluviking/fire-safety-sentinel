@@ -128,17 +128,13 @@ const FormacionSection = () => {
             transition={{ duration: 0.7 }}
             className="order-2 lg:order-1"
           >
-            <span className="section-label mb-4 block">
-              <span className="w-6 h-px bg-primary" />
-              Capacitación Certificada en SST
-            </span>
             <h2
-              className="font-display mt-3 mb-5 text-foreground leading-[0.9] whitespace-nowrap"
+              className="font-display mb-5 text-foreground leading-[0.9] whitespace-nowrap"
               style={{ fontSize: "clamp(1.9rem, 5.2vw, 3.75rem)" }}
             >
               FORMA<span className="text-gradient-gold">CIÓN</span>
             </h2>
-            <p className="font-body text-muted-foreground leading-relaxed mb-5 text-[14px] sm:text-[15px]">
+            <p className="font-body text-muted-foreground leading-relaxed mb-5 text-justify text-[14px] sm:text-[15px]">
               Proceso educativo continuo, sistemático y participativo de manera presencial
               como virtual en nuestra plataforma Q10, que desarrolla habilidades y
               competencias para promover, proteger y mantener la salud y el bienestar de
@@ -185,24 +181,31 @@ const FormacionSection = () => {
               }
             `}</style>
 
-            {/* Tag buttons */}
-            <div className="flex flex-wrap gap-2 mb-8">
-              {formacionTags.map((tag, i) => (
-                <motion.button
-                  key={tag}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={isInView ? { opacity: 1, y: 0 } : {}}
-                  transition={{ duration: 0.3, delay: 0.4 + i * 0.06 }}
-                  onClick={() => setActiveModal(tag)}
-                  className="inline-flex items-center gap-1.5 font-body text-xs font-semibold px-3 py-1.5 rounded-full border
-                             bg-[hsl(43_78%_50%/0.1)] text-primary/80 border-[hsl(43_78%_50%/0.2)]
-                             hover:bg-[hsl(43_78%_50%/0.2)] hover:border-[hsl(43_78%_50%/0.45)] hover:text-primary
-                             transition-all duration-200 cursor-pointer"
-                >
-                  {tag}
-                  <span className="text-primary/60 text-[10px]">↗</span>
-                </motion.button>
-              ))}
+            {/* Tag buttons — siempre en una sola fila; si no caben en pantallas angostas, se desliza (con fade) en vez de partirse */}
+            <div className="relative mb-8">
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-3 z-10 bg-gradient-to-r from-[hsl(35_9%_7%)] to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-3 z-10 bg-gradient-to-l from-[hsl(35_9%_7%)] to-transparent" />
+
+              <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1 px-3
+                              [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                {formacionTags.map((tag, i) => (
+                  <motion.button
+                    key={tag}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={isInView ? { opacity: 1, y: 0 } : {}}
+                    transition={{ duration: 0.3, delay: 0.4 + i * 0.06 }}
+                    onClick={() => setActiveModal(tag)}
+                    className="inline-flex items-center justify-center gap-1.5 font-body font-semibold rounded-full border shrink-0
+                               text-[13.5px] px-3.5 py-[7px]
+                               bg-[hsl(43_78%_50%/0.1)] text-primary/80 border-[hsl(43_78%_50%/0.2)]
+                               hover:bg-[hsl(43_78%_50%/0.2)] hover:border-[hsl(43_78%_50%/0.45)] hover:text-primary
+                               transition-all duration-200 cursor-pointer whitespace-nowrap"
+                  >
+                    {tag}
+                    <span className="text-primary/60 text-[11px]">↗</span>
+                  </motion.button>
+                ))}
+              </div>
             </div>
 
             {/* CTAs */}
@@ -242,30 +245,6 @@ const FormacionSection = () => {
               <div className="absolute inset-0 bg-gradient-to-br from-[hsl(43_78%_50%/0.04)] to-transparent rounded-2xl" />
               <div className="absolute inset-0 ring-1 ring-[hsl(43_78%_50%/0.12)] rounded-2xl" />
             </div>
-
-            {/* Floating badges */}
-            <motion.div
-              className="hidden sm:flex absolute -bottom-5 left-4 md:left-8 glass-card rounded-2xl px-5 py-4 border border-[hsl(43_78%_50%/0.3)] glow-gold-sm flex-col"
-              animate={{ y: [0, -5, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <p className="font-display text-3xl text-gradient-gold leading-none">SST</p>
-              <p className="font-body text-xs text-muted-foreground mt-1">Certificado</p>
-            </motion.div>
-
-            <motion.div
-              className="hidden sm:flex absolute -top-5 right-4 md:right-8 glass-card rounded-xl px-4 py-3 border border-[hsl(43_78%_50%/0.15)] items-center gap-3"
-              animate={{ y: [0, 4, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            >
-              <div className="w-8 h-8 rounded-lg bg-[hsl(43_78%_50%/0.15)] flex items-center justify-center shrink-0">
-                <GraduationCap className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <p className="font-display text-base text-gradient-gold leading-none">PAT</p>
-                <p className="font-body text-[10px] text-muted-foreground mt-0.5">Metodología</p>
-              </div>
-            </motion.div>
           </motion.div>
         </div>
       </div>

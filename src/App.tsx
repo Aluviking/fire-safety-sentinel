@@ -14,7 +14,7 @@ const PoliticaSST = lazy(() => import("./pages/PoliticaSST"));
 
 // Muestra la pantalla de mantenimiento en TODO el sitio mientras se trabaja.
 // Para volver a publicar el sitio completo, cambia esto a false.
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 const queryClient = new QueryClient();
 

@@ -1,6 +1,5 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { ClipboardCheck } from "lucide-react";
 import auditImage from "@/assets/audit-image.jpg";
 
 const AuditoriasSection = () => {
@@ -22,14 +21,10 @@ const AuditoriasSection = () => {
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7 }}
           >
-            <span className="section-label mb-4 block">
-              <span className="w-6 h-px bg-primary" />
-              Evaluación y Cumplimiento
-            </span>
-            <h2 className="font-display text-4xl sm:text-5xl md:text-6xl mt-3 mb-5 text-foreground leading-[0.9]">
+            <h2 className="font-display text-4xl sm:text-5xl md:text-6xl mb-5 text-foreground leading-[0.9]">
               AUDITOR<span className="text-gradient-gold">ÍAS</span>
             </h2>
-            <p className="font-body text-muted-foreground leading-relaxed mb-7 text-[14px] sm:text-[15px]">
+            <p className="font-body text-muted-foreground leading-relaxed mb-7 text-justify text-[14px] sm:text-[15px]">
               Proceso sistemático, independiente y documentado mediante el cual se evalúan
               políticas, procedimientos, controles y condiciones de una organización para
               verificar el cumplimiento de requisitos legales, normativos e internos,
@@ -55,30 +50,6 @@ const AuditoriasSection = () => {
               <div className="absolute inset-0 bg-gradient-to-br from-[hsl(43_78%_50%/0.04)] to-transparent rounded-2xl" />
               <div className="absolute inset-0 ring-1 ring-[hsl(43_78%_50%/0.12)] rounded-2xl" />
             </div>
-
-            {/* Floating badges */}
-            <motion.div
-              className="hidden sm:flex absolute -bottom-5 right-4 md:right-8 glass-card rounded-2xl px-5 py-4 border border-[hsl(43_78%_50%/0.3)] glow-gold-sm flex-col"
-              animate={{ y: [0, -5, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <p className="font-display text-2xl text-gradient-gold leading-none">INDEPENDIENTE</p>
-              <p className="font-body text-xs text-muted-foreground mt-1">Evaluación objetiva</p>
-            </motion.div>
-
-            <motion.div
-              className="hidden sm:flex absolute -top-5 left-4 md:left-8 glass-card rounded-xl px-4 py-3 border border-[hsl(43_78%_50%/0.15)] items-center gap-3"
-              animate={{ y: [0, 4, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            >
-              <div className="w-8 h-8 rounded-lg bg-[hsl(43_78%_50%/0.15)] flex items-center justify-center shrink-0">
-                <ClipboardCheck className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <p className="font-display text-base text-gradient-gold leading-none">SST</p>
-                <p className="font-body text-[10px] text-muted-foreground mt-0.5">Cumplimiento</p>
-              </div>
-            </motion.div>
           </motion.div>
         </div>
       </div>

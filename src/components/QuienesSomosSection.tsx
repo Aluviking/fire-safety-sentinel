@@ -19,13 +19,6 @@ const QuienesSomosSection = () => {
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6 }}
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[hsl(43_78%_50%/0.25)] bg-[hsl(43_78%_50%/0.07)] mb-5 sm:mb-6">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
-            <span className="text-primary font-body font-bold text-[10px] sm:text-xs tracking-[0.15em] uppercase whitespace-nowrap">
-              Quiénes Somos
-            </span>
-          </div>
-
           <h2
             className="font-display text-foreground leading-[0.9] mb-5 sm:mb-6"
             style={{ fontSize: "clamp(2rem, 6vw, 4rem)" }}

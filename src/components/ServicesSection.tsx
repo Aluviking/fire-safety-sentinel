@@ -1,6 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
-import { Heart, ShieldAlert, Siren } from "lucide-react";
+import { Heart, ShieldAlert, Siren, CheckCircle2 } from "lucide-react";
 
 /* ── Consultorías ── */
 const mainServices = [
@@ -8,11 +8,11 @@ const mainServices = [
     id: "svc-consultoria",
     icon: Heart,
     title: "GESTIÓN EN SALUD",
-    tags: ["SVE (Sistemas de Vigilancia Epidemiológica)", "Pausas saludables", "Jornadas de salud", "Baterías de riesgo Psicosocial"],
+    tags: ["SVE (Sistemas de Vigilancia Epidemiológica)", "Pausas saludables", "Jornadas de salud", "Baterías de riesgo Psicosocial", "Exámenes médicos ocupacionales", "Prevención de enfermedades"],
     accent: "border-l-[hsl(43_92%_64%)]",
     iconBg: "bg-[hsl(43_92%_64%/0.12)] group-hover:bg-[hsl(43_92%_64%/0.22)]",
     iconColor: "text-accent",
-    tagColor: "bg-[hsl(43_92%_64%/0.08)] text-accent/80 border-[hsl(43_92%_64%/0.2)]",
+    checkColor: "text-accent/70",
   },
   {
     id: "svc-consultoria-riesgo",
@@ -22,17 +22,17 @@ const mainServices = [
     accent: "border-l-[hsl(43_78%_50%)]",
     iconBg: "bg-[hsl(43_78%_50%/0.12)] group-hover:bg-[hsl(43_78%_50%/0.22)]",
     iconColor: "text-primary",
-    tagColor: "bg-[hsl(43_78%_50%/0.1)] text-primary/80 border-[hsl(43_78%_50%/0.2)]",
+    checkColor: "text-primary/70",
   },
   {
     id: "svc-consultoria-amenazas",
     icon: Siren,
     title: "GESTIÓN DE AMENAZAS",
-    tags: ["Análisis de Vulnerabilidad", "Programas de Señalización", "Planes de Emergencias", "Comités de Ayuda Mutua", "Plan de continuidad de negocio"],
+    tags: ["Análisis de Vulnerabilidad", "Programas de Señalización", "Planes de Emergencias", "Comités de Ayuda Mutua", "Plan de continuidad de negocio", "Protección Contra Incendios"],
     accent: "border-l-[hsl(43_78%_50%)]",
     iconBg: "bg-[hsl(43_78%_50%/0.12)] group-hover:bg-[hsl(43_78%_50%/0.22)]",
     iconColor: "text-primary",
-    tagColor: "bg-[hsl(43_78%_50%/0.1)] text-primary/80 border-[hsl(43_78%_50%/0.2)]",
+    checkColor: "text-primary/70",
   },
 ];
 
@@ -105,15 +105,11 @@ const ServicesSection = () => {
           className="mb-10 sm:mb-14 flex flex-col md:flex-row md:items-end md:justify-between gap-4 sm:gap-6"
         >
           <div>
-            <span className="section-label mb-4 block">
-              <span className="w-6 h-px bg-primary" />
-              Qué hacemos
-            </span>
             <h2 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl text-foreground leading-[0.9]">
               CONSULTOR<span className="text-gradient-gold">ÍAS</span>
             </h2>
           </div>
-          <p className="font-body text-muted-foreground text-base md:text-lg max-w-md leading-relaxed md:text-right">
+          <p className="font-body text-muted-foreground text-base md:text-lg max-w-md leading-relaxed text-justify">
             Brindamos servicios profesionales y especializados a las organizaciones para diseñar,
             implementar, evaluar y mejorar el SG-SST, con el fin de prevenir y controlar los
             riesgos laborales, promover ambientes de trabajo seguros y saludables.
@@ -143,7 +139,7 @@ const ServicesSection = () => {
                 <div className={`absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-700 bg-gradient-to-br from-[hsl(43_78%_50%/0.12)] via-[hsl(43_78%_50%/0.06)] to-transparent
                                  ${highlightId === service.id ? "opacity-100" : "opacity-0"}`} />
 
-                <div className="relative z-10 flex flex-col h-full">
+                <div className="relative z-10 flex flex-col items-center lg:items-start text-center lg:text-left h-full">
                   {/* Icon */}
                   <div className={`w-14 h-14 rounded-xl ${service.iconBg} flex items-center justify-center mb-4 transition-colors duration-300`}>
                     <Icon className={`w-7 h-7 ${service.iconColor}`} />
@@ -154,17 +150,15 @@ const ServicesSection = () => {
                     {service.title}
                   </h3>
 
-                  {/* Sub-category tags */}
-                  <div className="flex flex-wrap gap-1.5 mt-4 flex-1 content-start">
+                  {/* Sub-category checklist */}
+                  <ul className="flex-1 flex flex-col justify-center gap-2.5 mt-1 w-full max-w-[300px] lg:max-w-none mx-auto lg:mx-0 text-left">
                     {service.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className={`inline-block font-body text-xs font-medium px-2.5 py-0.5 rounded-full border ${service.tagColor}`}
-                      >
-                        {tag}
-                      </span>
+                      <li key={tag} className="flex items-start gap-2.5">
+                        <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${service.checkColor}`} />
+                        <span className="font-body text-[13px] text-muted-foreground leading-snug">{tag}</span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
               </motion.div>
             );

@@ -1,129 +1,67 @@
 /* ─── Carrusel premium de clientes ────────────────────────────────────────── */
+import logoAchiras from "@/assets/clientes/achiras-gigantenas.png";
+import logoAmericana from "@/assets/clientes/americana-de-trenzados.png";
+import logoCabarria from "@/assets/clientes/cabarria-iqa.png";
+import logoCaoba from "@/assets/clientes/caoba-entertainment.jpg";
+import logoChazey from "@/assets/clientes/chazey-partners.png";
+import logoCovinoc from "@/assets/clientes/covinoc.png";
+import logoFodesep from "@/assets/clientes/fodesep.png";
+import logoHelpAndLife from "@/assets/clientes/help-and-life-medical.png";
+import logoChefrito from "@/assets/clientes/chefrito.png";
+import logoIngeteknia from "@/assets/clientes/ingeteknia.png";
+import logoJalo from "@/assets/clientes/jalo-rent.png";
+import logoLamerica from "@/assets/clientes/lamerica.png";
+import logoModitelas from "@/assets/clientes/moditelas.png";
+import logoOpenLogistica from "@/assets/clientes/open-logistica.jpg";
+import logoQualitas from "@/assets/clientes/qualitas-seguros.png";
+import logoRadioCaribe from "@/assets/clientes/radio-comunicaciones-caribe.jpg";
+import logoRehabet from "@/assets/clientes/rehabet.png";
+import logoSotecol from "@/assets/clientes/sotecol.jpg";
+import logoSoluagro from "@/assets/clientes/soluagro.png";
+import logoTourVacation from "@/assets/clientes/tour-vacation.jpg";
+import logoTransmares from "@/assets/clientes/transmares.png";
+import logoVolador from "@/assets/clientes/volador-colombia.png";
 
 const clients = [
-  {
-    name: "Cemex Colombia",
-    logo: (
-      <svg viewBox="0 0 110 40" className="h-9 w-auto" fill="none">
-        <rect x="1.5" y="1.5" width="107" height="37" rx="5" stroke="currentColor" strokeWidth="1.8"/>
-        <text x="55" y="26" textAnchor="middle" fontFamily="Georgia,serif" fontSize="15" fontWeight="700" fill="currentColor" letterSpacing="3">CEMEX</text>
-      </svg>
-    ),
-  },
-  {
-    name: "Bavaria S.A.",
-    logo: (
-      <svg viewBox="0 0 110 40" className="h-9 w-auto" fill="none">
-        <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="1.8"/>
-        <text x="20" y="25" textAnchor="middle" fontFamily="Georgia,serif" fontSize="14" fontWeight="800" fill="currentColor">B</text>
-        <text x="68" y="25" textAnchor="middle" fontFamily="sans-serif" fontSize="12" fontWeight="600" fill="currentColor" letterSpacing="2">BAVARIA</text>
-      </svg>
-    ),
-  },
-  {
-    name: "Ecopetrol",
-    logo: (
-      <svg viewBox="0 0 120 40" className="h-9 w-auto" fill="none">
-        <path d="M20 6 L34 20 L20 34 L6 20 Z" stroke="currentColor" strokeWidth="1.8"/>
-        <text x="20" y="25" textAnchor="middle" fontFamily="sans-serif" fontSize="11" fontWeight="800" fill="currentColor">E</text>
-        <text x="74" y="25" textAnchor="middle" fontFamily="sans-serif" fontSize="12" fontWeight="600" fill="currentColor" letterSpacing="1">ECOPETROL</text>
-      </svg>
-    ),
-  },
-  {
-    name: "Cementos Argos",
-    logo: (
-      <svg viewBox="0 0 96 40" className="h-9 w-auto" fill="none">
-        <path d="M10 32 L24 8 L38 32 Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-        <path d="M15 25 H33" stroke="currentColor" strokeWidth="1.2"/>
-        <text x="66" y="25" textAnchor="middle" fontFamily="sans-serif" fontSize="13" fontWeight="700" fill="currentColor" letterSpacing="1.5">ARGOS</text>
-      </svg>
-    ),
-  },
-  {
-    name: "Bancolombia",
-    logo: (
-      <svg viewBox="0 0 130 40" className="h-9 w-auto" fill="none">
-        <rect x="2" y="8" width="24" height="24" rx="4" stroke="currentColor" strokeWidth="1.8"/>
-        <text x="14" y="25" textAnchor="middle" fontFamily="Georgia,serif" fontSize="14" fontWeight="800" fill="currentColor">B</text>
-        <text x="78" y="25" textAnchor="middle" fontFamily="sans-serif" fontSize="11" fontWeight="600" fill="currentColor" letterSpacing="1">BANCOLOMBIA</text>
-      </svg>
-    ),
-  },
-  {
-    name: "Grupo Éxito",
-    logo: (
-      <svg viewBox="0 0 96 40" className="h-9 w-auto" fill="none">
-        <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="1.8"/>
-        <path d="M13 20 H27 M20 13 V27" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
-        <text x="62" y="25" textAnchor="middle" fontFamily="sans-serif" fontSize="13" fontWeight="700" fill="currentColor" letterSpacing="1">ÉXITO</text>
-      </svg>
-    ),
-  },
-  {
-    name: "ISA Intercolombia",
-    logo: (
-      <svg viewBox="0 0 72 40" className="h-9 w-auto" fill="none">
-        <rect x="2" y="6" width="68" height="28" rx="3" stroke="currentColor" strokeWidth="1.6"/>
-        <path d="M2 14 H70" stroke="currentColor" strokeWidth="0.8" opacity="0.4"/>
-        <path d="M2 26 H70" stroke="currentColor" strokeWidth="0.8" opacity="0.4"/>
-        <text x="36" y="25" textAnchor="middle" fontFamily="sans-serif" fontSize="14" fontWeight="800" fill="currentColor" letterSpacing="4">ISA</text>
-      </svg>
-    ),
-  },
-  {
-    name: "Nutresa",
-    logo: (
-      <svg viewBox="0 0 106 40" className="h-9 w-auto" fill="none">
-        <path d="M6 32 V14 L20 6 L34 14 V32" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-        <circle cx="20" cy="20" r="4" stroke="currentColor" strokeWidth="1.4"/>
-        <text x="72" y="25" textAnchor="middle" fontFamily="sans-serif" fontSize="12" fontWeight="600" fill="currentColor" letterSpacing="1.5">NUTRESA</text>
-      </svg>
-    ),
-  },
-  {
-    name: "Claro Colombia",
-    logo: (
-      <svg viewBox="0 0 96 40" className="h-9 w-auto" fill="none">
-        <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="1.8"/>
-        <circle cx="20" cy="20" r="8"  stroke="currentColor" strokeWidth="1.2"/>
-        <circle cx="20" cy="20" r="2"  fill="currentColor"/>
-        <text x="62" y="25" textAnchor="middle" fontFamily="sans-serif" fontSize="13" fontWeight="600" fill="currentColor" letterSpacing="1.5">CLARO</text>
-      </svg>
-    ),
-  },
-  {
-    name: "Alpina",
-    logo: (
-      <svg viewBox="0 0 96 40" className="h-9 w-auto" fill="none">
-        <path d="M6 32 L20 8 L34 32" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-        <path d="M12 24 H28" stroke="currentColor" strokeWidth="1.3"/>
-        <text x="66" y="25" textAnchor="middle" fontFamily="sans-serif" fontSize="13" fontWeight="700" fill="currentColor" letterSpacing="2">ALPINA</text>
-      </svg>
-    ),
-  },
+  { name: "Achiras Giganteñas y Productos S.A.S.", logo: logoAchiras },
+  { name: "Americana de Trenzados S.A.", logo: logoAmericana },
+  { name: "Cabarria IQA S.A.S.", logo: logoCabarria },
+  { name: "Caoba Entertainment S.A.S.", logo: logoCaoba },
+  { name: "Chazey Partners Colombia SAS", logo: logoChazey },
+  { name: "Covinoc", logo: logoCovinoc },
+  { name: "Fodesep", logo: logoFodesep },
+  { name: "Help and Life Medical SAS", logo: logoHelpAndLife },
+  { name: "Chefrito", logo: logoChefrito },
+  { name: "Ingeteknia Consultores Ltda.", logo: logoIngeteknia },
+  { name: "Jalo Rent SAS", logo: logoJalo },
+  { name: "Lamerica CI SAS", logo: logoLamerica },
+  { name: "Moditelas", logo: logoModitelas },
+  { name: "Open Logística S.A.S.", logo: logoOpenLogistica },
+  { name: "Quálitas Compañía de Seguros Colombia S.A.", logo: logoQualitas },
+  { name: "Radio Comunicaciones del Caribe Ltda.", logo: logoRadioCaribe },
+  { name: "Rehabet", logo: logoRehabet },
+  { name: "Sociedad Técnica Colombiana SAS (Sotecol)", logo: logoSotecol },
+  { name: "Soluagro Soluciones Agropecuarias S.A.", logo: logoSoluagro },
+  { name: "Tour Vacation Hoteles Azul SAS BIC", logo: logoTourVacation },
+  { name: "Transmares Logística Integral SAS", logo: logoTransmares },
+  { name: "Volador Colombia", logo: logoVolador },
 ];
 
-/* Tarjeta de logo — glass con glow dorado al hover */
-const LogoCard = ({ name, logo }: { name: string; logo: React.ReactNode }) => (
+/* Tarjeta de logo — fondo blanco, glow dorado al hover */
+const LogoCard = ({ name, logo }: { name: string; logo: string }) => (
   <div
     title={name}
-    className="shrink-0 flex items-center justify-center
-               px-7 py-4 rounded-2xl
-               border border-[hsl(43_78%_50%/0.1)]
-               bg-[hsl(35_10%_8%/0.7)]
-               text-white/28
-               hover:text-white/70
-               hover:border-[hsl(43_78%_50%/0.38)]
-               hover:bg-[hsl(43_78%_50%/0.05)]
-               hover:shadow-[0_0_22px_hsl(43_78%_50%/0.14),inset_0_1px_0_hsl(43_78%_50%/0.12)]
-               transition-all duration-400 cursor-default"
+    className="shrink-0 w-[110px] h-[76px] sm:w-[130px] sm:h-[88px] flex items-center justify-center
+               p-3 sm:p-4 rounded-xl
+               bg-white
+               border border-[hsl(43_78%_50%/0.12)]
+               hover:border-[hsl(43_78%_50%/0.45)]
+               hover:shadow-[0_0_22px_hsl(43_78%_50%/0.2)]
+               transition-all duration-300"
   >
-    {logo}
+    <img src={logo} alt={name} className="max-w-full max-h-full object-contain" loading="lazy" />
   </div>
 );
-
-import React from "react";
 
 const ClientsSection = () => {
   const loopItems = [...clients, ...clients, ...clients];
@@ -160,7 +98,7 @@ const ClientsSection = () => {
         <div
           className="flex items-center gap-4"
           style={{
-            animation: "marquee-clients 60s linear infinite",
+            animation: "marquee-clients 90s linear infinite",
             width: "max-content",
           }}
         >

@@ -11,12 +11,6 @@ const IconInstagram = () => (
   </svg>
 );
 
-const IconFacebook = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-  </svg>
-);
-
 const normativaLinks = [
   { label: "Política de Tratamiento de Datos",   href: "/politica-tratamiento-datos" },
   { label: "Política de SST",                    href: "/politica-sst" },
@@ -66,16 +60,6 @@ const Footer = () => {
               >
                 <IconInstagram />
                 <span>Instagram</span>
-              </a>
-              <a
-                href="https://www.facebook.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Facebook SISO"
-                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[hsl(43_78%_50%/0.2)] text-muted-foreground hover:text-primary hover:border-[hsl(43_78%_50%/0.45)] transition-all text-[13px] font-body"
-              >
-                <IconFacebook />
-                <span>Facebook</span>
               </a>
             </div>
           </div>
