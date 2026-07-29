@@ -145,26 +145,45 @@ const FormacionSection = () => {
               las personas. Con certificaciones internacionales como:
             </p>
 
-            {/* Certificaciones internacionales */}
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 mb-7">
-              {certificaciones.map((cert, i) => (
-                <motion.div
-                  key={cert.name}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={isInView ? { opacity: 1, y: 0 } : {}}
-                  transition={{ duration: 0.3, delay: 0.3 + i * 0.06 }}
-                  className="flex items-center justify-center bg-white rounded-xl p-2.5 border border-[hsl(43_78%_50%/0.12)] aspect-square"
-                  title={cert.name}
+            {/* Certificaciones internacionales — carrusel */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={isInView ? { opacity: 1 } : {}}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="relative mb-7"
+            >
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-8 sm:w-10 z-10 bg-gradient-to-r from-[hsl(35_9%_7%)] to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 sm:w-10 z-10 bg-gradient-to-l from-[hsl(35_9%_7%)] to-transparent" />
+
+              <div className="flex overflow-hidden py-1">
+                <div
+                  className="flex gap-3"
+                  style={{ animation: "marquee-formacion 20s linear infinite", width: "max-content" }}
                 >
-                  <img
-                    src={cert.logo}
-                    alt={cert.name}
-                    className="w-full h-full object-contain"
-                    loading="lazy"
-                  />
-                </motion.div>
-              ))}
-            </div>
+                  {[...certificaciones, ...certificaciones].map((cert, i) => (
+                    <div
+                      key={i}
+                      className="shrink-0 w-[72px] h-[72px] sm:w-20 sm:h-20 flex items-center justify-center bg-white rounded-xl p-2.5 border border-[hsl(43_78%_50%/0.12)]"
+                      title={cert.name}
+                    >
+                      <img
+                        src={cert.logo}
+                        alt={cert.name}
+                        className="w-full h-full object-contain"
+                        loading="lazy"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+
+            <style>{`
+              @keyframes marquee-formacion {
+                0%   { transform: translateX(0); }
+                100% { transform: translateX(-50%); }
+              }
+            `}</style>
 
             {/* Tag buttons */}
             <div className="flex flex-wrap gap-2 mb-8">
