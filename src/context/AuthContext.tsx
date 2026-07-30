@@ -1,30 +1,38 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { apiFetch, setToken, getToken } from "@/lib/api";
 
-export type Role = "admin" | "equipo" | "cliente";
+export type Role = "super_admin" | "admin" | "equipo" | "cliente";
 
 export interface User {
   id: string;
   nombre: string;
   email: string;
   username: string;
-  password: string;
   role: Role;
-  empresaId?: string; // assigned company (used for "cliente" role)
+  empresaId?: string;
+  avatar?: string | null;
+}
+
+export interface Company {
+  id: string;
+  nombre: string;
+  nit: string;
+  sector: string;
 }
 
 export interface Permission {
-  id: string;
+  id: number;
   equipoUserId: string;
   empresaId: string;
   canEdit: boolean;
   canUpload: boolean;
-  clienteCanUpload: boolean; // admin grants this so cliente of this empresa can upload
-  grantedBy: string;        // admin userId
-  grantedAt: string;        // ISO timestamp
+  clienteCanUpload: boolean; // admin otorga esto para que el cliente de esta empresa pueda subir
+  grantedBy: string;
+  grantedAt: string; // ISO timestamp
 }
 
 export interface TraceEntry {
-  id: string;
+  id: number;
   userId: string;
   userName: string;
   userRole: Role;
@@ -36,200 +44,280 @@ export interface TraceEntry {
 
 interface AuthContextType {
   currentUser: User | null;
+  loading: boolean;
   users: User[];
+  companies: Company[];
   permissions: Permission[];
   trace: TraceEntry[];
-  login: (emailOrUsername: string, password: string) => { ok: boolean; error?: string };
-  logout: () => void;
-  register: (data: Omit<User, "id" | "role">) => { ok: boolean; error?: string };
-  changeRole: (userId: string, role: Role) => void;
-  assignEmpresa: (userId: string, empresaId: string | undefined) => void;
-  upsertPermission: (data: Omit<Permission, "id" | "grantedAt">) => void;
+  /** empresaId -> cantidad de carpetas PHVA con al menos un documento subido. */
+  progress: Record<string, number>;
+  loadProgress: () => Promise<void>;
+  login: (emailOrUsername: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  register: (data: { nombre: string; email: string; username: string; password: string }) => Promise<{ ok: boolean; error?: string }>;
+  createUser: (data: { nombre: string; email: string; username: string; password: string; role: Role; empresaId?: string }) => Promise<{ ok: boolean; error?: string }>;
+  createCompany: (data: { nombre: string; nit: string; sector: string }) => Promise<{ ok: boolean; error?: string }>;
+  deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
+  deleteCompany: (companyId: string) => Promise<{ ok: boolean; error?: string }>;
+  uploadAvatar: (userId: string, file: File) => Promise<{ ok: boolean; error?: string }>;
+  uploadAd: (file: File) => Promise<{ ok: boolean; error?: string }>;
+  changeRole: (userId: string, role: Role) => Promise<void>;
+  assignEmpresa: (userId: string, empresaId: string | undefined) => Promise<void>;
+  upsertPermission: (data: Omit<Permission, "id" | "grantedAt">) => Promise<void>;
   getPermission: (equipoUserId: string, empresaId: string) => Permission | undefined;
-  addTrace: (entry: Omit<TraceEntry, "id" | "timestamp">) => void;
+  addTrace: (entry: { action: string; empresaId?: string; detail?: string }) => void;
 }
 
-const STORAGE_KEY = "siso_users";
-const SESSION_KEY = "siso_session";
-const PERMS_KEY   = "siso_permissions";
-const TRACE_KEY   = "siso_trace";
-
-/* ─── Seed accounts ─────────────────────────────────────────────────────────── */
-const SEED_ADMIN: User = {
-  id: "admin-001", nombre: "Administrador SISO",
-  email: "admin@siso.com", username: "admin", password: "Admin123!", role: "admin",
-};
-const SEED_EQUIPO: User = {
-  id: "equipo-001", nombre: "Consultor SISO",
-  email: "equipo@siso.com", username: "equipo", password: "Equipo123!", role: "equipo",
-};
-const SEED_CLIENTE: User = {
-  id: "cliente-001", nombre: "Cliente Demo",
-  email: "cliente@siso.com", username: "cliente", password: "Cliente123!",
-  role: "cliente", empresaId: "1",
-};
-
-const SEEDS = [SEED_ADMIN, SEED_EQUIPO, SEED_CLIENTE];
-
-/* ─── localStorage helpers ──────────────────────────────────────────────────── */
-function loadUsers(): User[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as User[];
-      const ids = new Set(parsed.map((u) => u.id));
-      const missing = SEEDS.filter((s) => !ids.has(s.id));
-      return [...missing, ...parsed];
-    }
-  } catch { /* ignore malformed stored data */ }
-  return [...SEEDS];
+/* ─── Mapeo de filas de MySQL (snake_case) a los tipos de la app (camelCase) ── */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapUserRow(row: any): User {
+  return {
+    id: row.id, nombre: row.nombre, email: row.email, username: row.username,
+    role: row.role, empresaId: row.empresa_id ?? undefined,
+    avatar: row.avatar_path ?? null,
+  };
 }
 
-function saveUsers(u: User[]) { localStorage.setItem(STORAGE_KEY, JSON.stringify(u)); }
-
-function loadPerms(): Permission[] {
-  try {
-    const raw = localStorage.getItem(PERMS_KEY);
-    if (raw) return JSON.parse(raw) as Permission[];
-  } catch { /* ignore malformed stored data */ }
-  return [];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapCompanyRow(row: any): Company {
+  return { id: row.id, nombre: row.nombre, nit: row.nit, sector: row.sector };
 }
 
-function savePerms(p: Permission[]) { localStorage.setItem(PERMS_KEY, JSON.stringify(p)); }
-
-function loadTrace(): TraceEntry[] {
-  try {
-    const raw = localStorage.getItem(TRACE_KEY);
-    if (raw) return JSON.parse(raw) as TraceEntry[];
-  } catch { /* ignore malformed stored data */ }
-  return [];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapPermissionRow(row: any): Permission {
+  return {
+    id: Number(row.id),
+    equipoUserId: row.equipo_user_id,
+    empresaId: row.empresa_id,
+    canEdit: !!Number(row.can_edit),
+    canUpload: !!Number(row.can_upload),
+    clienteCanUpload: !!Number(row.cliente_can_upload),
+    grantedBy: row.granted_by,
+    grantedAt: row.granted_at,
+  };
 }
 
-function saveTrace(t: TraceEntry[]) { localStorage.setItem(TRACE_KEY, JSON.stringify(t)); }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapTraceRow(row: any): TraceEntry {
+  return {
+    id: Number(row.id), userId: row.user_id, userName: row.user_name, userRole: row.user_role,
+    action: row.action, empresaId: row.empresa_id ?? undefined, detail: row.detail ?? undefined,
+    timestamp: row.created_at,
+  };
+}
 
 /* ─── Provider ──────────────────────────────────────────────────────────────── */
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [users, setUsers]         = useState<User[]>(loadUsers);
-  const [permissions, setPerms]   = useState<Permission[]>(loadPerms);
-  const [trace, setTrace]         = useState<TraceEntry[]>(loadTrace);
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      if (raw) return JSON.parse(raw) as User;
-    } catch { /* ignore malformed stored data */ }
-    return null;
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [users, setUsers]             = useState<User[]>([]);
+  const [companies, setCompanies]     = useState<Company[]>([]);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [trace, setTrace]             = useState<TraceEntry[]>([]);
+  const [progress, setProgress]       = useState<Record<string, number>>({});
 
-  // Ensure seed accounts are always present
-  useEffect(() => {
-    const ids = new Set(users.map((u) => u.id));
-    const missing = SEEDS.filter((s) => !ids.has(s.id));
-    if (missing.length > 0) {
-      const updated = [...missing, ...users];
-      setUsers(updated);
-      saveUsers(updated);
+  const loadCompanies = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ companies: unknown[] }>("/companies/list.php");
+      setCompanies(data.companies.map(mapCompanyRow));
+    } catch {
+      /* sin empresas aún, no es fatal */
     }
+  }, []);
+
+  const loadProgress = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ progress: { empresa_id: string; folders_with_docs: string | number }[] }>(
+        "/documents/progress.php"
+      );
+      const map: Record<string, number> = {};
+      data.progress.forEach((p) => { map[p.empresa_id] = Number(p.folders_with_docs); });
+      setProgress(map);
+    } catch {
+      /* sin progreso aún, no es fatal */
+    }
+  }, []);
+
+  const loadPermissions = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ permissions: unknown[] }>("/permissions/list.php");
+      setPermissions(data.permissions.map(mapPermissionRow));
+    } catch {
+      /* sin permisos aún, no es fatal */
+    }
+  }, []);
+
+  const loadAdminData = useCallback(async (role: Role) => {
+    if (role !== "admin" && role !== "super_admin") return;
+    try {
+      const [u, t] = await Promise.all([
+        apiFetch<{ users: unknown[] }>("/users/list.php"),
+        apiFetch<{ trace: unknown[] }>("/audit/list.php"),
+      ]);
+      setUsers(u.users.map(mapUserRow));
+      setTrace(t.trace.map(mapTraceRow));
+    } catch {
+      /* el panel de admin mostrará listas vacías si esto falla */
+    }
+  }, []);
+
+  // Sesión inicial: si hay token guardado, valida contra el servidor.
+  useEffect(() => {
+    (async () => {
+      if (!getToken()) { setLoading(false); return; }
+      try {
+        const data = await apiFetch<{ user: unknown }>("/auth/me.php");
+        const user = mapUserRow(data.user);
+        setCurrentUser(user);
+        await Promise.all([loadCompanies(), loadPermissions(), loadAdminData(user.role), loadProgress()]);
+      } catch {
+        setToken(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const login = (emailOrUsername: string, password: string) => {
-    const user = users.find(
-      (u) =>
-        (u.email.toLowerCase() === emailOrUsername.toLowerCase() ||
-          u.username.toLowerCase() === emailOrUsername.toLowerCase()) &&
-        u.password === password
-    );
-    if (!user) return { ok: false, error: "Credenciales incorrectas." };
-    setCurrentUser(user);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    return { ok: true };
+  const login = async (emailOrUsername: string, password: string) => {
+    try {
+      const data = await apiFetch<{ token: string; user: unknown }>("/auth/login.php", {
+        method: "POST",
+        json: { identifier: emailOrUsername, password },
+      });
+      const user = mapUserRow(data.user);
+      setToken(data.token);
+      setCurrentUser(user);
+      await Promise.all([loadCompanies(), loadPermissions(), loadAdminData(user.role), loadProgress()]);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try { await apiFetch("/auth/logout.php", { method: "POST" }); } catch { /* best-effort */ }
+    setToken(null);
     setCurrentUser(null);
-    localStorage.removeItem(SESSION_KEY);
+    setUsers([]);
+    setCompanies([]);
+    setPermissions([]);
+    setTrace([]);
+    setProgress({});
   };
 
-  const register = (data: Omit<User, "id" | "role">) => {
-    const exists = users.find(
-      (u) =>
-        u.email.toLowerCase() === data.email.toLowerCase() ||
-        u.username.toLowerCase() === data.username.toLowerCase()
-    );
-    if (exists) return { ok: false, error: "El correo o usuario ya existe." };
-    const newUser: User = { ...data, id: `user-${Date.now()}`, role: "cliente" };
-    const updated = [...users, newUser];
-    setUsers(updated);
-    saveUsers(updated);
-    setCurrentUser(newUser);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(newUser));
-    return { ok: true };
-  };
-
-  const changeRole = (userId: string, role: Role) => {
-    const updated = users.map((u) => (u.id === userId ? { ...u, role } : u));
-    setUsers(updated);
-    saveUsers(updated);
-    if (currentUser?.id === userId) {
-      const next = { ...currentUser, role };
-      setCurrentUser(next);
-      localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+  const register = async (data: { nombre: string; email: string; username: string; password: string }) => {
+    try {
+      const res = await apiFetch<{ token: string; user: unknown }>("/auth/register.php", {
+        method: "POST",
+        json: data,
+      });
+      const user = mapUserRow(res.user);
+      setToken(res.token);
+      setCurrentUser(user);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
     }
   };
 
-  const assignEmpresa = (userId: string, empresaId: string | undefined) => {
-    const updated = users.map((u) => (u.id === userId ? { ...u, empresaId } : u));
-    setUsers(updated);
-    saveUsers(updated);
-    if (currentUser?.id === userId) {
-      const next = { ...currentUser, empresaId };
-      setCurrentUser(next);
-      localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+  const createUser = async (data: { nombre: string; email: string; username: string; password: string; role: Role; empresaId?: string }) => {
+    try {
+      const res = await apiFetch<{ user: unknown }>("/users/create.php", { method: "POST", json: data });
+      setUsers((prev) => [...prev, mapUserRow(res.user)]);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
     }
   };
 
-  const upsertPermission = (data: Omit<Permission, "id" | "grantedAt">) => {
-    const existing = permissions.find(
-      (p) => p.equipoUserId === data.equipoUserId && p.empresaId === data.empresaId
-    );
-    let updated: Permission[];
-    if (existing) {
-      updated = permissions.map((p) =>
-        p.id === existing.id
-          ? { ...p, ...data, grantedAt: new Date().toISOString() }
-          : p
-      );
-    } else {
-      updated = [
-        ...permissions,
-        { ...data, id: `perm-${Date.now()}`, grantedAt: new Date().toISOString() },
-      ];
+  const createCompany = async (data: { nombre: string; nit: string; sector: string }) => {
+    try {
+      const res = await apiFetch<{ company: unknown }>("/companies/create.php", { method: "POST", json: data });
+      setCompanies((prev) => [...prev, mapCompanyRow(res.company)]);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
     }
-    setPerms(updated);
-    savePerms(updated);
+  };
+
+  const deleteUser = async (userId: string) => {
+    try {
+      await apiFetch("/users/delete.php", { method: "POST", json: { userId } });
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
+  const deleteCompany = async (companyId: string) => {
+    try {
+      await apiFetch("/companies/delete.php", { method: "POST", json: { id: companyId } });
+      setCompanies((prev) => prev.filter((c) => c.id !== companyId));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
+  const uploadAvatar = async (userId: string, file: File) => {
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("user_id", userId);
+      const res = await apiFetch<{ avatarPath: string }>("/users/upload-avatar.php", { method: "POST", body: form });
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, avatar: res.avatarPath } : u)));
+      if (currentUser?.id === userId) setCurrentUser((c) => (c ? { ...c, avatar: res.avatarPath } : c));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
+  const uploadAd = async (file: File) => {
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      await apiFetch("/ads/upload.php", { method: "POST", body: form });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
+  const changeRole = async (userId: string, role: Role) => {
+    await apiFetch("/users/update-role.php", { method: "POST", json: { userId, role } });
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
+    if (currentUser?.id === userId) setCurrentUser((c) => (c ? { ...c, role } : c));
+  };
+
+  const assignEmpresa = async (userId: string, empresaId: string | undefined) => {
+    await apiFetch("/users/assign-empresa.php", { method: "POST", json: { userId, empresaId: empresaId ?? null } });
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, empresaId } : u)));
+    if (currentUser?.id === userId) setCurrentUser((c) => (c ? { ...c, empresaId } : c));
+  };
+
+  const upsertPermission = async (data: Omit<Permission, "id" | "grantedAt">) => {
+    await apiFetch("/permissions/upsert.php", { method: "POST", json: data });
+    await loadPermissions();
   };
 
   const getPermission = (equipoUserId: string, empresaId: string) =>
     permissions.find((p) => p.equipoUserId === equipoUserId && p.empresaId === empresaId);
 
-  const addTrace = (entry: Omit<TraceEntry, "id" | "timestamp">) => {
-    const newEntry: TraceEntry = {
-      ...entry,
-      id: `tr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      timestamp: new Date().toISOString(),
-    };
-    const updated = [newEntry, ...trace].slice(0, 500);
-    setTrace(updated);
-    saveTrace(updated);
+  // Best-effort: no bloquea la UI ni rompe el flujo si falla.
+  const addTrace = (entry: { action: string; empresaId?: string; detail?: string }) => {
+    apiFetch("/audit/log.php", { method: "POST", json: entry }).catch(() => { /* ignore */ });
   };
 
   return (
     <AuthContext.Provider value={{
-      currentUser, users, permissions, trace,
-      login, logout, register, changeRole,
-      assignEmpresa, upsertPermission, getPermission, addTrace,
+      currentUser, loading, users, companies, permissions, trace, progress, loadProgress,
+      login, logout, register, createUser, createCompany, deleteUser, deleteCompany, changeRole,
+      assignEmpresa, upsertPermission, getPermission, addTrace, uploadAvatar, uploadAd,
     }}>
       {children}
     </AuthContext.Provider>

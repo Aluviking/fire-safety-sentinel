@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  Eye, EyeOff, User, Mail, Lock, RefreshCw, CheckCircle,
-  ArrowRight, UserPlus, ArrowLeft,
+  Eye, EyeOff, User, Lock, RefreshCw, ArrowRight, ArrowLeft, ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import sisoLogo from "@/assets/siso-logo.png";
+import heroImage from "@/assets/hero-firefighter.jpg";
 
 /* ─── Simple captcha ────────────────────────────────────────────────────────── */
 function useCaptcha() {
@@ -29,7 +29,7 @@ function Field({
   const [show, setShow] = useState(false);
   const isPwd = type === "password";
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col" style={{ gap: "clamp(2px,0.6vh,6px)" }}>
       <label className="text-xs font-semibold text-slate-600 tracking-wide">{label}</label>
       <div className="relative">
         <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -38,7 +38,8 @@ function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full bg-white border rounded-xl pl-10 pr-10 py-3 text-sm text-slate-800
+          style={{ paddingTop: "clamp(6px,1.3vh,10px)", paddingBottom: "clamp(6px,1.3vh,10px)" }}
+          className={`w-full bg-white border rounded-xl pl-10 pr-10 text-sm text-slate-800
                       placeholder:text-slate-400 outline-none transition-all
                       ${error
                         ? "border-red-400 focus:ring-2 focus:ring-red-200"
@@ -65,23 +66,24 @@ function CaptchaWidget({
   value: string; onChange: (v: string) => void; error?: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 shadow-sm" style={{ padding: "clamp(8px,1.6vh,12px)" }}>
       <div className="flex items-center gap-4">
         <div className="flex-1">
-          <p className="text-xs font-semibold text-slate-500 mb-1 tracking-wide uppercase">
+          <p className="text-[10px] font-semibold text-slate-500 mb-0.5 tracking-wide uppercase">
             Verificación de seguridad
           </p>
-          <p className="font-display text-xl text-[hsl(43_78%_42%)] tracking-widest">
+          <p className="font-display text-lg text-[hsl(43_78%_42%)] tracking-widest">
             {captcha.a} + {captcha.b} = ?
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
+        <div className="flex flex-col items-end gap-1">
           <input
             type="number"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder="0"
-            className={`w-20 text-center bg-white border rounded-xl py-2.5 text-sm font-bold text-slate-800
+            style={{ paddingTop: "clamp(4px,1vh,8px)", paddingBottom: "clamp(4px,1vh,8px)" }}
+            className={`w-20 text-center bg-white border rounded-xl text-sm font-bold text-slate-800
                         outline-none transition-all shadow-sm
                         ${error ? "border-red-400 focus:ring-2 focus:ring-red-200"
                                 : "border-slate-300 focus:border-[hsl(43_78%_45%)] focus:ring-2 focus:ring-[hsl(43_78%_50%/0.15)]"}`}
@@ -98,137 +100,89 @@ function CaptchaWidget({
 }
 
 /* ─── Login form ────────────────────────────────────────────────────────────── */
-function LoginForm({ onSwitch }: { onSwitch: () => void }) {
+function LoginForm() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [id, setId] = useState("");
   const [pass, setPass] = useState("");
   const [cap, setCap] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { captcha, refresh } = useCaptcha();
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (parseInt(cap) !== captcha.answer) {
       setError("Captcha incorrecto. Intenta de nuevo.");
       refresh(); setCap(""); return;
     }
-    const res = login(id.trim(), pass);
-    if (!res.ok) { setError(res.error ?? "Error."); return; }
+    setSubmitting(true);
+    const res = await login(id.trim(), pass);
+    setSubmitting(false);
+    if (!res.ok) { setError(res.error ?? "Error."); refresh(); setCap(""); return; }
     navigate("/portal/dashboard");
   };
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
+    <form onSubmit={submit} className="flex flex-col" style={{ gap: "clamp(8px,1.8vh,14px)" }}>
       <Field label="Correo o usuario" icon={User} value={id} onChange={setId} placeholder="correo@empresa.com" />
       <Field label="Contraseña" icon={Lock} type="password" value={pass} onChange={setPass} placeholder="••••••••" />
       <CaptchaWidget captcha={captcha} refresh={refresh} value={cap} onChange={setCap} />
 
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2">
           <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
           {error}
         </div>
       )}
 
-      <button type="submit"
-        className="w-full flex items-center justify-center gap-2 mt-1
+      <button type="submit" disabled={submitting}
+        style={{ paddingTop: "clamp(8px,1.8vh,14px)", paddingBottom: "clamp(8px,1.8vh,14px)" }}
+        className="w-full flex items-center justify-center gap-2
                    bg-gradient-to-r from-[hsl(40_82%_46%)] to-[hsl(44_80%_54%)]
-                   text-black font-bold py-3.5 rounded-xl transition-all
+                   text-black font-bold rounded-xl transition-all
                    hover:brightness-105 active:scale-[0.97]
+                   disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100
                    shadow-[0_4px_20px_hsl(43_78%_50%/0.4)]
                    text-sm tracking-wide">
-        Ingresar al Portal <ArrowRight className="w-4 h-4" />
+        {submitting ? "Ingresando..." : "Ingresar al Portal"}
+        {!submitting && <ArrowRight className="w-4 h-4" />}
       </button>
-
-      <p className="text-center text-sm text-slate-500">
-        ¿No tienes cuenta?{" "}
-        <button type="button" onClick={onSwitch}
-          className="text-[hsl(43_78%_40%)] hover:text-[hsl(43_78%_32%)] font-semibold hover:underline">
-          Regístrate aquí
-        </button>
-      </p>
     </form>
   );
 }
 
-/* ─── Register form ─────────────────────────────────────────────────────────── */
-function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
-  const { register } = useAuth();
-  const navigate = useNavigate();
-  const [nombre, setNombre] = useState("");
-  const [email,  setEmail]  = useState("");
-  const [uname,  setUname]  = useState("");
-  const [pass,   setPass]   = useState("");
-  const [pass2,  setPass2]  = useState("");
-  const [cap,    setCap]    = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const { captcha, refresh } = useCaptcha();
-
-  const validate = () => {
-    const e: Record<string, string> = {};
-    if (!nombre.trim())      e.nombre = "Campo requerido.";
-    if (!email.includes("@")) e.email  = "Correo inválido.";
-    if (uname.length < 4)    e.uname  = "Mínimo 4 caracteres.";
-    if (pass.length < 6)     e.pass   = "Mínimo 6 caracteres.";
-    if (pass !== pass2)      e.pass2  = "Las contraseñas no coinciden.";
-    if (parseInt(cap) !== captcha.answer) { e.captcha = "Captcha incorrecto."; refresh(); setCap(""); }
-    return e;
-  };
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const errs = validate();
-    setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
-    const res = register({ nombre, email, username: uname, password: pass });
-    if (!res.ok) { setErrors({ general: res.error ?? "Error." }); return; }
-    navigate("/portal/dashboard");
-  };
-
+/* ─── Panel motivador con foto de marca ──────────────────────────────────────── */
+function MotivationPanel() {
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3.5">
-      <Field label="Nombre completo"      icon={User}  value={nombre} onChange={setNombre} placeholder="Tu nombre completo"    error={errors.nombre} />
-      <Field label="Correo electrónico"   icon={Mail}  type="email" value={email}  onChange={setEmail}  placeholder="correo@empresa.com" error={errors.email}  />
-      <Field label="Nombre de usuario"    icon={User}  value={uname}  onChange={setUname}  placeholder="usuario123"              error={errors.uname}  />
-      <Field label="Contraseña"           icon={Lock}  type="password" value={pass}  onChange={setPass}   placeholder="••••••••"            error={errors.pass}   />
-      <Field label="Confirmar contraseña" icon={Lock}  type="password" value={pass2} onChange={setPass2}  placeholder="••••••••"            error={errors.pass2}  />
+    <div
+      className="relative h-[clamp(64px,15vh,140px)] lg:h-full overflow-hidden
+                  [@media(max-height:480px)]:hidden lg:[@media(max-height:480px)]:block"
+    >
+      <img src={heroImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 via-slate-900/60 to-slate-900/20
+                       lg:bg-gradient-to-t lg:from-slate-900/95 lg:via-slate-900/55 lg:to-slate-900/10" />
 
-      <CaptchaWidget captcha={captcha} refresh={refresh} value={cap} onChange={setCap} error={errors.captcha} />
-
-      {errors.general && (
-        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-          {errors.general}
+      <div className="relative z-10 h-full flex flex-col justify-between p-[clamp(10px,2vh,16px)] lg:p-8">
+        <div className="flex items-center gap-2">
+          <img src={sisoLogo} alt="SISO"
+            className="w-7 h-7 lg:w-9 lg:h-9 rounded-full object-cover glow-gold-sm" />
+          <span className="font-display tracking-[0.16em] text-base lg:text-lg text-gradient-gold">SISO</span>
         </div>
-      )}
 
-      {/* Rol info */}
-      <div className="flex items-center gap-2.5 text-xs text-slate-500 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-        <CheckCircle className="w-4 h-4 text-amber-600 shrink-0" />
-        Tu cuenta se creará automáticamente con rol de
-        <span className="font-bold text-amber-700 ml-0.5">Cliente</span>.
+        <div>
+          <h2 className="font-display text-base sm:text-lg lg:text-3xl text-white leading-tight max-w-xs">
+            Protegemos lo que más importa
+          </h2>
+          <p className="text-white/80 text-sm mt-2.5 max-w-xs leading-relaxed hidden lg:block">
+            Gestión integral de Seguridad y Salud en el Trabajo, respaldada por
+            expertos SISO. Un solo portal para tu equipo, tus empresas y tu
+            documentación SG-SST.
+          </p>
+        </div>
       </div>
-
-      <button type="submit"
-        className="w-full flex items-center justify-center gap-2 mt-1
-                   bg-gradient-to-r from-[hsl(40_82%_46%)] to-[hsl(44_80%_54%)]
-                   text-black font-bold py-3.5 rounded-xl transition-all
-                   hover:brightness-105 active:scale-[0.97]
-                   shadow-[0_4px_20px_hsl(43_78%_50%/0.4)]
-                   text-sm tracking-wide">
-        <UserPlus className="w-4 h-4" /> Crear mi cuenta
-      </button>
-
-      <p className="text-center text-sm text-slate-500">
-        ¿Ya tienes cuenta?{" "}
-        <button type="button" onClick={onSwitch}
-          className="text-[hsl(43_78%_40%)] hover:text-[hsl(43_78%_32%)] font-semibold hover:underline">
-          Inicia sesión
-        </button>
-      </p>
-    </form>
+    </div>
   );
 }
 
@@ -236,19 +190,25 @@ function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
 export default function PortalPage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "register">("login");
 
   useEffect(() => {
     if (currentUser) navigate("/portal/dashboard", { replace: true });
   }, [currentUser, navigate]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="h-[100svh] overflow-hidden bg-slate-50 flex flex-col relative">
+      {/* Decorative gold orbs, matching the app's dashboard visual language */}
+      <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[hsl(43_78%_50%/0.10)] blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 -left-24 w-80 h-80 rounded-full bg-[hsl(43_78%_50%/0.08)] blur-3xl" />
+
       {/* Top accent bar */}
-      <div className="h-1 bg-gradient-to-r from-[hsl(40_82%_46%)] via-[hsl(44_80%_54%)] to-[hsl(40_82%_46%)]" />
+      <div className="h-1 shrink-0 bg-gradient-to-r from-[hsl(40_82%_46%)] via-[hsl(44_80%_54%)] to-[hsl(40_82%_46%)]" />
 
       {/* Back to site */}
-      <div className="px-6 pt-4">
+      <div
+        className="px-4 sm:px-6 relative z-10 shrink-0"
+        style={{ paddingTop: "clamp(4px,1vh,12px)" }}
+      >
         <Link to="/"
           className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-[hsl(43_78%_40%)]
                      transition-colors font-medium">
@@ -257,90 +217,56 @@ export default function PortalPage() {
       </div>
 
       {/* Center content */}
-      <div className="flex-1 flex items-center justify-center px-4 py-8">
+      <div
+        className="flex-1 min-h-0 flex items-center justify-center px-4 relative z-10"
+        style={{ paddingTop: "clamp(2px,1vh,12px)", paddingBottom: "clamp(2px,1vh,12px)" }}
+      >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: "easeOut" }}
-          className="w-full max-w-[440px]"
+          className="w-full max-w-[920px] max-h-full bg-white rounded-3xl shadow-[0_8px_40px_rgba(0,0,0,0.12)]
+                     border border-slate-200 overflow-hidden grid grid-cols-1 lg:grid-cols-2"
         >
-          {/* Logo + brand */}
-          <div className="flex flex-col items-center mb-7 gap-3">
-            <div className="relative">
-              <div className="absolute -inset-3 rounded-full bg-[hsl(43_78%_50%/0.12)] blur-xl" />
-              <img src={sisoLogo} alt="SISO"
-                className="relative w-[72px] h-[72px] rounded-full border-[3px] border-[hsl(43_78%_50%/0.7)]
-                           shadow-[0_0_28px_hsl(43_78%_50%/0.3)]" />
-            </div>
-            <div className="text-center">
-              <h1 className="font-display tracking-[0.16em] text-3xl leading-none text-gradient-gold">SISO</h1>
-              <p className="text-xs text-slate-500 mt-1.5 font-medium tracking-[0.12em] uppercase">
-                Portal Empresarial
-              </p>
-            </div>
-          </div>
+          <MotivationPanel />
 
-          {/* Card */}
-          <div className="bg-white rounded-2xl shadow-[0_4px_32px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden">
-            {/* Tabs */}
-            <div className="flex relative border-b border-slate-200">
-              {(["login", "register"] as const).map((m) => (
-                <button key={m} onClick={() => setMode(m)}
-                  className={`relative flex-1 py-3.5 flex items-center justify-center gap-0
-                              text-sm font-semibold tracking-wide transition-colors duration-200
-                              ${mode === m ? "text-[hsl(43_78%_36%)]" : "text-slate-400 hover:text-slate-600"}`}>
-                  <span>{m === "login" ? "Ingresar" : "Crear cuenta"}</span>
-                  {mode === m && (
-                    <motion.span
-                      layoutId="tab-line"
-                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-[hsl(43_78%_48%)] rounded-t-full"
-                      transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                    />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Form */}
-            <div className="p-6 sm:p-7">
-              <AnimatePresence mode="wait">
-                <motion.div key={mode}
-                  initial={{ opacity: 0, x: mode === "login" ? -14 : 14 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: mode === "login" ? 14 : -14 }}
-                  transition={{ duration: 0.18 }}>
-                  {mode === "login"
-                    ? <LoginForm onSwitch={() => setMode("register")} />
-                    : <RegisterForm onSwitch={() => setMode("login")} />}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
-
-          {/* Demo credentials */}
-          <div className="mt-4 rounded-xl border border-slate-200 bg-white/70 px-4 py-3 text-xs text-slate-400">
-            <p className="font-semibold text-slate-500 mb-2 tracking-wide">Cuentas demo</p>
-            {[
-              { label: "Admin",    email: "admin@siso.com",   pass: "Admin123!"   },
-              { label: "Equipo",   email: "equipo@siso.com",  pass: "Equipo123!"  },
-              { label: "Cliente",  email: "cliente@siso.com", pass: "Cliente123!" },
-            ].map(({ label, email, pass }) => (
-              <div key={label} className="flex items-center gap-2 py-0.5">
-                <span className="w-[46px] shrink-0 text-[10px] font-bold uppercase tracking-widest text-amber-600">
-                  {label}
+          {/* Form panel */}
+          <div className="p-[clamp(12px,2.4vh,24px)] lg:p-8 flex flex-col justify-center">
+            <div className="flex items-center justify-between" style={{ marginBottom: "clamp(6px,1.8vh,16px)" }}>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold text-slate-800">Iniciar sesión</h1>
+                <span className="hidden [@media(min-height:481px)]:inline-block text-[10px] font-bold tracking-[0.12em] uppercase
+                                  text-[hsl(43_78%_65%)] bg-slate-900 px-2.5 py-1 rounded-full">
+                  Portal Empresarial
                 </span>
-                <span className="font-mono text-slate-500">{email}</span>
-                <span className="text-slate-300">/</span>
-                <span className="font-mono text-slate-500">{pass}</span>
               </div>
-            ))}
+              <span className="hidden sm:[@media(min-height:481px)]:flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest
+                                text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1 shrink-0">
+                <ShieldCheck className="w-3 h-3" /> Acceso seguro
+              </span>
+            </div>
+
+            <LoginForm />
           </div>
         </motion.div>
       </div>
 
       {/* Footer strip */}
-      <div className="py-4 text-center text-xs text-slate-400 border-t border-slate-200">
-        © {new Date().getFullYear()} SISO. Asesoría &amp; Gestión Empresarial en SST
+      <div className="shrink-0 text-center border-t border-slate-200 relative z-10" style={{ paddingTop: "clamp(4px,1vh,8px)", paddingBottom: "clamp(4px,1vh,8px)" }}>
+        <p className="text-xs text-slate-400">
+          © {new Date().getFullYear()} SISO. Asesoría &amp; Gestión Empresarial en SST
+        </p>
+        <p className="text-[11px] text-slate-400 mt-0.5">
+          Powered by{" "}
+          <a
+            href="https://www.rubikcontroldigital.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-slate-600 hover:text-[hsl(43_78%_40%)] transition-colors"
+          >
+            Rubik Control Digital
+          </a>
+        </p>
       </div>
     </div>
   );

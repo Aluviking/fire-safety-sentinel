@@ -309,9 +309,9 @@ const HeroSection = () => {
               paddingRight: "clamp(8px,2vw,36px)",
             }}
           >
-            {/* Portal Empresarial — sólido dorado con shimmer (aún sin destino, en construcción) */}
-            <button
-              type="button"
+            {/* Portal Empresarial — sólido dorado con shimmer */}
+            <Link
+              to="/portal"
               className="group relative flex-1 min-w-[160px] overflow-hidden
                          flex items-center
                          bg-gradient-to-r from-[hsl(40_82%_46%)] to-[hsl(44_80%_54%)]
@@ -338,7 +338,7 @@ const HeroSection = () => {
                                group-hover:translate-x-full pointer-events-none
                                bg-gradient-to-r from-transparent via-white/22 to-transparent
                                transition-transform duration-700" />
-            </button>
+            </Link>
 
             {/* Campus Virtual — oscuro con borde dorado */}
             <a
