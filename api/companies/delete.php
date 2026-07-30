@@ -23,6 +23,12 @@ foreach ($docs->fetchAll() as $doc) {
     if (file_exists($path)) unlink($path);
 }
 
+// Borra también la foto de portada de la empresa, si tenía una.
+if (!empty($company['photo_path'])) {
+    $photoPath = $uploadsDir . '/' . $company['photo_path'];
+    if (file_exists($photoPath)) unlink($photoPath);
+}
+
 db()->prepare('DELETE FROM companies WHERE id = ?')->execute([$empresaId]);
 
 log_trace($user, 'company_delete', $empresaId, "Eliminó la empresa {$company['nombre']}");

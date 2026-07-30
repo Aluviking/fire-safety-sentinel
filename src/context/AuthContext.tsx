@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { apiFetch, setToken, getToken } from "@/lib/api";
+import { AD_DISMISS_KEY } from "@/pages/portal/AdSidebar";
 
 export type Role = "super_admin" | "admin" | "equipo" | "cliente";
 
@@ -18,6 +19,7 @@ export interface Company {
   nombre: string;
   nit: string;
   sector: string;
+  photo?: string | null;
 }
 
 export interface Permission {
@@ -51,12 +53,16 @@ interface AuthContextType {
   trace: TraceEntry[];
   /** empresaId -> cantidad de carpetas PHVA con al menos un documento subido. */
   progress: Record<string, number>;
+  /** empresaId -> fase PHVA -> cantidad de carpetas de esa fase con al menos un documento. */
+  progressByPhase: Record<string, Record<string, number>>;
   loadProgress: () => Promise<void>;
   login: (emailOrUsername: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   register: (data: { nombre: string; email: string; username: string; password: string }) => Promise<{ ok: boolean; error?: string }>;
   createUser: (data: { nombre: string; email: string; username: string; password: string; role: Role; empresaId?: string }) => Promise<{ ok: boolean; error?: string }>;
   createCompany: (data: { nombre: string; nit: string; sector: string }) => Promise<{ ok: boolean; error?: string }>;
+  updateCompany: (companyId: string, data: { nombre: string; nit: string }) => Promise<{ ok: boolean; error?: string }>;
+  uploadCompanyPhoto: (companyId: string, file: File) => Promise<{ ok: boolean; error?: string }>;
   deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
   deleteCompany: (companyId: string) => Promise<{ ok: boolean; error?: string }>;
   uploadAvatar: (userId: string, file: File) => Promise<{ ok: boolean; error?: string }>;
@@ -80,7 +86,7 @@ function mapUserRow(row: any): User {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapCompanyRow(row: any): Company {
-  return { id: row.id, nombre: row.nombre, nit: row.nit, sector: row.sector };
+  return { id: row.id, nombre: row.nombre, nit: row.nit, sector: row.sector, photo: row.photo_path ?? null };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -117,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [trace, setTrace]             = useState<TraceEntry[]>([]);
   const [progress, setProgress]       = useState<Record<string, number>>({});
+  const [progressByPhase, setProgressByPhase] = useState<Record<string, Record<string, number>>>({});
 
   const loadCompanies = useCallback(async () => {
     try {
@@ -129,12 +136,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadProgress = useCallback(async () => {
     try {
-      const data = await apiFetch<{ progress: { empresa_id: string; folders_with_docs: string | number }[] }>(
-        "/documents/progress.php"
-      );
+      const data = await apiFetch<{
+        progress: { empresa_id: string; phva_phase: string; folders_with_docs: string | number }[];
+      }>("/documents/progress.php");
       const map: Record<string, number> = {};
-      data.progress.forEach((p) => { map[p.empresa_id] = Number(p.folders_with_docs); });
+      const phaseMap: Record<string, Record<string, number>> = {};
+      data.progress.forEach((p) => {
+        const count = Number(p.folders_with_docs);
+        map[p.empresa_id] = (map[p.empresa_id] ?? 0) + count;
+        if (!phaseMap[p.empresa_id]) phaseMap[p.empresa_id] = {};
+        phaseMap[p.empresa_id][p.phva_phase] = count;
+      });
       setProgress(map);
+      setProgressByPhase(phaseMap);
     } catch {
       /* sin progreso aún, no es fatal */
     }
@@ -190,6 +204,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const user = mapUserRow(data.user);
       setToken(data.token);
       setCurrentUser(user);
+      // El anuncio de publicidad debe reaparecer en cada inicio de sesión nuevo,
+      // aunque sea el mismo anuncio ya cerrado antes.
+      sessionStorage.removeItem(AD_DISMISS_KEY);
       await Promise.all([loadCompanies(), loadPermissions(), loadAdminData(user.role), loadProgress()]);
       return { ok: true };
     } catch (e) {
@@ -199,6 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try { await apiFetch("/auth/logout.php", { method: "POST" }); } catch { /* best-effort */ }
+    sessionStorage.removeItem(AD_DISMISS_KEY);
     setToken(null);
     setCurrentUser(null);
     setUsers([]);
@@ -206,6 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPermissions([]);
     setTrace([]);
     setProgress({});
+    setProgressByPhase({});
   };
 
   const register = async (data: { nombre: string; email: string; username: string; password: string }) => {
@@ -237,6 +256,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await apiFetch<{ company: unknown }>("/companies/create.php", { method: "POST", json: data });
       setCompanies((prev) => [...prev, mapCompanyRow(res.company)]);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
+  const updateCompany = async (companyId: string, data: { nombre: string; nit: string }) => {
+    try {
+      await apiFetch("/companies/update.php", { method: "POST", json: { id: companyId, ...data } });
+      setCompanies((prev) => prev.map((c) => (c.id === companyId ? { ...c, ...data } : c)));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
+  const uploadCompanyPhoto = async (companyId: string, file: File) => {
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("id", companyId);
+      const res = await apiFetch<{ photoPath: string }>("/companies/upload-photo.php", { method: "POST", body: form });
+      setCompanies((prev) => prev.map((c) => (c.id === companyId ? { ...c, photo: res.photoPath } : c)));
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : "Error." };
@@ -315,8 +357,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      currentUser, loading, users, companies, permissions, trace, progress, loadProgress,
-      login, logout, register, createUser, createCompany, deleteUser, deleteCompany, changeRole,
+      currentUser, loading, users, companies, permissions, trace, progress, progressByPhase, loadProgress,
+      login, logout, register, createUser, createCompany, updateCompany, uploadCompanyPhoto,
+      deleteUser, deleteCompany, changeRole,
       assignEmpresa, upsertPermission, getPermission, addTrace, uploadAvatar, uploadAd,
     }}>
       {children}

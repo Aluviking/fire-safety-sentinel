@@ -3,17 +3,18 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Folder, FolderOpen, ChevronDown, Building2,
-  Upload, Pencil, Lock, ShieldCheck, FileText, Download, Loader2, Trash2,
+  Upload, Pencil, Lock, ShieldCheck, FileText, Download, Loader2, Trash2, Camera,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { apiFetch, apiDownload } from "@/lib/api";
+import { apiFetch, apiDownload, apiImage } from "@/lib/api";
 import { ConfirmModal } from "./ConfirmModal";
 import { PortalTopNav } from "./PortalTopNav";
 import { FolderShell } from "./FolderShell";
 import { PHVA, type LetraPhva } from "./phvaData";
 import { DateWeatherWidget } from "./DateWeatherWidget";
 import { AdSidebar } from "./AdSidebar";
-import heroImage from "@/assets/hero-firefighter.jpg";
+import { HeroImageSlider } from "./HeroImageSlider";
+import { DASHBOARD_BANNER_IMAGES } from "./heroBanners";
 
 interface DocumentRow {
   id: number;
@@ -22,6 +23,79 @@ interface DocumentRow {
   mime_type: string;
   uploaded_at: string;
   uploaded_by_name: string;
+}
+
+/* ─── Logo de la empresa en la cabecera (con fallback al ícono genérico) ──── */
+function CompanyLogo({
+  companyId, photoPath, color, editable,
+}: { companyId: string; photoPath?: string | null; color: string; editable?: boolean }) {
+  const { uploadCompanyPhoto } = useAuth();
+  const [url, setUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!photoPath) { setUrl(null); return; }
+    let objectUrl: string | null = null;
+    let cancelled = false;
+    apiImage(`/companies/photo.php?id=${encodeURIComponent(companyId)}`)
+      .then((u) => {
+        if (cancelled) { URL.revokeObjectURL(u); return; }
+        objectUrl = u;
+        setUrl(u);
+      })
+      .catch(() => { if (!cancelled) setUrl(null); });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [companyId, photoPath]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      await uploadCompanyPhoto(companyId, file);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="relative shrink-0">
+      <div
+        className="w-12 h-12 rounded-2xl border flex items-center justify-center bg-white/10 backdrop-blur-sm overflow-hidden"
+        style={{ borderColor: color + "80" }}
+      >
+        {url
+          ? <img src={url} alt="" className="w-full h-full object-cover" />
+          : <Building2 className="w-5 h-5" style={{ color }} />}
+      </div>
+
+      {editable && (
+        <>
+          <input
+            ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp"
+            className="hidden" onChange={handleFileChange}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-900 text-white
+                       flex items-center justify-center border-2 border-white hover:bg-slate-700
+                       transition-colors disabled:opacity-70"
+            title="Cambiar logo de la empresa"
+          >
+            {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-2.5 h-2.5" />}
+          </button>
+        </>
+      )}
+    </div>
+  );
 }
 
 function formatBytes(bytes: number): string {
@@ -33,17 +107,20 @@ function formatBytes(bytes: number): string {
 /* ─── Carpeta de documentos (grid item) ──────────────────────────────────── */
 function FolderItem({
   name, index, color, canEdit, canUpload, canDelete, empresaId, phase, onOpen,
+  custom, canDeleteFolder, onDeleteFolder,
 }: {
   name: string; index: number; color: string;
   canEdit: boolean; canUpload: boolean; canDelete: boolean;
   empresaId: string; phase: LetraPhva;
   onOpen: (name: string) => void;
+  custom?: boolean; canDeleteFolder?: boolean; onDeleteFolder?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [docs, setDocs] = useState<DocumentRow[] | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<DocumentRow | null>(null);
+  const [pendingFolderDelete, setPendingFolderDelete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadDocs = async () => {
@@ -116,21 +193,39 @@ function FolderItem({
         onCancel={() => setPendingDelete(null)}
       />
 
+      <ConfirmModal
+        open={pendingFolderDelete}
+        title="Eliminar carpeta"
+        message={`¿Eliminar la carpeta "${name}"? Si tiene documentos subidos, quedarán ocultos hasta que recrees una carpeta con el mismo nombre.`}
+        onConfirm={() => { onDeleteFolder?.(); setPendingFolderDelete(false); }}
+        onCancel={() => setPendingFolderDelete(false)}
+      />
+
       <FolderShell tabColor={color} tabLabel={docs && docs.length > 0 ? `${docs.length} doc.` : "Carpeta"}>
-        <button
-          onClick={handleToggle}
-          className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left hover:bg-slate-50/70 transition-colors"
-        >
-          {open
-            ? <FolderOpen className="w-4 h-4 shrink-0" style={{ color }} />
-            : <Folder className="w-4 h-4 shrink-0 text-slate-400" />}
-          <span className={`text-xs flex-1 min-w-0 truncate font-medium ${open ? "text-slate-800" : "text-slate-600"}`}>
-            {name}
-          </span>
-          <ChevronDown
-            className={`w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-          />
-        </button>
+        <div className="w-full flex items-center gap-2.5 px-3.5 py-3 hover:bg-slate-50/70 transition-colors">
+          <button onClick={handleToggle} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
+            {open
+              ? <FolderOpen className="w-4 h-4 shrink-0" style={{ color }} />
+              : <Folder className="w-4 h-4 shrink-0 text-slate-400" />}
+            <span className={`text-xs flex-1 min-w-0 truncate font-medium ${open ? "text-slate-800" : "text-slate-600"}`}>
+              {name}
+            </span>
+          </button>
+          {custom && canDeleteFolder && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setPendingFolderDelete(true); }}
+              className="shrink-0 text-slate-300 hover:text-red-500 transition-colors"
+              title="Eliminar carpeta"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button onClick={handleToggle}>
+            <ChevronDown
+              className={`w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            />
+          </button>
+        </div>
 
         <AnimatePresence>
           {open && (
@@ -242,11 +337,14 @@ function FolderItem({
 }
 
 /* ─── Selector de fase PHVA (estilo "Day 1/2/3/4") ────────────────────────── */
-function PhvaTabs({ active, onSelect }: { active: LetraPhva; onSelect: (l: LetraPhva) => void }) {
+function PhvaTabs({
+  active, onSelect, percentByPhase,
+}: { active: LetraPhva; onSelect: (l: LetraPhva) => void; percentByPhase: Record<LetraPhva, number> }) {
   return (
     <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
       {PHVA.map((item) => {
         const isActive = active === item.letra;
+        const percent = percentByPhase[item.letra as LetraPhva] ?? 0;
         return (
           <button
             key={item.letra}
@@ -263,6 +361,15 @@ function PhvaTabs({ active, onSelect }: { active: LetraPhva; onSelect: (l: Letra
             <span className="text-xs font-semibold" style={{ color: isActive ? "#fff" : "#64748b" }}>
               {item.nombre}
             </span>
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+              style={{
+                color: isActive ? "#fff" : item.color,
+                background: isActive ? "rgba(255,255,255,0.25)" : item.bg,
+              }}
+            >
+              {percent}%
+            </span>
           </button>
         );
       })}
@@ -270,14 +377,74 @@ function PhvaTabs({ active, onSelect }: { active: LetraPhva; onSelect: (l: Letra
   );
 }
 
+/* ─── Tile para crear una carpeta personalizada en la fase activa ─────────── */
+function AddFolderTile({ color, onCreate }: { color: string; onCreate: (name: string) => Promise<{ ok: boolean; error?: string }> }) {
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) { setError("Escribe un nombre."); return; }
+    setSubmitting(true);
+    setError("");
+    const res = await onCreate(name.trim());
+    setSubmitting(false);
+    if (!res.ok) { setError(res.error ?? "Error."); return; }
+    setName("");
+    setAdding(false);
+  };
+
+  if (!adding) {
+    return (
+      <FolderShell dashed tabColor="" tabLabel="Nueva carpeta" onClick={() => setAdding(true)} className="min-h-[80px]" />
+    );
+  }
+
+  return (
+    <div className="mt-[10px] bg-white rounded-2xl border border-amber-300 shadow-sm p-3.5">
+      <form onSubmit={submit} className="space-y-2">
+        <input
+          value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="Nombre de la carpeta"
+          className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5
+                     focus:outline-none focus:border-[hsl(43_78%_45%)] focus:ring-2 focus:ring-[hsl(43_78%_50%/0.15)]"
+        />
+        {error && <p className="text-[11px] text-red-500">{error}</p>}
+        <div className="flex gap-2">
+          <button
+            type="submit" disabled={submitting}
+            className="flex-1 text-xs font-semibold text-white rounded-lg py-1.5
+                       disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            style={{ background: color }}
+          >
+            {submitting ? "Creando..." : "Crear"}
+          </button>
+          <button
+            type="button" onClick={() => { setAdding(false); setName(""); setError(""); }}
+            className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 /* ─── Panel de la fase activa: descripción + grid de carpetas ─────────────── */
 function PhvaActivePanel({
   item, canEdit, canUpload, canDelete, empresaId, onFolderOpen,
+  isAdmin, customFolders, onCreateFolder, onDeleteFolder,
 }: {
   item: typeof PHVA[number];
   canEdit: boolean; canUpload: boolean; canDelete: boolean;
   empresaId: string;
   onFolderOpen: (folder: string) => void;
+  isAdmin: boolean;
+  customFolders: { id: number; folder_name: string }[];
+  onCreateFolder: (name: string) => Promise<{ ok: boolean; error?: string }>;
+  onDeleteFolder: (id: number) => void;
 }) {
   return (
     <motion.div
@@ -301,7 +468,7 @@ function PhvaActivePanel({
           className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-white"
           style={{ color: item.color }}
         >
-          {item.carpetas.length} carpetas
+          {item.carpetas.length + customFolders.length} carpetas
         </span>
       </div>
 
@@ -314,6 +481,16 @@ function PhvaActivePanel({
             onOpen={onFolderOpen}
           />
         ))}
+        {customFolders.map((f, i) => (
+          <FolderItem
+            key={`custom-${f.id}`} name={f.folder_name} index={item.carpetas.length + i} color={item.color}
+            canEdit={canEdit} canUpload={canUpload} canDelete={canDelete}
+            empresaId={empresaId} phase={item.letra as LetraPhva}
+            onOpen={onFolderOpen}
+            custom canDeleteFolder={isAdmin} onDeleteFolder={() => onDeleteFolder(f.id)}
+          />
+        ))}
+        {isAdmin && <AddFolderTile color={item.color} onCreate={onCreateFolder} />}
       </div>
     </motion.div>
   );
@@ -322,11 +499,47 @@ function PhvaActivePanel({
 /* ─── PAGE ──────────────────────────────────────────────────────────────────── */
 export default function PortalEmpresa() {
   const { id } = useParams<{ id: string }>();
-  const { currentUser, loading, companies, getPermission, permissions, addTrace } = useAuth();
+  const { currentUser, loading, companies, getPermission, permissions, addTrace, progressByPhase, loadProgress } = useAuth();
   const navigate = useNavigate();
   const [activePhva, setActivePhva] = useState<LetraPhva>("P");
+  const [customFolders, setCustomFolders] = useState<{ id: number; phva_phase: string; folder_name: string }[]>([]);
   const trackedRef = useRef(false);
   const phvaTrackedRef = useRef<string | null>(null);
+
+  const loadCustomFolders = async () => {
+    if (!id) return;
+    try {
+      const data = await apiFetch<{ folders: { id: number; phva_phase: string; folder_name: string }[] }>(
+        `/folders/list.php?empresa_id=${encodeURIComponent(id)}`
+      );
+      setCustomFolders(data.folders);
+    } catch {
+      setCustomFolders([]);
+    }
+  };
+
+  useEffect(() => {
+    loadCustomFolders();
+    loadProgress();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const handleCreateFolder = async (phase: LetraPhva, name: string) => {
+    try {
+      await apiFetch("/folders/create.php", { method: "POST", json: { empresa_id: id, phase, folder_name: name } });
+      await loadCustomFolders();
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
+  const handleDeleteFolder = async (folderId: number) => {
+    try {
+      await apiFetch("/folders/delete.php", { method: "POST", json: { id: folderId } });
+      setCustomFolders((prev) => prev.filter((f) => f.id !== folderId));
+    } catch { /* best-effort */ }
+  };
 
   useEffect(() => {
     if (loading) return; // esperar a que /auth/me.php resuelva antes de decidir
@@ -431,41 +644,46 @@ export default function PortalEmpresa() {
             >
               <div className="relative rounded-3xl overflow-hidden min-h-[180px] flex items-end
                               shadow-sm border border-slate-200">
-                <img src={heroImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                <HeroImageSlider images={DASHBOARD_BANNER_IMAGES} />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/50 to-slate-900/10" />
 
-                <DateWeatherWidget />
-
                 <div className="relative z-10 p-6 flex items-end justify-between gap-4 flex-wrap w-full">
-                  <div className="flex items-center gap-4">
-                    <div
-                      className="w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 bg-white/10 backdrop-blur-sm"
-                      style={{ borderColor: heroColor + "80" }}
-                    >
-                      <Building2 className="w-5 h-5" style={{ color: heroColor }} />
-                    </div>
-                    <div>
-                      <h1 className="font-semibold text-2xl text-white leading-tight">{company.nombre}</h1>
-                      <p className="text-sm text-white/70 mt-0.5">NIT {company.nit} · {company.sector}</p>
+                  <div className="flex items-center gap-4 min-w-0">
+                    <CompanyLogo companyId={company.id} photoPath={company.photo} color={heroColor} editable={isAdmin} />
+                    <div className="min-w-0">
+                      <h1 className="font-semibold text-2xl text-white leading-tight truncate">{company.nombre}</h1>
+                      <p className="text-sm text-white/70 mt-0.5 truncate">NIT {company.nit} · {company.sector}</p>
                     </div>
                   </div>
 
-                  {/* Permission badge for equipo */}
-                  {isEquipo && (
-                    <span className={`flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border backdrop-blur-sm
-                      ${canEdit || canUpload
-                        ? "text-amber-200 border-amber-300/50 bg-amber-500/20"
-                        : "text-slate-200 border-white/20 bg-white/10"}`}>
-                      {canEdit || canUpload ? <ShieldCheck className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                      {canEdit && canUpload ? "Editar & Subir" : canEdit ? "Solo editar" : canUpload ? "Solo subir" : "Solo lectura"}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3 shrink-0">
+                    {/* Permission badge for equipo */}
+                    {isEquipo && (
+                      <span className={`flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border backdrop-blur-sm whitespace-nowrap
+                        ${canEdit || canUpload
+                          ? "text-amber-200 border-amber-300/50 bg-amber-500/20"
+                          : "text-slate-200 border-white/20 bg-white/10"}`}>
+                        {canEdit || canUpload ? <ShieldCheck className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                        {canEdit && canUpload ? "Editar & Subir" : canEdit ? "Solo editar" : canUpload ? "Solo subir" : "Solo lectura"}
+                      </span>
+                    )}
+                    <DateWeatherWidget />
+                  </div>
                 </div>
               </div>
             </motion.div>
 
             {/* Selector PHVA + panel activo */}
-            <PhvaTabs active={activePhva} onSelect={setActivePhva} />
+            <PhvaTabs
+              active={activePhva}
+              onSelect={setActivePhva}
+              percentByPhase={Object.fromEntries(PHVA.map((p) => {
+                const custom = customFolders.filter((f) => f.phva_phase === p.letra).length;
+                const total = p.carpetas.length + custom;
+                const done = progressByPhase[id as string]?.[p.letra] ?? 0;
+                return [p.letra, total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0];
+              })) as Record<LetraPhva, number>}
+            />
 
             <AnimatePresence mode="wait">
               <PhvaActivePanel
@@ -476,6 +694,10 @@ export default function PortalEmpresa() {
                 canDelete={canDelete}
                 empresaId={id as string}
                 onFolderOpen={handleFolderOpen}
+                isAdmin={isAdmin}
+                customFolders={customFolders.filter((f) => f.phva_phase === activePhva)}
+                onCreateFolder={(name) => handleCreateFolder(activePhva, name)}
+                onDeleteFolder={handleDeleteFolder}
               />
             </AnimatePresence>
           </div>

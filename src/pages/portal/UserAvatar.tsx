@@ -73,6 +73,7 @@ export function UserAvatar({ userId, avatarPath, nombre, size = 36, editable, on
             accept="image/png,image/jpeg,image/webp"
             className="hidden"
             onChange={handleFileChange}
+            onClick={(e) => e.stopPropagation()}
           />
           <button
             type="button"

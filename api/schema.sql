@@ -122,3 +122,23 @@ CREATE TABLE IF NOT EXISTS ads (
   FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 INSERT INTO ads (id) VALUES (1) ON DUPLICATE KEY UPDATE id = id;
+
+-- ─── Migración: foto de portada + edición de empresa ─────────────────────────
+-- Ejecuta esto en phpMyAdmin > SQL si tu base de datos ya existía antes de esta
+-- columna (una sola vez; si ya existe, MySQL lanzará un error inocuo a ignorar).
+ALTER TABLE companies ADD COLUMN photo_path VARCHAR(255) NULL AFTER sector;
+
+-- ─── Migración: carpetas personalizadas del PHVA (por empresa) ──────────────
+-- Ejecuta esto en phpMyAdmin > SQL si tu base de datos ya existía antes de esta
+-- tabla (una sola vez).
+CREATE TABLE IF NOT EXISTS custom_folders (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  empresa_id  VARCHAR(40)  NOT NULL,
+  phva_phase  CHAR(1)      NOT NULL,
+  folder_name VARCHAR(190) NOT NULL,
+  created_by  VARCHAR(40)  NOT NULL,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_empresa_fase_carpeta (empresa_id, phva_phase, folder_name),
+  FOREIGN KEY (empresa_id) REFERENCES companies(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES users(id)      ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import sisoLogo from "@/assets/siso-logo.png";
-import heroImage from "@/assets/hero-firefighter.jpg";
+import heroImage from "@/assets/login-banner.jpg";
 
 /* ─── Simple captcha ────────────────────────────────────────────────────────── */
 function useCaptcha() {

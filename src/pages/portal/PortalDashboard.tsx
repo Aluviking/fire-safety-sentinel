@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2, ShieldCheck, ChevronRight, Users, ScrollText, Trash2, AlertCircle,
+  Pencil, Camera, Loader2, X,
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, PieChart, Pie, Cell } from "recharts";
 import { useAuth } from "@/context/AuthContext";
@@ -12,7 +13,8 @@ import { PortalTopNav, PORTAL_NAV_ITEMS } from "./PortalTopNav";
 import { FolderShell } from "./FolderShell";
 import { PHVA_TOTAL_FOLDERS } from "./phvaData";
 import { DateWeatherWidget } from "./DateWeatherWidget";
-import heroImage from "@/assets/hero-firefighter.jpg";
+import { HeroImageSlider } from "./HeroImageSlider";
+import { DASHBOARD_BANNER_IMAGES } from "./heroBanners";
 
 const SECTOR_COLOR: Record<string, string> = {
   Financiero: "#b45309", Construcción: "#c2410c", Logística: "#0369a1",
@@ -39,23 +41,24 @@ function HeroCard({ isAdmin }: { isAdmin: boolean }) {
       className="relative rounded-3xl overflow-hidden min-h-[220px] h-full flex items-end
                  shadow-sm border border-slate-200"
     >
-      <img src={heroImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      <HeroImageSlider images={DASHBOARD_BANNER_IMAGES} />
       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/45 to-slate-900/5" />
 
-      <DateWeatherWidget />
-
-      <div className="relative z-10 p-6">
-        {isAdmin && (
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest
-                            text-[hsl(43_78%_70%)] bg-white/10 border border-white/25 backdrop-blur-sm
-                            px-2.5 py-1 rounded-full mb-3">
-            <ShieldCheck className="w-3 h-3" /> {roleLabel}
-          </span>
-        )}
-        <h1 className="font-display text-3xl text-white leading-tight">
-          Bienvenido, {currentUser?.nombre}
-        </h1>
-        <p className="text-white/80 text-sm mt-1">Gestión SG-SST · Portal Empresarial SISO</p>
+      <div className="relative z-10 p-6 flex items-end justify-between gap-4 flex-wrap w-full">
+        <div className="min-w-0">
+          {isAdmin && (
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest
+                              text-[hsl(43_78%_70%)] bg-white/10 border border-white/25 backdrop-blur-sm
+                              px-2.5 py-1 rounded-full mb-3">
+              <ShieldCheck className="w-3 h-3" /> {roleLabel}
+            </span>
+          )}
+          <h1 className="font-display text-3xl text-white leading-tight truncate">
+            Bienvenido, {currentUser?.nombre}
+          </h1>
+          <p className="text-white/80 text-sm mt-1 truncate">Gestión SG-SST · Portal Empresarial SISO</p>
+        </div>
+        <DateWeatherWidget />
       </div>
     </motion.div>
   );
@@ -177,14 +180,130 @@ function WeeklyActivityChart({ trace }: { trace: TraceEntry[] }) {
   );
 }
 
+/* ─── Modal para editar nombre y NIT de una empresa ──────────────────────── */
+function EditCompanyModal({
+  company, onClose,
+}: { company: { id: string; nombre: string; nit: string } | null; onClose: () => void }) {
+  const { updateCompany } = useAuth();
+  const [nombre, setNombre] = useState(company?.nombre ?? "");
+  const [nit, setNit] = useState(company?.nit ?? "");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setNombre(company?.nombre ?? "");
+    setNit(company?.nit ?? "");
+    setError("");
+  }, [company]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nombre.trim() || !nit.trim()) { setError("Completa nombre y NIT."); return; }
+    setSubmitting(true);
+    setError("");
+    const res = await updateCompany(company!.id, { nombre: nombre.trim(), nit: nit.trim() });
+    setSubmitting(false);
+    if (!res.ok) { setError(res.error ?? "Error."); return; }
+    onClose();
+  };
+
+  return (
+    <AnimatePresence>
+      {company && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm"
+          />
+          <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              className="pointer-events-auto w-full max-w-sm bg-white rounded-2xl
+                         shadow-[0_20px_60px_rgba(0,0,0,0.25)] border border-slate-200 overflow-hidden"
+            >
+              <div className="h-1 bg-gradient-to-r from-[hsl(40_82%_46%)] via-[hsl(44_80%_54%)] to-[hsl(40_82%_46%)]" />
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <h3 className="font-semibold text-slate-800 text-[15px]">Editar empresa</h3>
+                  <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <form onSubmit={submit} className="space-y-2.5">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500">Nombre de la empresa</label>
+                    <input
+                      value={nombre} onChange={(e) => setNombre(e.target.value)} autoFocus
+                      className="w-full text-sm bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 mt-1
+                                 focus:outline-none focus:border-[hsl(43_78%_45%)] focus:ring-2 focus:ring-[hsl(43_78%_50%/0.15)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500">NIT</label>
+                    <input
+                      value={nit} onChange={(e) => setNit(e.target.value)}
+                      className="w-full text-sm bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 mt-1
+                                 focus:outline-none focus:border-[hsl(43_78%_45%)] focus:ring-2 focus:ring-[hsl(43_78%_50%/0.15)]"
+                    />
+                  </div>
+                  {error && <p className="text-[11px] text-red-500">{error}</p>}
+                  <div className="flex items-center gap-2.5 pt-2">
+                    <button
+                      type="button" onClick={onClose}
+                      className="flex-1 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100
+                                 rounded-xl py-2.5 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit" disabled={submitting}
+                      className="flex-1 text-sm font-bold rounded-xl py-2.5 transition-all active:scale-[0.97]
+                                 bg-amber-500 hover:bg-amber-600 text-white shadow-[0_4px_14px_rgba(217,119,6,0.35)]
+                                 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {submitting ? "Guardando..." : "Guardar"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
 /* ─── Carpeta de empresa ──────────────────────────────────────────────────── */
 function CompanyFolder({
-  company, canDelete, onDelete, progressPercent,
-}: { company: Company; canDelete: boolean; onDelete: () => void; progressPercent: number }) {
+  company, canDelete, isAdmin, onDelete, onEdit, progressPercent,
+}: {
+  company: Company; canDelete: boolean; isAdmin: boolean;
+  onDelete: () => void; onEdit: () => void; progressPercent: number;
+}) {
   const navigate = useNavigate();
+  const { uploadCompanyPhoto } = useAuth();
   const color = SECTOR_COLOR[company.sector] ?? "#b45309";
   const bg    = SECTOR_BG[company.sector]    ?? "#fef3c7";
   const initials = company.nombre.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      await uploadCompanyPhoto(company.id, file);
+    } finally {
+      setUploadingPhoto(false);
+      if (photoInputRef.current) photoInputRef.current.value = "";
+    }
+  };
 
   return (
     <FolderShell tabColor={color} tabLabel={company.sector} onClick={() => navigate(`/portal/empresa/${company.id}`)}>
@@ -196,14 +315,38 @@ function CompanyFolder({
           >
             {initials}
           </div>
-          {canDelete && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-slate-300 hover:text-red-500"
-              title="Eliminar empresa"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+          {isAdmin && (
+            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+              <input
+                ref={photoInputRef} type="file" accept="image/png,image/jpeg,image/webp"
+                className="hidden" onChange={handlePhotoChange}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <button
+                onClick={(e) => { e.stopPropagation(); photoInputRef.current?.click(); }}
+                disabled={uploadingPhoto}
+                className="text-slate-300 hover:text-[hsl(43_78%_45%)] transition-colors disabled:opacity-60"
+                title="Cambiar foto de fondo"
+              >
+                {uploadingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                className="text-slate-300 hover:text-[hsl(43_78%_45%)] transition-colors"
+                title="Editar nombre y NIT"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              {canDelete && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                  className="text-slate-300 hover:text-red-500 transition-colors"
+                  title="Eliminar empresa"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           )}
         </div>
         <p className="font-semibold text-slate-800 text-sm mt-3 leading-snug truncate
@@ -266,6 +409,7 @@ function EmpresasSection() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; nombre: string } | null>(null);
+  const [editingCompany, setEditingCompany] = useState<{ id: string; nombre: string; nit: string } | null>(null);
 
   const reset = () => { setNombre(""); setNit(""); setSector(""); setError(""); };
 
@@ -301,6 +445,8 @@ function EmpresasSection() {
         onCancel={() => setPendingDelete(null)}
       />
 
+      <EditCompanyModal company={editingCompany} onClose={() => setEditingCompany(null)} />
+
       <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
@@ -324,7 +470,9 @@ function EmpresasSection() {
             <CompanyFolder
               company={c}
               canDelete={isAdmin}
+              isAdmin={isAdmin}
               onDelete={() => setPendingDelete({ id: c.id, nombre: c.nombre })}
+              onEdit={() => setEditingCompany({ id: c.id, nombre: c.nombre, nit: c.nit })}
               progressPercent={Math.min(100, Math.round(((progress[c.id] ?? 0) / PHVA_TOTAL_FOLDERS) * 100))}
             />
           </motion.div>

@@ -79,18 +79,18 @@ export function DateWeatherWidget() {
   const Icon = info?.Icon ?? Cloud;
 
   return (
-    <div className="absolute top-5 right-5 z-20 flex items-center gap-2.5 bg-white/10 backdrop-blur-md
+    <div className="shrink-0 flex items-center gap-2.5 bg-black/25 backdrop-blur-md
                      border border-white/20 rounded-2xl pl-3 pr-4 py-2.5">
       <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
         <Icon className="w-4 h-4 text-amber-300" />
       </div>
       <div className="leading-tight">
-        <p className="text-white text-xs font-semibold">{todayLabel()}</p>
-        <p className="text-white/70 text-[11px] mt-0.5">
+        <p className="text-white text-xs font-semibold whitespace-nowrap">{todayLabel()}</p>
+        <p className="text-white/70 text-[11px] mt-0.5 whitespace-nowrap">
           {weather ? `${Math.round(weather.temp)}°C · ${info?.label}` : "Cargando clima..."}
         </p>
-        <p className="text-white/50 text-[10px] mt-0.5 font-mono tracking-wide">
-          {clock} · Colombia
+        <p className="text-white text-base font-bold mt-1 font-mono tracking-wide whitespace-nowrap">
+          {clock} <span className="text-white/60 text-[11px] font-semibold">· Colombia</span>
         </p>
       </div>
     </div>

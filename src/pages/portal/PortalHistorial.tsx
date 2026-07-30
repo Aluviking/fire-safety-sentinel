@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ScrollText, Eye, FolderOpen, Upload, Trash2, Pencil,
-  Users, Shield, UserPlus, Building2, UserMinus, ImageIcon, Megaphone,
+  Users, Shield, UserPlus, Building2, UserMinus, ImageIcon, Megaphone, FolderPlus,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import type { TraceEntry } from "@/context/AuthContext";
@@ -23,6 +23,10 @@ const ACTION_LABEL: Record<string, string> = {
   company_delete: "Eliminó empresa",
   avatar_update: "Actualizó foto de perfil",
   ad_update: "Actualizó publicidad",
+  company_update: "Editó empresa",
+  company_photo_update: "Cambió foto de empresa",
+  folder_create: "Creó carpeta",
+  folder_delete: "Eliminó carpeta",
 };
 
 const ACTION_ACCENT: Record<string, string> = {
@@ -31,6 +35,8 @@ const ACTION_ACCENT: Record<string, string> = {
   role_change: "#9333ea", perm_change: "#ea580c", user_create: "#0d9488",
   company_create: "#4f46e5", user_delete: "#dc2626", company_delete: "#dc2626",
   avatar_update: "#0891b2", ad_update: "#c026d3",
+  company_update: "#d97706", company_photo_update: "#0891b2",
+  folder_create: "#0d9488", folder_delete: "#dc2626",
 };
 
 const ACTION_ICON: Record<string, React.ElementType> = {
@@ -39,6 +45,8 @@ const ACTION_ICON: Record<string, React.ElementType> = {
   role_change: Users, perm_change: Shield, user_create: UserPlus,
   company_create: Building2, user_delete: UserMinus, company_delete: Trash2,
   avatar_update: ImageIcon, ad_update: Megaphone,
+  company_update: Pencil, company_photo_update: ImageIcon,
+  folder_create: FolderPlus, folder_delete: Trash2,
 };
 
 function dayLabel(iso: string): string {

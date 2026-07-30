@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import { Megaphone, X } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 
-// Recuerda el anuncio ya cerrado por este navegador (por su updatedAt) para
-// que no vuelva a molestar hasta que el admin suba uno nuevo.
-const DISMISS_KEY = "siso_ad_dismissed_at";
+// Recuerda el anuncio ya cerrado durante esta sesión (por su updatedAt) para
+// que no vuelva a molestar mientras la sesión siga activa. Se usa
+// sessionStorage (no localStorage) a propósito: al cerrar el navegador o
+// volver a iniciar sesión, el anuncio debe reaparecer — ver AuthContext,
+// que limpia esta key en login() y logout().
+export const AD_DISMISS_KEY = "siso_ad_dismissed_at";
 
 /**
  * Barra de publicidad vertical (9:16) mostrada al costado derecho de la vista
@@ -26,7 +29,7 @@ export function AdSidebar() {
         if (cancelled || !data.hasAd) { setChecked(true); return; }
         setUpdatedAt(data.updatedAt);
 
-        if (data.updatedAt && localStorage.getItem(DISMISS_KEY) === data.updatedAt) {
+        if (data.updatedAt && sessionStorage.getItem(AD_DISMISS_KEY) === data.updatedAt) {
           setDismissed(true);
           setChecked(true);
           return;
@@ -47,7 +50,7 @@ export function AdSidebar() {
   }, []);
 
   const handleClose = () => {
-    if (updatedAt) localStorage.setItem(DISMISS_KEY, updatedAt);
+    if (updatedAt) sessionStorage.setItem(AD_DISMISS_KEY, updatedAt);
     setDismissed(true);
   };
 
