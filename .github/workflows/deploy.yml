@@ -36,5 +36,7 @@ jobs:
           rsync -avz --delete \
             --exclude='.private' \
             --exclude='DO_NOT_UPLOAD_HERE' \
+            --exclude='api' \
+            --exclude='private_uploads' \
             -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o UserKnownHostsFile=~/.ssh/known_hosts" \
             dist/ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}
