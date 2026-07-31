@@ -51,10 +51,14 @@ interface AuthContextType {
   companies: Company[];
   permissions: Permission[];
   trace: TraceEntry[];
-  /** empresaId -> cantidad de carpetas PHVA con al menos un documento subido. */
+  /** empresaId -> cantidad de carpetas con al menos un documento subido. */
   progress: Record<string, number>;
+  /** empresaId -> cantidad total de carpetas que tiene esa empresa (dinámico, ya no fijo en 26). */
+  progressTotal: Record<string, number>;
   /** empresaId -> fase PHVA -> cantidad de carpetas de esa fase con al menos un documento. */
   progressByPhase: Record<string, Record<string, number>>;
+  /** empresaId -> fase PHVA -> cantidad total de carpetas de esa fase. */
+  progressTotalByPhase: Record<string, Record<string, number>>;
   loadProgress: () => Promise<void>;
   login: (emailOrUsername: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -123,7 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [trace, setTrace]             = useState<TraceEntry[]>([]);
   const [progress, setProgress]       = useState<Record<string, number>>({});
+  const [progressTotal, setProgressTotal] = useState<Record<string, number>>({});
   const [progressByPhase, setProgressByPhase] = useState<Record<string, Record<string, number>>>({});
+  const [progressTotalByPhase, setProgressTotalByPhase] = useState<Record<string, Record<string, number>>>({});
 
   const loadCompanies = useCallback(async () => {
     try {
@@ -137,18 +143,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProgress = useCallback(async () => {
     try {
       const data = await apiFetch<{
-        progress: { empresa_id: string; phva_phase: string; folders_with_docs: string | number }[];
+        progress: { empresa_id: string; phva_phase: string; total_folders: string | number; folders_with_docs: string | number }[];
       }>("/documents/progress.php");
       const map: Record<string, number> = {};
+      const totalMap: Record<string, number> = {};
       const phaseMap: Record<string, Record<string, number>> = {};
+      const totalPhaseMap: Record<string, Record<string, number>> = {};
       data.progress.forEach((p) => {
-        const count = Number(p.folders_with_docs);
-        map[p.empresa_id] = (map[p.empresa_id] ?? 0) + count;
+        const done = Number(p.folders_with_docs);
+        const total = Number(p.total_folders);
+        map[p.empresa_id] = (map[p.empresa_id] ?? 0) + done;
+        totalMap[p.empresa_id] = (totalMap[p.empresa_id] ?? 0) + total;
         if (!phaseMap[p.empresa_id]) phaseMap[p.empresa_id] = {};
-        phaseMap[p.empresa_id][p.phva_phase] = count;
+        if (!totalPhaseMap[p.empresa_id]) totalPhaseMap[p.empresa_id] = {};
+        phaseMap[p.empresa_id][p.phva_phase] = done;
+        totalPhaseMap[p.empresa_id][p.phva_phase] = total;
       });
       setProgress(map);
+      setProgressTotal(totalMap);
       setProgressByPhase(phaseMap);
+      setProgressTotalByPhase(totalPhaseMap);
     } catch {
       /* sin progreso aún, no es fatal */
     }
@@ -224,7 +238,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPermissions([]);
     setTrace([]);
     setProgress({});
+    setProgressTotal({});
     setProgressByPhase({});
+    setProgressTotalByPhase({});
   };
 
   const register = async (data: { nombre: string; email: string; username: string; password: string }) => {
@@ -357,7 +373,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      currentUser, loading, users, companies, permissions, trace, progress, progressByPhase, loadProgress,
+      currentUser, loading, users, companies, permissions, trace,
+      progress, progressTotal, progressByPhase, progressTotalByPhase, loadProgress,
       login, logout, register, createUser, createCompany, updateCompany, uploadCompanyPhoto,
       deleteUser, deleteCompany, changeRole,
       assignEmpresa, upsertPermission, getPermission, addTrace, uploadAvatar, uploadAd,

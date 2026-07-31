@@ -1,4 +1,8 @@
-/* ─── Estructura PHVA — fuente única compartida entre PortalEmpresa y PortalDashboard ── */
+/* ─── Estructura PHVA — fuente única compartida entre PortalEmpresa y PortalDashboard ──
+ * `carpetas` es solo la lista de referencia que el backend siembra al crear una
+ * empresa nueva (api/companies/create.php) — cada empresa administra sus propias
+ * carpetas reales (crear/renombrar/eliminar) desde custom_folders en la base de
+ * datos, así que este arreglo ya no se usa para renderizar. */
 export const PHVA = [
   {
     letra: "P", nombre: "Planear",
@@ -45,6 +49,3 @@ export const PHVA = [
 ] as const;
 
 export type LetraPhva = "P" | "H" | "V" | "A";
-
-/** Total de carpetas PHVA posibles por empresa (7+7+7+5) — base para el % de avance. */
-export const PHVA_TOTAL_FOLDERS = PHVA.reduce((sum, p) => sum + p.carpetas.length, 0);

@@ -142,3 +142,46 @@ CREATE TABLE IF NOT EXISTS custom_folders (
   FOREIGN KEY (empresa_id) REFERENCES companies(id) ON DELETE CASCADE,
   FOREIGN KEY (created_by) REFERENCES users(id)      ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ─── Migración: carpetas estándar del PHVA ahora editables/eliminables ───────
+-- Las 26 carpetas estándar (Política de SST, etc.) pasan a vivir en
+-- custom_folders para TODAS las empresas ya creadas, igual que las que un
+-- admin cree a mano — así el botón de editar/eliminar les aplica por igual.
+-- Ejecuta esto en phpMyAdmin > SQL una sola vez (es seguro re-ejecutarlo,
+-- el NOT EXISTS evita duplicados).
+INSERT INTO custom_folders (empresa_id, phva_phase, folder_name, created_by)
+SELECT c.id, f.phase, f.name,
+       (SELECT u.id FROM users u WHERE u.role = 'super_admin' ORDER BY u.created_at LIMIT 1)
+FROM companies c
+CROSS JOIN (
+  SELECT 'P' AS phase, 'Política de SST' AS name UNION ALL
+  SELECT 'P', 'Objetivos e Indicadores SST' UNION ALL
+  SELECT 'P', 'Identificación de Peligros' UNION ALL
+  SELECT 'P', 'Matriz de Requisitos Legales' UNION ALL
+  SELECT 'P', 'Programa de Gestión SST' UNION ALL
+  SELECT 'P', 'Plan de Trabajo Anual' UNION ALL
+  SELECT 'P', 'Roles y Responsabilidades' UNION ALL
+  SELECT 'H', 'Capacitaciones y Entrenamientos' UNION ALL
+  SELECT 'H', 'Inspecciones de Seguridad' UNION ALL
+  SELECT 'H', 'Investigación de Incidentes' UNION ALL
+  SELECT 'H', 'Elementos de Protección Personal' UNION ALL
+  SELECT 'H', 'Gestión de Contratistas' UNION ALL
+  SELECT 'H', 'Simulacros y Emergencias' UNION ALL
+  SELECT 'H', 'Exámenes Médicos Ocupacionales' UNION ALL
+  SELECT 'V', 'Indicadores de Gestión SST' UNION ALL
+  SELECT 'V', 'Auditorías Internas' UNION ALL
+  SELECT 'V', 'Revisión por la Dirección' UNION ALL
+  SELECT 'V', 'Registro de Accidentes de Trabajo' UNION ALL
+  SELECT 'V', 'Enfermedades Laborales' UNION ALL
+  SELECT 'V', 'No Conformidades' UNION ALL
+  SELECT 'V', 'Estadísticas de Siniestralidad' UNION ALL
+  SELECT 'A', 'Acciones Correctivas' UNION ALL
+  SELECT 'A', 'Acciones Preventivas' UNION ALL
+  SELECT 'A', 'Plan de Mejora Continua' UNION ALL
+  SELECT 'A', 'Lecciones Aprendidas' UNION ALL
+  SELECT 'A', 'Actualizaciones del SG-SST'
+) f
+WHERE NOT EXISTS (
+  SELECT 1 FROM custom_folders cf
+  WHERE cf.empresa_id = c.id AND cf.phva_phase = f.phase AND cf.folder_name = f.name
+);

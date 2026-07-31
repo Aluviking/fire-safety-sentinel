@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Folder, FolderOpen, ChevronDown, Building2,
-  Upload, Pencil, Lock, ShieldCheck, FileText, Download, Loader2, Trash2, Camera,
+  Upload, Pencil, Lock, ShieldCheck, FileText, Download, Loader2, Trash2, Camera, Check, X,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, apiDownload, apiImage } from "@/lib/api";
@@ -107,13 +107,15 @@ function formatBytes(bytes: number): string {
 /* ─── Carpeta de documentos (grid item) ──────────────────────────────────── */
 function FolderItem({
   name, index, color, canEdit, canUpload, canDelete, empresaId, phase, onOpen,
-  custom, canDeleteFolder, onDeleteFolder,
+  canManageFolder, onDeleteFolder, onRenameFolder,
 }: {
   name: string; index: number; color: string;
   canEdit: boolean; canUpload: boolean; canDelete: boolean;
   empresaId: string; phase: LetraPhva;
   onOpen: (name: string) => void;
-  custom?: boolean; canDeleteFolder?: boolean; onDeleteFolder?: () => void;
+  canManageFolder?: boolean;
+  onDeleteFolder?: () => void;
+  onRenameFolder?: (newName: string) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const [open, setOpen] = useState(false);
   const [docs, setDocs] = useState<DocumentRow[] | null>(null);
@@ -121,6 +123,10 @@ function FolderItem({
   const [uploadError, setUploadError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<DocumentRow | null>(null);
   const [pendingFolderDelete, setPendingFolderDelete] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [nameInput, setNameInput] = useState(name);
+  const [renameError, setRenameError] = useState("");
+  const [savingRename, setSavingRename] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadDocs = async () => {
@@ -179,6 +185,17 @@ function FolderItem({
     }
   };
 
+  const submitRename = async () => {
+    if (!onRenameFolder) return;
+    if (!nameInput.trim() || nameInput.trim() === name) { setRenaming(false); setNameInput(name); return; }
+    setSavingRename(true);
+    setRenameError("");
+    const res = await onRenameFolder(nameInput.trim());
+    setSavingRename(false);
+    if (!res.ok) { setRenameError(res.error ?? "Error."); return; }
+    setRenaming(false);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -202,30 +219,66 @@ function FolderItem({
       />
 
       <FolderShell tabColor={color} tabLabel={docs && docs.length > 0 ? `${docs.length} doc.` : "Carpeta"}>
-        <div className="w-full flex items-center gap-2.5 px-3.5 py-3 hover:bg-slate-50/70 transition-colors">
-          <button onClick={handleToggle} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
-            {open
-              ? <FolderOpen className="w-4 h-4 shrink-0" style={{ color }} />
-              : <Folder className="w-4 h-4 shrink-0 text-slate-400" />}
-            <span className={`text-xs flex-1 min-w-0 truncate font-medium ${open ? "text-slate-800" : "text-slate-600"}`}>
-              {name}
-            </span>
-          </button>
-          {custom && canDeleteFolder && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setPendingFolderDelete(true); }}
-              className="shrink-0 text-slate-300 hover:text-red-500 transition-colors"
-              title="Eliminar carpeta"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-          <button onClick={handleToggle}>
-            <ChevronDown
-              className={`w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        {renaming ? (
+          <div className="w-full flex items-center gap-2 px-3.5 py-2.5">
+            <Folder className="w-4 h-4 shrink-0 text-slate-400" />
+            <input
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") submitRename(); if (e.key === "Escape") { setRenaming(false); setNameInput(name); } }}
+              className="flex-1 min-w-0 text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg px-2 py-1
+                         focus:outline-none focus:border-[hsl(43_78%_45%)] focus:ring-2 focus:ring-[hsl(43_78%_50%/0.15)]"
             />
-          </button>
-        </div>
+            <button
+              onClick={submitRename} disabled={savingRename}
+              className="shrink-0 text-emerald-600 hover:text-emerald-700 disabled:opacity-60" title="Guardar"
+            >
+              {savingRename ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+            </button>
+            <button
+              onClick={() => { setRenaming(false); setNameInput(name); setRenameError(""); }}
+              className="shrink-0 text-slate-400 hover:text-slate-600" title="Cancelar"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div className="w-full flex items-center gap-2.5 px-3.5 py-3 hover:bg-slate-50/70 transition-colors">
+            <button onClick={handleToggle} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">
+              {open
+                ? <FolderOpen className="w-4 h-4 shrink-0" style={{ color }} />
+                : <Folder className="w-4 h-4 shrink-0 text-slate-400" />}
+              <span className={`text-xs flex-1 min-w-0 truncate font-medium ${open ? "text-slate-800" : "text-slate-600"}`}>
+                {name}
+              </span>
+            </button>
+            {canManageFolder && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setNameInput(name); setRenaming(true); }}
+                  className="shrink-0 text-slate-300 hover:text-[hsl(43_78%_45%)] transition-colors"
+                  title="Editar carpeta"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setPendingFolderDelete(true); }}
+                  className="shrink-0 text-slate-300 hover:text-red-500 transition-colors"
+                  title="Eliminar carpeta"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+            <button onClick={handleToggle}>
+              <ChevronDown
+                className={`w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+              />
+            </button>
+          </div>
+        )}
+        {renameError && <p className="text-[11px] text-red-500 px-3.5 pb-2">{renameError}</p>}
 
         <AnimatePresence>
           {open && (
@@ -284,45 +337,32 @@ function FolderItem({
 
                 {uploadError && <p className="text-[11px] text-red-500 mt-1">{uploadError}</p>}
 
-                {(canEdit || canUpload) && (
+                {canUpload && (
                   <div className="flex items-center gap-2 mt-2">
-                    {canUpload && (
-                      <>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          className="hidden"
-                          onChange={handleFileChange}
-                          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
-                        />
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={uploading}
-                          className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg
-                                     border border-slate-200 bg-white text-slate-600
-                                     hover:border-[hsl(43_78%_50%/0.5)] hover:text-[hsl(43_78%_40%)]
-                                     disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-150"
-                        >
-                          {uploading
-                            ? <Loader2 className="w-3 h-3 animate-spin" />
-                            : <Upload className="w-3 h-3" />}
-                          {uploading ? "Subiendo..." : "Subir"}
-                        </button>
-                      </>
-                    )}
-                    {canEdit && (
-                      <button
-                        className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg
-                                   border border-slate-200 bg-white text-slate-600
-                                   hover:border-[hsl(43_78%_50%/0.5)] hover:text-[hsl(43_78%_40%)] transition-all duration-150"
-                      >
-                        <Pencil className="w-3 h-3" /> Editar
-                      </button>
-                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      onChange={handleFileChange}
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg
+                                 border border-slate-200 bg-white text-slate-600
+                                 hover:border-[hsl(43_78%_50%/0.5)] hover:text-[hsl(43_78%_40%)]
+                                 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-150"
+                    >
+                      {uploading
+                        ? <Loader2 className="w-3 h-3 animate-spin" />
+                        : <Upload className="w-3 h-3" />}
+                      {uploading ? "Subiendo..." : "Subir"}
+                    </button>
                   </div>
                 )}
 
-                {!canEdit && !canUpload && (
+                {!canUpload && (
                   <div className="flex items-center gap-1.5 mt-2 text-[10px] text-slate-400">
                     <Lock className="w-3 h-3" /> Solo lectura
                   </div>
@@ -435,16 +475,17 @@ function AddFolderTile({ color, onCreate }: { color: string; onCreate: (name: st
 /* ─── Panel de la fase activa: descripción + grid de carpetas ─────────────── */
 function PhvaActivePanel({
   item, canEdit, canUpload, canDelete, empresaId, onFolderOpen,
-  isAdmin, customFolders, onCreateFolder, onDeleteFolder,
+  isAdmin, folders, onCreateFolder, onDeleteFolder, onRenameFolder,
 }: {
   item: typeof PHVA[number];
   canEdit: boolean; canUpload: boolean; canDelete: boolean;
   empresaId: string;
   onFolderOpen: (folder: string) => void;
   isAdmin: boolean;
-  customFolders: { id: number; folder_name: string }[];
+  folders: { id: number; folder_name: string }[];
   onCreateFolder: (name: string) => Promise<{ ok: boolean; error?: string }>;
   onDeleteFolder: (id: number) => void;
+  onRenameFolder: (id: number, newName: string) => Promise<{ ok: boolean; error?: string }>;
 }) {
   return (
     <motion.div
@@ -468,26 +509,20 @@ function PhvaActivePanel({
           className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-white"
           style={{ color: item.color }}
         >
-          {item.carpetas.length + customFolders.length} carpetas
+          {folders.length} carpetas
         </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-7 items-start">
-        {item.carpetas.map((c, i) => (
+        {folders.map((f, i) => (
           <FolderItem
-            key={c} name={c} index={i} color={item.color}
+            key={f.id} name={f.folder_name} index={i} color={item.color}
             canEdit={canEdit} canUpload={canUpload} canDelete={canDelete}
             empresaId={empresaId} phase={item.letra as LetraPhva}
             onOpen={onFolderOpen}
-          />
-        ))}
-        {customFolders.map((f, i) => (
-          <FolderItem
-            key={`custom-${f.id}`} name={f.folder_name} index={item.carpetas.length + i} color={item.color}
-            canEdit={canEdit} canUpload={canUpload} canDelete={canDelete}
-            empresaId={empresaId} phase={item.letra as LetraPhva}
-            onOpen={onFolderOpen}
-            custom canDeleteFolder={isAdmin} onDeleteFolder={() => onDeleteFolder(f.id)}
+            canManageFolder={isAdmin}
+            onDeleteFolder={() => onDeleteFolder(f.id)}
+            onRenameFolder={(newName) => onRenameFolder(f.id, newName)}
           />
         ))}
         {isAdmin && <AddFolderTile color={item.color} onCreate={onCreateFolder} />}
@@ -499,27 +534,30 @@ function PhvaActivePanel({
 /* ─── PAGE ──────────────────────────────────────────────────────────────────── */
 export default function PortalEmpresa() {
   const { id } = useParams<{ id: string }>();
-  const { currentUser, loading, companies, getPermission, permissions, addTrace, progressByPhase, loadProgress } = useAuth();
+  const {
+    currentUser, loading, companies, getPermission, permissions, addTrace,
+    progressByPhase, progressTotalByPhase, loadProgress,
+  } = useAuth();
   const navigate = useNavigate();
   const [activePhva, setActivePhva] = useState<LetraPhva>("P");
-  const [customFolders, setCustomFolders] = useState<{ id: number; phva_phase: string; folder_name: string }[]>([]);
+  const [folders, setFolders] = useState<{ id: number; phva_phase: string; folder_name: string }[]>([]);
   const trackedRef = useRef(false);
   const phvaTrackedRef = useRef<string | null>(null);
 
-  const loadCustomFolders = async () => {
+  const loadFolders = async () => {
     if (!id) return;
     try {
       const data = await apiFetch<{ folders: { id: number; phva_phase: string; folder_name: string }[] }>(
         `/folders/list.php?empresa_id=${encodeURIComponent(id)}`
       );
-      setCustomFolders(data.folders);
+      setFolders(data.folders);
     } catch {
-      setCustomFolders([]);
+      setFolders([]);
     }
   };
 
   useEffect(() => {
-    loadCustomFolders();
+    loadFolders();
     loadProgress();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -527,7 +565,7 @@ export default function PortalEmpresa() {
   const handleCreateFolder = async (phase: LetraPhva, name: string) => {
     try {
       await apiFetch("/folders/create.php", { method: "POST", json: { empresa_id: id, phase, folder_name: name } });
-      await loadCustomFolders();
+      await loadFolders();
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : "Error." };
@@ -537,8 +575,19 @@ export default function PortalEmpresa() {
   const handleDeleteFolder = async (folderId: number) => {
     try {
       await apiFetch("/folders/delete.php", { method: "POST", json: { id: folderId } });
-      setCustomFolders((prev) => prev.filter((f) => f.id !== folderId));
+      setFolders((prev) => prev.filter((f) => f.id !== folderId));
+      loadProgress();
     } catch { /* best-effort */ }
+  };
+
+  const handleRenameFolder = async (folderId: number, newName: string) => {
+    try {
+      await apiFetch("/folders/update.php", { method: "POST", json: { id: folderId, folder_name: newName } });
+      setFolders((prev) => prev.map((f) => (f.id === folderId ? { ...f, folder_name: newName } : f)));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
   };
 
   useEffect(() => {
@@ -678,8 +727,7 @@ export default function PortalEmpresa() {
               active={activePhva}
               onSelect={setActivePhva}
               percentByPhase={Object.fromEntries(PHVA.map((p) => {
-                const custom = customFolders.filter((f) => f.phva_phase === p.letra).length;
-                const total = p.carpetas.length + custom;
+                const total = progressTotalByPhase[id as string]?.[p.letra] ?? 0;
                 const done = progressByPhase[id as string]?.[p.letra] ?? 0;
                 return [p.letra, total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0];
               })) as Record<LetraPhva, number>}
@@ -695,9 +743,10 @@ export default function PortalEmpresa() {
                 empresaId={id as string}
                 onFolderOpen={handleFolderOpen}
                 isAdmin={isAdmin}
-                customFolders={customFolders.filter((f) => f.phva_phase === activePhva)}
+                folders={folders.filter((f) => f.phva_phase === activePhva)}
                 onCreateFolder={(name) => handleCreateFolder(activePhva, name)}
                 onDeleteFolder={handleDeleteFolder}
+                onRenameFolder={handleRenameFolder}
               />
             </AnimatePresence>
           </div>

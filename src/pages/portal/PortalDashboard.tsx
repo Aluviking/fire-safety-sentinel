@@ -11,7 +11,6 @@ import type { Company, User, TraceEntry } from "@/context/AuthContext";
 import { ConfirmModal } from "./ConfirmModal";
 import { PortalTopNav, PORTAL_NAV_ITEMS } from "./PortalTopNav";
 import { FolderShell } from "./FolderShell";
-import { PHVA_TOTAL_FOLDERS } from "./phvaData";
 import { DateWeatherWidget } from "./DateWeatherWidget";
 import { HeroImageSlider } from "./HeroImageSlider";
 import { DASHBOARD_BANNER_IMAGES } from "./heroBanners";
@@ -395,7 +394,7 @@ function CompanyFolder({
 
 /* ─── Sección Empresas: grid de carpetas + crear/eliminar ─────────────────── */
 function EmpresasSection() {
-  const { currentUser, companies, createCompany, deleteCompany, progress, loadProgress } = useAuth();
+  const { currentUser, companies, createCompany, deleteCompany, progress, progressTotal, loadProgress } = useAuth();
   const isAdmin = currentUser?.role === "admin" || currentUser?.role === "super_admin";
 
   // Refresca el avance cada vez que se visita el Dashboard (ej. al volver de
@@ -473,7 +472,7 @@ function EmpresasSection() {
               isAdmin={isAdmin}
               onDelete={() => setPendingDelete({ id: c.id, nombre: c.nombre })}
               onEdit={() => setEditingCompany({ id: c.id, nombre: c.nombre, nit: c.nit })}
-              progressPercent={Math.min(100, Math.round(((progress[c.id] ?? 0) / PHVA_TOTAL_FOLDERS) * 100))}
+              progressPercent={progressTotal[c.id] ? Math.min(100, Math.round((progress[c.id] / progressTotal[c.id]) * 100)) : 0}
             />
           </motion.div>
         ))}
