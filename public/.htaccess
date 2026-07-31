@@ -1,3 +1,31 @@
+<IfModule mod_headers.c>
+  # Fuerza HTTPS en el navegador durante 1 año (evita SSL stripping)
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+  # Evita que el sitio se cargue dentro de un iframe de otro dominio (clickjacking)
+  Header always set X-Frame-Options "SAMEORIGIN"
+
+  # Evita que el navegador adivine el tipo de contenido de un archivo
+  Header always set X-Content-Type-Options "nosniff"
+
+  # No filtra la URL completa como referer a otros sitios
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+  # Desactiva APIs del navegador que este sitio no usa
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=()"
+
+  Header always set X-XSS-Protection "1; mode=block"
+
+  # CSP ajustada a lo que el sitio realmente carga: Google Fonts (Bebas Neue/Inter)
+  # y la API de clima Open-Meteo del Portal Empresarial. 'unsafe-inline' en
+  # style-src es necesario porque la app usa estilos inline dinámicos (colores
+  # por sector/fase PHVA, etc.) en muchos componentes de React.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.open-meteo.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+
+  # Oculta la firma de versión del servidor
+  Header unset X-Powered-By
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
