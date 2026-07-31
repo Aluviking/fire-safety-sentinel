@@ -19,8 +19,11 @@
   # CSP ajustada a lo que el sitio realmente carga: Google Fonts (Bebas Neue/Inter)
   # y la API de clima Open-Meteo del Portal Empresarial. 'unsafe-inline' en
   # style-src es necesario porque la app usa estilos inline dinámicos (colores
-  # por sector/fase PHVA, etc.) en muchos componentes de React.
-  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.open-meteo.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+  # por sector/fase PHVA, etc.) en muchos componentes de React. 'blob:' en
+  # img-src es necesario porque el Portal Empresarial carga fotos protegidas
+  # (logo/foto de empresa, avatares, anuncio de publicidad) vía fetch() +
+  # URL.createObjectURL(), que genera URLs blob: para el <img src>.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.open-meteo.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
 
   # Oculta la firma de versión del servidor
   Header unset X-Powered-By
