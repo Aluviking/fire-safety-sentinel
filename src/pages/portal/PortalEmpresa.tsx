@@ -344,7 +344,13 @@ function FolderItem({
                           </span>
                         </button>
                         <span className="text-slate-400 shrink-0 text-[10px]">{formatBytes(d.size_bytes)}</span>
-                        <Download className="w-3 h-3 shrink-0 text-slate-300" />
+                        <button
+                          onClick={() => handleDownload(d)}
+                          className="shrink-0 text-slate-300 hover:text-[hsl(43_78%_40%)] transition-colors"
+                          title="Descargar"
+                        >
+                          <Download className="w-3 h-3" />
+                        </button>
                         {canDelete && (
                           <button
                             onClick={() => setPendingDelete(d)}
