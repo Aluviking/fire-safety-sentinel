@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Folder, FolderOpen, ChevronDown, Building2, FolderPlus,
-  Upload, Pencil, Lock, ShieldCheck, FileText, Download, Loader2, Trash2, Camera, Check, X,
+  Upload, Pencil, Lock, ShieldCheck, FileText, Download, Loader2, Trash2, Camera, Check, X, Eye,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch, apiDownload, apiImage } from "@/lib/api";
@@ -194,6 +194,53 @@ function FolderItem({
     apiDownload(`/documents/download.php?id=${doc.id}`, doc.original_filename).catch(() => { /* best-effort */ });
   };
 
+  const OFFICE_EXTENSIONS = ["doc", "docx", "xls", "xlsx", "ppt", "pptx"];
+
+  // Abre el archivo en una pestaña nueva para visualizarlo, sin descargarlo.
+  // La pestaña se abre YA (vacía) dentro del clic, no después del fetch: si se
+  // abre tras el await, el navegador ya no lo considera un gesto directo del
+  // usuario y puede bloquear la ventana o forzar la descarga.
+  const handleView = (doc: DocumentRow) => {
+    const ext = doc.original_filename.split(".").pop()?.toLowerCase() ?? "";
+    const viewerTab = window.open("", "_blank");
+    if (!viewerTab) return;
+
+    if (ext === "zip") {
+      // No hay forma de "ver" un ZIP sin descargarlo — se descarga directo.
+      viewerTab.close();
+      handleDownload(doc);
+      return;
+    }
+
+    if (OFFICE_EXTENSIONS.includes(ext)) {
+      // Word/Excel/PowerPoint: el navegador no los puede mostrar solo, así
+      // que se usa el visor de Microsoft Office Online. Necesita una URL
+      // pública (por eso el link firmado y temporal de view-token.php, en
+      // vez del token de sesión normal que usan los demás archivos).
+      apiFetch<{ url: string }>(`/documents/view-token.php?id=${doc.id}`)
+        .then(({ url }) => {
+          viewerTab.location.href = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+        })
+        .catch(() => viewerTab.close());
+      return;
+    }
+
+    // PDF/imágenes: se ven directo dentro de un <iframe>, sin exponer ningún
+    // link público — Chrome bloquea navegar una pestaña a una URL blob:
+    // creada en otra ventana, por eso se inserta el iframe en vez de
+    // redirigir la pestaña misma.
+    apiImage(`/documents/download.php?id=${doc.id}`)
+      .then((url) => {
+        viewerTab.document.title = doc.original_filename;
+        viewerTab.document.body.style.margin = "0";
+        const iframe = viewerTab.document.createElement("iframe");
+        iframe.src = url;
+        iframe.style.cssText = "position:fixed;inset:0;width:100%;height:100%;border:none;";
+        viewerTab.document.body.appendChild(iframe);
+      })
+      .catch(() => viewerTab.close());
+  };
+
   const confirmDelete = async () => {
     if (!pendingDelete) return;
     try {
@@ -344,6 +391,13 @@ function FolderItem({
                           </span>
                         </button>
                         <span className="text-slate-400 shrink-0 text-[10px]">{formatBytes(d.size_bytes)}</span>
+                        <button
+                          onClick={() => handleView(d)}
+                          className="shrink-0 text-slate-300 hover:text-[hsl(43_78%_40%)] transition-colors"
+                          title="Ver documento"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           onClick={() => handleDownload(d)}
                           className="shrink-0 text-slate-300 hover:text-[hsl(43_78%_40%)] transition-colors"

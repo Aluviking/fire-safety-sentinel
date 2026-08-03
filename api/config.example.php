@@ -28,6 +28,12 @@ return [
         'http://localhost:5173',
     ],
 
+    // Clave secreta para firmar los links temporales de vista previa de
+    // documentos Word/Excel/PowerPoint (Microsoft Office Online). Genera la
+    // tuya con: php -r "echo bin2hex(random_bytes(48));" — nunca la compartas
+    // ni la subas a git.
+    'view_link_secret' => 'CAMBIA_esto_por_una_cadena_aleatoria_larga',
+
     // Respaldo diario a Google Drive (ver api/backup/run_backup.php).
     // client_email y private_key salen del archivo JSON de la cuenta de
     // servicio que descargaste de Google Cloud Console — cópialos tal cual
