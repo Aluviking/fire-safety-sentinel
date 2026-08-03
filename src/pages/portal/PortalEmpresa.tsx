@@ -469,8 +469,8 @@ function FolderItem({
                 {/* Subcarpetas — solo 1 nivel, no se anida más allá de esto */}
                 {depth === 0 && (subfolders?.length || onCreateSubfolder) && (
                   <div className="mt-3 pt-3 border-t border-slate-100">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Subcarpetas</p>
-                    <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-5">Subcarpetas</p>
+                    <div className="space-y-6">
                       {subfolders?.map((sf, i) => (
                         <FolderItem
                           key={sf.id} folder={sf} index={i} color={color}
