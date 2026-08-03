@@ -185,3 +185,41 @@ WHERE NOT EXISTS (
   SELECT 1 FROM custom_folders cf
   WHERE cf.empresa_id = c.id AND cf.phva_phase = f.phase AND cf.folder_name = f.name
 );
+
+-- ─── Migración: subcarpetas (1 nivel) + relación real documento↔carpeta ──────
+-- Ejecuta esto en phpMyAdmin > SQL una sola vez. Es seguro: solo agrega
+-- columnas y hace un backfill de los documentos que ya existen, no borra ni
+-- modifica ningún archivo ni fila existente.
+
+-- 1) Una carpeta puede ser subcarpeta de otra (NULL = carpeta de primer nivel).
+ALTER TABLE custom_folders ADD COLUMN parent_folder_id INT NULL AFTER phva_phase;
+ALTER TABLE custom_folders ADD FOREIGN KEY (parent_folder_id) REFERENCES custom_folders(id) ON DELETE CASCADE;
+
+-- 2) Se quita el índice único anterior: con subcarpetas, dos carpetas con
+-- padres distintos SÍ pueden tener el mismo nombre (ej. una subcarpeta
+-- "Reportes" dentro de dos carpetas distintas). La validación de nombres
+-- duplicados dentro del MISMO padre ahora la hace el propio endpoint
+-- folders/create.php antes de insertar.
+-- Nota: el índice único también sostenía la llave foránea de empresa_id, así
+-- que primero se crea un índice de reemplazo antes de borrar el viejo
+-- (si no, MySQL da el error 1553 "necesario en una restricción de clave foránea").
+ALTER TABLE custom_folders ADD INDEX idx_custom_folders_empresa (empresa_id);
+ALTER TABLE custom_folders DROP INDEX uniq_empresa_fase_carpeta;
+
+-- 3) Cada documento pasa a apuntar directamente a su carpeta real (antes se
+-- relacionaba solo por texto — empresa_id + fase + nombre de carpeta —, lo
+-- cual no distingue una subcarpeta de otra con el mismo nombre).
+ALTER TABLE documents ADD COLUMN folder_id INT NULL AFTER folder_name;
+ALTER TABLE documents ADD FOREIGN KEY (folder_id) REFERENCES custom_folders(id) ON DELETE CASCADE;
+
+-- 4) Backfill: conecta los documentos que ya existen con su carpeta real
+-- (todas las carpetas de primer nivel ya existen en custom_folders gracias
+-- a la migración anterior, así que este UPDATE encuentra siempre su pareja).
+UPDATE documents d
+JOIN custom_folders cf
+  ON cf.empresa_id = d.empresa_id
+ AND cf.phva_phase = d.phva_phase
+ AND cf.folder_name = d.folder_name
+ AND cf.parent_folder_id IS NULL
+SET d.folder_id = cf.id
+WHERE d.folder_id IS NULL;

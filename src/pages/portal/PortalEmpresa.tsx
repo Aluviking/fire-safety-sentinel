@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Folder, FolderOpen, ChevronDown, Building2,
+  Folder, FolderOpen, ChevronDown, Building2, FolderPlus,
   Upload, Pencil, Lock, ShieldCheck, FileText, Download, Loader2, Trash2, Camera, Check, X,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -23,6 +23,19 @@ interface DocumentRow {
   mime_type: string;
   uploaded_at: string;
   uploaded_by_name: string;
+}
+
+interface FolderRow {
+  id: number;
+  phva_phase: string;
+  folder_name: string;
+  parent_folder_id: number | null;
+}
+
+interface UploadQueueItem {
+  name: string;
+  status: "uploading" | "done" | "error";
+  error?: string;
 }
 
 /* ─── Logo de la empresa en la cabecera (con fallback al ícono genérico) ──── */
@@ -104,23 +117,28 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/* ─── Carpeta de documentos (grid item) ──────────────────────────────────── */
+/* ─── Carpeta de documentos (grid item) — se usa también para subcarpetas ── */
 function FolderItem({
-  name, index, color, canEdit, canUpload, canDelete, empresaId, phase, onOpen,
-  canManageFolder, onDeleteFolder, onRenameFolder,
+  folder, index, color, canUpload, canDelete, onOpen,
+  canManageFolder, canDeleteFolderPerm, onDeleteFolder, onRenameFolder,
+  depth = 0, subfolders, onCreateSubfolder,
 }: {
-  name: string; index: number; color: string;
-  canEdit: boolean; canUpload: boolean; canDelete: boolean;
-  empresaId: string; phase: LetraPhva;
+  folder: FolderRow; index: number; color: string;
+  canUpload: boolean; canDelete: boolean;
   onOpen: (name: string) => void;
   canManageFolder?: boolean;
-  onDeleteFolder?: () => void;
-  onRenameFolder?: (newName: string) => Promise<{ ok: boolean; error?: string }>;
+  canDeleteFolderPerm?: boolean;
+  onDeleteFolder?: (folderId: number) => void;
+  onRenameFolder?: (folderId: number, newName: string) => Promise<{ ok: boolean; error?: string }>;
+  depth?: number;
+  subfolders?: FolderRow[];
+  onCreateSubfolder?: (parentFolderId: number, name: string) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const name = folder.folder_name;
   const [open, setOpen] = useState(false);
   const [docs, setDocs] = useState<DocumentRow[] | null>(null);
+  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<DocumentRow | null>(null);
   const [pendingFolderDelete, setPendingFolderDelete] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -131,9 +149,7 @@ function FolderItem({
 
   const loadDocs = async () => {
     try {
-      const data = await apiFetch<{ documents: DocumentRow[] }>(
-        `/documents/list.php?empresa_id=${encodeURIComponent(empresaId)}&phase=${phase}&folder=${encodeURIComponent(name)}`
-      );
+      const data = await apiFetch<{ documents: DocumentRow[] }>(`/documents/list.php?folder_id=${folder.id}`);
       setDocs(data.documents);
     } catch {
       setDocs([]);
@@ -149,24 +165,29 @@ function FolderItem({
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
     setUploading(true);
-    setUploadError("");
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("empresa_id", empresaId);
-      form.append("phase", phase);
-      form.append("folder", name);
-      await apiFetch("/documents/upload.php", { method: "POST", body: form });
-      await loadDocs();
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Error al subir el archivo.");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+    setUploadQueue(files.map((f) => ({ name: f.name, status: "uploading" as const })));
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("folder_id", String(folder.id));
+        await apiFetch("/documents/upload.php", { method: "POST", body: form });
+        setUploadQueue((prev) => prev.map((q, qi) => (qi === i ? { ...q, status: "done" } : q)));
+      } catch (err) {
+        setUploadQueue((prev) => prev.map((q, qi) => (
+          qi === i ? { ...q, status: "error", error: err instanceof Error ? err.message : "Error." } : q
+        )));
+      }
     }
+
+    await loadDocs();
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleDownload = (doc: DocumentRow) => {
@@ -179,7 +200,10 @@ function FolderItem({
       await apiFetch("/documents/delete.php", { method: "POST", json: { id: pendingDelete.id } });
       await loadDocs();
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Error al eliminar el archivo.");
+      setUploadQueue((prev) => [...prev, {
+        name: pendingDelete.original_filename, status: "error",
+        error: err instanceof Error ? err.message : "Error al eliminar el archivo.",
+      }]);
     } finally {
       setPendingDelete(null);
     }
@@ -190,7 +214,7 @@ function FolderItem({
     if (!nameInput.trim() || nameInput.trim() === name) { setRenaming(false); setNameInput(name); return; }
     setSavingRename(true);
     setRenameError("");
-    const res = await onRenameFolder(nameInput.trim());
+    const res = await onRenameFolder(folder.id, nameInput.trim());
     setSavingRename(false);
     if (!res.ok) { setRenameError(res.error ?? "Error."); return; }
     setRenaming(false);
@@ -212,9 +236,9 @@ function FolderItem({
 
       <ConfirmModal
         open={pendingFolderDelete}
-        title="Eliminar carpeta"
-        message={`¿Eliminar la carpeta "${name}"? Si tiene documentos subidos, quedarán ocultos hasta que recrees una carpeta con el mismo nombre.`}
-        onConfirm={() => { onDeleteFolder?.(); setPendingFolderDelete(false); }}
+        title={depth > 0 ? "Eliminar subcarpeta" : "Eliminar carpeta"}
+        message={`¿Eliminar "${name}"? Si tiene documentos${depth > 0 ? "" : " o subcarpetas"} subidos, se eliminan también. No se puede deshacer.`}
+        onConfirm={() => { onDeleteFolder?.(folder.id); setPendingFolderDelete(false); }}
         onCancel={() => setPendingFolderDelete(false)}
       />
 
@@ -254,22 +278,22 @@ function FolderItem({
               </span>
             </button>
             {canManageFolder && (
-              <>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setNameInput(name); setRenaming(true); }}
-                  className="shrink-0 text-slate-300 hover:text-[hsl(43_78%_45%)] transition-colors"
-                  title="Editar carpeta"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setPendingFolderDelete(true); }}
-                  className="shrink-0 text-slate-300 hover:text-red-500 transition-colors"
-                  title="Eliminar carpeta"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </>
+              <button
+                onClick={(e) => { e.stopPropagation(); setNameInput(name); setRenaming(true); }}
+                className="shrink-0 text-slate-300 hover:text-[hsl(43_78%_45%)] transition-colors"
+                title="Editar carpeta"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {canDeleteFolderPerm && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setPendingFolderDelete(true); }}
+                className="shrink-0 text-slate-300 hover:text-red-500 transition-colors"
+                title="Eliminar carpeta"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             )}
             <button onClick={handleToggle}>
               <ChevronDown
@@ -335,13 +359,27 @@ function FolderItem({
                   </ul>
                 )}
 
-                {uploadError && <p className="text-[11px] text-red-500 mt-1">{uploadError}</p>}
+                {uploadQueue.length > 0 && (
+                  <ul className="space-y-1 py-1.5 mt-1 border-t border-slate-100 pt-2">
+                    {uploadQueue.map((q, i) => (
+                      <li key={i} className="flex items-center gap-1.5 text-[11px]">
+                        {q.status === "uploading" && <Loader2 className="w-3 h-3 shrink-0 animate-spin text-slate-400" />}
+                        {q.status === "done" && <Check className="w-3 h-3 shrink-0 text-emerald-600" />}
+                        {q.status === "error" && <X className="w-3 h-3 shrink-0 text-red-500" />}
+                        <span className={`truncate ${q.status === "error" ? "text-red-500" : "text-slate-500"}`}>
+                          {q.name}{q.status === "error" && q.error ? ` — ${q.error}` : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
                 {canUpload && (
                   <div className="flex items-center gap-2 mt-2">
                     <input
                       ref={fileInputRef}
                       type="file"
+                      multiple
                       className="hidden"
                       onChange={handleFileChange}
                       accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
@@ -357,7 +395,7 @@ function FolderItem({
                       {uploading
                         ? <Loader2 className="w-3 h-3 animate-spin" />
                         : <Upload className="w-3 h-3" />}
-                      {uploading ? "Subiendo..." : "Subir"}
+                      {uploading ? "Subiendo..." : "Subir (puedes elegir varios)"}
                     </button>
                   </div>
                 )}
@@ -365,6 +403,32 @@ function FolderItem({
                 {!canUpload && (
                   <div className="flex items-center gap-1.5 mt-2 text-[10px] text-slate-400">
                     <Lock className="w-3 h-3" /> Solo lectura
+                  </div>
+                )}
+
+                {/* Subcarpetas — solo 1 nivel, no se anida más allá de esto */}
+                {depth === 0 && (subfolders?.length || onCreateSubfolder) && (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Subcarpetas</p>
+                    <div className="space-y-3">
+                      {subfolders?.map((sf, i) => (
+                        <FolderItem
+                          key={sf.id} folder={sf} index={i} color={color}
+                          canUpload={canUpload} canDelete={canDelete}
+                          onOpen={onOpen} depth={depth + 1}
+                          canManageFolder={canManageFolder}
+                          canDeleteFolderPerm={canDeleteFolderPerm}
+                          onDeleteFolder={onDeleteFolder}
+                          onRenameFolder={onRenameFolder}
+                        />
+                      ))}
+                      {canManageFolder && onCreateSubfolder && (
+                        <AddFolderTile
+                          color={color} label="Crear subcarpeta" compact
+                          onCreate={(n) => onCreateSubfolder(folder.id, n)}
+                        />
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -417,8 +481,13 @@ function PhvaTabs({
   );
 }
 
-/* ─── Tile para crear una carpeta personalizada en la fase activa ─────────── */
-function AddFolderTile({ color, onCreate }: { color: string; onCreate: (name: string) => Promise<{ ok: boolean; error?: string }> }) {
+/* ─── Tile para crear una carpeta (o subcarpeta) ──────────────────────────── */
+function AddFolderTile({
+  color, onCreate, label = "Nueva carpeta", compact = false,
+}: {
+  color: string; onCreate: (name: string) => Promise<{ ok: boolean; error?: string }>;
+  label?: string; compact?: boolean;
+}) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
@@ -437,13 +506,25 @@ function AddFolderTile({ color, onCreate }: { color: string; onCreate: (name: st
   };
 
   if (!adding) {
+    if (compact) {
+      return (
+        <button
+          onClick={() => setAdding(true)}
+          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 border-dashed
+                     border-amber-300/70 text-amber-600 hover:border-amber-400 hover:bg-amber-50/50
+                     transition-all duration-200 text-[11px] font-semibold"
+        >
+          <FolderPlus className="w-3.5 h-3.5" /> {label}
+        </button>
+      );
+    }
     return (
-      <FolderShell dashed tabColor="" tabLabel="Nueva carpeta" onClick={() => setAdding(true)} className="min-h-[80px]" />
+      <FolderShell dashed tabColor="" tabLabel={label} onClick={() => setAdding(true)} className="min-h-[80px]" />
     );
   }
 
   return (
-    <div className="mt-[10px] bg-white rounded-2xl border border-amber-300 shadow-sm p-3.5">
+    <div className={`bg-white rounded-2xl border border-amber-300 shadow-sm p-3.5 ${compact ? "" : "mt-[10px]"}`}>
       <form onSubmit={submit} className="space-y-2">
         <input
           value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="Nombre de la carpeta"
@@ -474,19 +555,23 @@ function AddFolderTile({ color, onCreate }: { color: string; onCreate: (name: st
 
 /* ─── Panel de la fase activa: descripción + grid de carpetas ─────────────── */
 function PhvaActivePanel({
-  item, canEdit, canUpload, canDelete, empresaId, onFolderOpen,
-  isAdmin, folders, onCreateFolder, onDeleteFolder, onRenameFolder,
+  item, canUpload, canDelete, onFolderOpen,
+  canManageFolder, canDeleteFolderPerm, folders,
+  onCreateFolder, onCreateSubfolder, onDeleteFolder, onRenameFolder,
 }: {
   item: typeof PHVA[number];
-  canEdit: boolean; canUpload: boolean; canDelete: boolean;
-  empresaId: string;
+  canUpload: boolean; canDelete: boolean;
   onFolderOpen: (folder: string) => void;
-  isAdmin: boolean;
-  folders: { id: number; folder_name: string }[];
+  canManageFolder: boolean;
+  canDeleteFolderPerm: boolean;
+  folders: FolderRow[];
   onCreateFolder: (name: string) => Promise<{ ok: boolean; error?: string }>;
+  onCreateSubfolder: (parentFolderId: number, name: string) => Promise<{ ok: boolean; error?: string }>;
   onDeleteFolder: (id: number) => void;
   onRenameFolder: (id: number, newName: string) => Promise<{ ok: boolean; error?: string }>;
 }) {
+  const topFolders = folders.filter((f) => f.parent_folder_id === null);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -509,23 +594,25 @@ function PhvaActivePanel({
           className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-full bg-white"
           style={{ color: item.color }}
         >
-          {folders.length} carpetas
+          {topFolders.length} carpetas
         </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-7 items-start">
-        {folders.map((f, i) => (
+        {topFolders.map((f, i) => (
           <FolderItem
-            key={f.id} name={f.folder_name} index={i} color={item.color}
-            canEdit={canEdit} canUpload={canUpload} canDelete={canDelete}
-            empresaId={empresaId} phase={item.letra as LetraPhva}
+            key={f.id} folder={f} index={i} color={item.color}
+            canUpload={canUpload} canDelete={canDelete}
             onOpen={onFolderOpen}
-            canManageFolder={isAdmin}
-            onDeleteFolder={() => onDeleteFolder(f.id)}
-            onRenameFolder={(newName) => onRenameFolder(f.id, newName)}
+            canManageFolder={canManageFolder}
+            canDeleteFolderPerm={canDeleteFolderPerm}
+            onDeleteFolder={onDeleteFolder}
+            onRenameFolder={onRenameFolder}
+            subfolders={folders.filter((sf) => sf.parent_folder_id === f.id)}
+            onCreateSubfolder={onCreateSubfolder}
           />
         ))}
-        {isAdmin && <AddFolderTile color={item.color} onCreate={onCreateFolder} />}
+        {canManageFolder && <AddFolderTile color={item.color} onCreate={onCreateFolder} />}
       </div>
     </motion.div>
   );
@@ -540,16 +627,14 @@ export default function PortalEmpresa() {
   } = useAuth();
   const navigate = useNavigate();
   const [activePhva, setActivePhva] = useState<LetraPhva>("P");
-  const [folders, setFolders] = useState<{ id: number; phva_phase: string; folder_name: string }[]>([]);
+  const [folders, setFolders] = useState<FolderRow[]>([]);
   const trackedRef = useRef(false);
   const phvaTrackedRef = useRef<string | null>(null);
 
   const loadFolders = async () => {
     if (!id) return;
     try {
-      const data = await apiFetch<{ folders: { id: number; phva_phase: string; folder_name: string }[] }>(
-        `/folders/list.php?empresa_id=${encodeURIComponent(id)}`
-      );
+      const data = await apiFetch<{ folders: FolderRow[] }>(`/folders/list.php?empresa_id=${encodeURIComponent(id)}`);
       setFolders(data.folders);
     } catch {
       setFolders([]);
@@ -562,9 +647,12 @@ export default function PortalEmpresa() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const handleCreateFolder = async (phase: LetraPhva, name: string) => {
+  const handleCreateFolder = async (phase: LetraPhva, name: string, parentFolderId?: number) => {
     try {
-      await apiFetch("/folders/create.php", { method: "POST", json: { empresa_id: id, phase, folder_name: name } });
+      await apiFetch("/folders/create.php", {
+        method: "POST",
+        json: { empresa_id: id, phase, folder_name: name, parent_folder_id: parentFolderId ?? null },
+      });
       await loadFolders();
       return { ok: true };
     } catch (e) {
@@ -575,7 +663,7 @@ export default function PortalEmpresa() {
   const handleDeleteFolder = async (folderId: number) => {
     try {
       await apiFetch("/folders/delete.php", { method: "POST", json: { id: folderId } });
-      setFolders((prev) => prev.filter((f) => f.id !== folderId));
+      await loadFolders(); // recarga completa: si tenía subcarpetas, se borraron en cascada
       loadProgress();
     } catch { /* best-effort */ }
   };
@@ -737,14 +825,14 @@ export default function PortalEmpresa() {
               <PhvaActivePanel
                 key={activePhva}
                 item={activeItem}
-                canEdit={canEdit}
                 canUpload={canUpload}
                 canDelete={canDelete}
-                empresaId={id as string}
                 onFolderOpen={handleFolderOpen}
-                isAdmin={isAdmin}
+                canManageFolder={canEdit}
+                canDeleteFolderPerm={canDelete}
                 folders={folders.filter((f) => f.phva_phase === activePhva)}
                 onCreateFolder={(name) => handleCreateFolder(activePhva, name)}
+                onCreateSubfolder={(parentFolderId, name) => handleCreateFolder(activePhva, name, parentFolderId)}
                 onDeleteFolder={handleDeleteFolder}
                 onRenameFolder={handleRenameFolder}
               />

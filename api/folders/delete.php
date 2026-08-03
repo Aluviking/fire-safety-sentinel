@@ -15,8 +15,25 @@ $stmt->execute([$id]);
 $folder = $stmt->fetch();
 if (!$folder) fail('Carpeta no encontrada.', 404);
 
+// Borra primero los archivos físicos de esta carpeta y de sus subcarpetas
+// (si tiene), para no dejar huérfanos en disco cuando la fila se elimine en
+// cascada junto con sus documentos y subcarpetas.
+$docs = db()->prepare(
+    'SELECT stored_filename FROM documents
+     WHERE folder_id = ? OR folder_id IN (SELECT id FROM custom_folders WHERE parent_folder_id = ?)'
+);
+$docs->execute([$id, $id]);
+$uploadsDir = rtrim((string) config('uploads_dir'), '/');
+foreach ($docs->fetchAll() as $doc) {
+    $path = $uploadsDir . '/' . $doc['stored_filename'];
+    if (file_exists($path)) unlink($path);
+}
+
 db()->prepare('DELETE FROM custom_folders WHERE id = ?')->execute([$id]);
 
-log_trace($user, 'folder_delete', $folder['empresa_id'], "Eliminó la carpeta \"{$folder['folder_name']}\" de {$folder['empresa_nombre']}");
+$detail = $folder['parent_folder_id']
+    ? "Eliminó la subcarpeta \"{$folder['folder_name']}\" de {$folder['empresa_nombre']}"
+    : "Eliminó la carpeta \"{$folder['folder_name']}\" de {$folder['empresa_nombre']}";
+log_trace($user, 'folder_delete', $folder['empresa_id'], $detail);
 
 respond(['ok' => true]);

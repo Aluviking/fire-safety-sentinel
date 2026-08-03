@@ -5,11 +5,17 @@ $user = require_auth();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
 
-$empresaId = $_POST['empresa_id'] ?? '';
-$phase     = $_POST['phase'] ?? '';
-$folder    = $_POST['folder'] ?? '';
-if ($empresaId === '' || $phase === '' || $folder === '') fail('Parámetros requeridos.');
+$folderId = $_POST['folder_id'] ?? '';
+if ($folderId === '') fail('Parámetros requeridos.');
 if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) fail('Archivo inválido.');
+
+// La carpeta debe existir de verdad — ya no se confía en un nombre de texto
+// enviado por el cliente, se resuelve la empresa/fase/nombre reales desde aquí.
+$folderStmt = db()->prepare('SELECT * FROM custom_folders WHERE id = ?');
+$folderStmt->execute([$folderId]);
+$folder = $folderStmt->fetch();
+if (!$folder) fail('Carpeta no encontrada.', 404);
+$empresaId = $folder['empresa_id'];
 
 /* ── Resolver permiso de subida según rol ── */
 $canUpload = false;
@@ -44,13 +50,13 @@ $destination = $uploadsDir . '/' . $storedName;
 if (!move_uploaded_file($_FILES['file']['tmp_name'], $destination)) fail('No se pudo guardar el archivo.', 500);
 
 $stmt = db()->prepare(
-    'INSERT INTO documents (empresa_id, phva_phase, folder_name, original_filename, stored_filename, size_bytes, mime_type, uploaded_by)
-     VALUES (?,?,?,?,?,?,?,?)'
+    'INSERT INTO documents (empresa_id, phva_phase, folder_name, folder_id, original_filename, stored_filename, size_bytes, mime_type, uploaded_by)
+     VALUES (?,?,?,?,?,?,?,?,?)'
 );
 $stmt->execute([
-    $empresaId, $phase, $folder, $originalName, $storedName,
+    $empresaId, $folder['phva_phase'], $folder['folder_name'], $folderId, $originalName, $storedName,
     $_FILES['file']['size'], $_FILES['file']['type'], $user['id'],
 ]);
 
-log_trace($user, 'upload_file', $empresaId, "$originalName · $folder");
+log_trace($user, 'upload_file', $empresaId, "$originalName · {$folder['folder_name']}");
 respond(['ok' => true, 'id' => db()->lastInsertId()]);
