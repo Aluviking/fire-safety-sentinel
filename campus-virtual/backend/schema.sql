@@ -125,3 +125,125 @@ CREATE TABLE IF NOT EXISTS administrativos (
   estado               VARCHAR(50)  NULL,
   created_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 2 — Tesorería: Créditos, Pagos, Codeudores, Notas de crédito
+-- ══════════════════════════════════════════════════════════════════════════
+-- Solo lo que el backup realmente tiene datos para poblar (crédito educativo
+-- del estudiante y sus pagos). "Otros Ingresos", "Egresos" y la parte de
+-- Estructuración contable (Impuestos, Productos, Cuentas, Terceros, Formas de
+-- pago) quedan pendientes — no hay datos reales que migrar ahí todavía.
+
+CREATE TABLE IF NOT EXISTS codeudores (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  identificacion  VARCHAR(30)  NOT NULL UNIQUE,
+  nombre_completo VARCHAR(200) NOT NULL,
+  celular         VARCHAR(30)  NULL,
+  correo          VARCHAR(190) NULL,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- El backup solo trae el número de identificación del codeudor (no su nombre
+-- ni contacto), así que no se puede enlazar con FK a una tabla de codeudores
+-- que todavía no tiene esos registros — queda como texto simple.
+CREATE TABLE IF NOT EXISTS creditos (
+  id                        INT AUTO_INCREMENT PRIMARY KEY,
+  identificacion_estudiante VARCHAR(30)   NULL,
+  identificacion_codeudor   VARCHAR(30)   NULL,
+  periodo                   VARCHAR(30)   NULL,
+  pagare                    VARCHAR(50)   NULL,
+  fecha_credito             DATE          NULL,
+  valor_credito             DECIMAL(14,2) NULL,
+  interes_corriente         DECIMAL(6,3)  NULL,
+  interes_mora              DECIMAL(6,3)  NULL,
+  num_cuotas                INT           NULL,
+  dias_gracia               INT           NULL,
+  valor_pago_anticipado     DECIMAL(14,2) NULL,
+  periodicidad_cuotas       VARCHAR(50)   NULL,
+  observaciones             TEXT          NULL,
+  anulado                   VARCHAR(10)   NULL,
+  asesor                    VARCHAR(150)  NULL,
+  paz_y_salvo               VARCHAR(10)   NULL,
+  observaciones_paz_y_salvo TEXT          NULL,
+  fecha_paz_y_salvo         DATE          NULL,
+  producto                  VARCHAR(150)  NULL,
+  valor_producto            DECIMAL(14,2) NULL,
+  cantidad                  INT           NULL,
+  descuento_producto        DECIMAL(14,2) NULL,
+  valor_descuento           DECIMAL(14,2) NULL,
+  impuesto_producto         DECIMAL(14,2) NULL,
+  valor_impuesto            DECIMAL(14,2) NULL,
+  fecha_programada_cuota    DATE          NULL,
+  valor_cuota               DECIMAL(14,2) NULL,
+  created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_creditos_estudiante (identificacion_estudiante),
+  INDEX idx_creditos_pagare (pagare)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pagos_creditos (
+  id                     INT AUTO_INCREMENT PRIMARY KEY,
+  pagare                 VARCHAR(50)   NULL,
+  comprobante            VARCHAR(50)   NULL,
+  fecha_pago             DATE          NULL,
+  cajero                 VARCHAR(150)  NULL,
+  fecha_asiento          DATE          NULL,
+  valor                  DECIMAL(14,2) NULL,
+  estado                 VARCHAR(50)   NULL,
+  responsable_anulacion  VARCHAR(150)  NULL,
+  responsable_devolucion VARCHAR(150)  NULL,
+  created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_pagos_creditos_pagare (pagare)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pagos_pendientes (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  identificacion  VARCHAR(30)   NULL,
+  producto        VARCHAR(150)  NULL,
+  periodo         VARCHAR(30)   NULL,
+  valor_producto  DECIMAL(14,2) NULL,
+  cantidad        INT           NULL,
+  impuesto        DECIMAL(14,2) NULL,
+  valor_impuesto  DECIMAL(14,2) NULL,
+  descuento       DECIMAL(14,2) NULL,
+  valor_descuento DECIMAL(14,2) NULL,
+  recibo_abonos   VARCHAR(100)  NULL,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_pagos_pendientes_ident (identificacion)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pagos_realizados (
+  id                     INT AUTO_INCREMENT PRIMARY KEY,
+  identificacion         VARCHAR(30)   NULL,
+  comprobante            VARCHAR(50)   NULL,
+  fecha_pago             DATE          NULL,
+  fecha_asiento          DATE          NULL,
+  cajero                 VARCHAR(150)  NULL,
+  producto               VARCHAR(150)  NULL,
+  periodo                VARCHAR(30)   NULL,
+  valor_pagado           DECIMAL(14,2) NULL,
+  cuenta                 VARCHAR(100)  NULL,
+  forma_pago             VARCHAR(100)  NULL,
+  valor_forma_pago       DECIMAL(14,2) NULL,
+  estado                 VARCHAR(50)   NULL,
+  responsable_anulacion  VARCHAR(150)  NULL,
+  responsable_devolucion VARCHAR(150)  NULL,
+  created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_pagos_realizados_ident (identificacion)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS notas_credito (
+  id                    INT AUTO_INCREMENT PRIMARY KEY,
+  identificacion        VARCHAR(30)   NULL,
+  numero                VARCHAR(50)   NULL,
+  fecha                 DATE          NULL,
+  periodo               VARCHAR(30)   NULL,
+  cajero                VARCHAR(150)  NULL,
+  producto              VARCHAR(150)  NULL,
+  valor_producto        DECIMAL(14,2) NULL,
+  porcentaje_impuesto   DECIMAL(6,3)  NULL,
+  cantidad              INT           NULL,
+  estado                VARCHAR(50)   NULL,
+  responsable_anulacion VARCHAR(150)  NULL,
+  created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_notas_credito_ident (identificacion)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

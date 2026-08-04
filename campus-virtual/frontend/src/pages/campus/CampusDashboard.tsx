@@ -12,9 +12,14 @@ import {
 import { useCampusAuth, type CampusUser } from "@/context/CampusAuthContext";
 import RegistrarEstudianteModal from "./RegistrarEstudianteModal";
 import RegistrarPersonalModal from "./RegistrarPersonalModal";
+import RegistrarCodeudorModal from "./RegistrarCodeudorModal";
 import InformacionBasicaView from "./views/InformacionBasicaView";
 import PersonalInfoView from "./views/PersonalInfoView";
 import UsuariosView from "./views/UsuariosView";
+import CreditosView from "./views/CreditosView";
+import PagosView from "./views/PagosView";
+import NotasCreditoView from "./views/NotasCreditoView";
+import CodeudoresInfoView from "./views/CodeudoresInfoView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
 const GFOLogoSmall = ({ className }: { className?: string }) => (
@@ -71,6 +76,8 @@ const NAV_ITEMS: NavItem[] = [
     label: "Tesorería",
     icon: DollarSign,
     subs: [
+      { label: "Créditos", icon: FileText },
+      { label: "Pagos",    icon: DollarSign },
       { label: "Otros Ingresos", icon: TrendingUp },
       { label: "Egresos",        icon: DollarSign },
       { label: "Codeudores",     icon: Users,         subs: ["Registrar codeudor", "Información básica"] },
@@ -467,6 +474,11 @@ export default function CampusDashboard() {
       setOpenMenu(null);
       return;
     }
+    if (sub === "Codeudores › Registrar codeudor") {
+      setModal("registrar-codeudor");
+      setOpenMenu(null);
+      return;
+    }
     setActiveNav({ nav, sub });
     setMobileMenuOpen(false);
     setOpenMenu(null);
@@ -706,6 +718,14 @@ export default function CampusDashboard() {
           <PersonalInfoView tipo="docente" />
         ) : activeNav.sub === "Administrativos › Información básica" ? (
           <PersonalInfoView tipo="administrativo" />
+        ) : activeNav.sub === "Créditos" ? (
+          <CreditosView />
+        ) : activeNav.sub === "Pagos" ? (
+          <PagosView />
+        ) : activeNav.sub === "Administrar notas crédito" ? (
+          <NotasCreditoView />
+        ) : activeNav.sub === "Codeudores › Información básica" ? (
+          <CodeudoresInfoView />
         ) : (
           <ModulePlaceholder nav={activeNav.nav} sub={activeNav.sub} />
         )}
@@ -736,6 +756,10 @@ export default function CampusDashboard() {
         isOpen={modal === "registrar-administrativo"}
         onClose={() => setModal(null)}
         tipo="administrativo"
+      />
+      <RegistrarCodeudorModal
+        isOpen={modal === "registrar-codeudor"}
+        onClose={() => setModal(null)}
       />
     </div>
   );
