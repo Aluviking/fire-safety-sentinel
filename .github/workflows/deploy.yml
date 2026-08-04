@@ -52,3 +52,14 @@ jobs:
             --exclude='config.php' \
             -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o UserKnownHostsFile=~/.ssh/known_hosts" \
             campus-virtual/backend/ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/campus-api
+
+      - name: Deploy Portal Empresarial backend (api/) via rsync
+        run: |
+          # api/ nunca se desplegaba automáticamente (estaba excluido arriba
+          # para no pisar api/config.php, que vive solo en el servidor). Por
+          # eso el fix de zona horaria no había llegado a producción. Igual
+          # que con campus-api: sin --delete, y sin tocar config.php.
+          rsync -avz \
+            --exclude='config.php' \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o UserKnownHostsFile=~/.ssh/known_hosts" \
+            api/ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/api
