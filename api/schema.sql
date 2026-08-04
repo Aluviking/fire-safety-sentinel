@@ -223,3 +223,14 @@ JOIN custom_folders cf
  AND cf.parent_folder_id IS NULL
 SET d.folder_id = cf.id
 WHERE d.folder_id IS NULL;
+
+-- ── Corrección de zona horaria (Historial y fechas de documentos) ──────────
+-- Hostinger deja MySQL en UTC por defecto, así que CURRENT_TIMESTAMP quedaba
+-- 5 horas adelantado respecto a la hora real de Colombia (Bogotá = UTC-5,
+-- sin horario de verano, el desfase nunca cambia). La conexión ya se corrigió
+-- en api/bootstrap.php (SET time_zone) para que lo nuevo quede bien desde
+-- ahora — esto corrige lo que ya estaba guardado. Solo toca las dos columnas
+-- que realmente se muestran en pantalla (Historial y fecha de documentos);
+-- no toca sessions.expires_at ni ninguna otra fecha que no se vea en la UI.
+UPDATE audit_trace SET created_at = DATE_SUB(created_at, INTERVAL 5 HOUR);
+UPDATE documents    SET uploaded_at = DATE_SUB(uploaded_at, INTERVAL 5 HOUR);

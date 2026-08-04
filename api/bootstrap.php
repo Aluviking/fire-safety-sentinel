@@ -40,6 +40,12 @@ function db(): PDO
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         ]);
+        // Hostinger deja la zona horaria de MySQL en UTC por defecto. Sin esto,
+        // CURRENT_TIMESTAMP (usado en created_at/uploaded_at de varias tablas)
+        // queda 5 horas adelantado respecto a la hora real de Colombia, y como
+        // el frontend interpreta esos valores como si ya fueran hora local, se
+        // ve mal en el Historial y en las fechas de documentos.
+        $pdo->exec("SET time_zone = '-05:00'");
     }
     return $pdo;
 }
