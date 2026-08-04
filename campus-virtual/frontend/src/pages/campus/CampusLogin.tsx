@@ -3,20 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, ArrowLeft, Lock, User, ChevronRight } from "lucide-react";
 import gfoLogo from "@/assets/gfo-academy-logo.jpeg";
-
-export const CAMPUS_SESSION = "campus_session";
-
-export interface CampusUser {
-  username: string;
-  nombre: string;
-  rol: string;
-}
-
-const DEMO_CREDS: (CampusUser & { password: string })[] = [
-  { username: "estudiante", password: "Campus2024!", nombre: "Estudiante Demo",   rol: "Estudiante"    },
-  { username: "docente",    password: "Docente2024!", nombre: "Docente Demo",      rol: "Docente"       },
-  { username: "admin",      password: "Admin2024!",   nombre: "Administrador GFO", rol: "Administrador" },
-];
+import { useCampusAuth } from "@/context/CampusAuthContext";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
 const GFOLogo = ({ size = "lg" }: { size?: "sm" | "lg" }) => (
@@ -45,6 +32,7 @@ const GridBg = () => (
 /* ══ Main Component ═══════════════════════════════════════════════════════════ */
 export default function CampusLogin() {
   const navigate = useNavigate();
+  const { currentUser, loading: authLoading, login } = useCampusAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -53,27 +41,20 @@ export default function CampusLogin() {
   const [loading, setLoading]   = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CAMPUS_SESSION);
-      if (raw) navigate("/dashboard", { replace: true });
-    } catch { /* ignore malformed stored data */ }
-  }, [navigate]);
+    if (!authLoading && currentUser) navigate("/dashboard", { replace: true });
+  }, [authLoading, currentUser, navigate]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    setTimeout(() => {
-      const found = DEMO_CREDS.find((c) => c.username === username.trim() && c.password === password);
-      if (found) {
-        const user: CampusUser = { username: found.username, nombre: found.nombre, rol: found.rol };
-        localStorage.setItem(CAMPUS_SESSION, JSON.stringify(user));
-        navigate("/dashboard");
-      } else {
-        setError("Nombre de usuario o contraseña incorrectos.");
-        setLoading(false);
-      }
-    }, 650);
+    const res = await login(username.trim(), password);
+    if (res.ok) {
+      navigate("/dashboard");
+    } else {
+      setError(res.error ?? "Nombre de usuario o contraseña incorrectos.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -331,35 +312,6 @@ export default function CampusLogin() {
               )}
             </button>
           </motion.form>
-
-          {/* Credenciales demo */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="mt-5 rounded-xl border border-slate-200 bg-white shadow-sm px-4 py-3.5"
-          >
-            <p className="text-slate-400 text-[10px] font-bold tracking-[0.22em] uppercase mb-3">
-              Accesos de demostración
-            </p>
-            {DEMO_CREDS.map(({ username: u, password: p, rol }) => (
-              <div
-                key={rol}
-                className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0"
-              >
-                <span className="text-[#C41717]/80 text-[10.5px] font-bold tracking-widest uppercase w-28 shrink-0">
-                  {rol}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => { setUsername(u); setPassword(p); }}
-                  className="text-slate-400 hover:text-slate-700 text-[11px] font-mono transition-colors text-right"
-                >
-                  {u} · {p}
-                </button>
-              </div>
-            ))}
-          </motion.div>
         </div>
 
         {/* Footer */}

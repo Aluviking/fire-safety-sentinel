@@ -1,0 +1,44 @@
+/* ─── Cliente HTTP para la API de Campus Virtual (PHP + MySQL) ─────────────── */
+
+const API_BASE =
+  (import.meta.env.VITE_API_URL as string | undefined) ??
+  (import.meta.env.DEV ? "https://siso.com.co/campus-api" : "/campus-api");
+
+const TOKEN_KEY = "campus_token";
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token: string | null) {
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
+}
+
+interface ApiOptions extends Omit<RequestInit, "body"> {
+  json?: unknown;
+  body?: BodyInit;
+}
+
+export async function apiFetch<T = unknown>(path: string, options: ApiOptions = {}): Promise<T> {
+  const { json, headers, body, ...rest } = options;
+  const token = getToken();
+
+  const finalHeaders: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(headers as Record<string, string> | undefined),
+  };
+  if (json !== undefined) finalHeaders["Content-Type"] = "application/json";
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...rest,
+    headers: finalHeaders,
+    body: json !== undefined ? JSON.stringify(json) : body,
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data?.ok === false) {
+    throw new Error(data?.error || `Error ${res.status}`);
+  }
+  return data as T;
+}

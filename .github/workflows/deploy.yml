@@ -37,6 +37,18 @@ jobs:
             --exclude='.private' \
             --exclude='DO_NOT_UPLOAD_HERE' \
             --exclude='api' \
+            --exclude='campus-api' \
             --exclude='private_uploads' \
             -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o UserKnownHostsFile=~/.ssh/known_hosts" \
             dist/ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}
+
+      - name: Deploy Campus Virtual backend via rsync
+        run: |
+          # Sin --delete a propósito: config.php vive SOLO en el servidor (no
+          # está en git), y --delete lo borraría en cada despliegue porque no
+          # existe en el checkout local que se está sincronizando.
+          rsync -avz \
+            --exclude='backup-fuente' \
+            --exclude='config.php' \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o UserKnownHostsFile=~/.ssh/known_hosts" \
+            campus-virtual/backend/ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/campus-api

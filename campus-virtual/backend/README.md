@@ -10,3 +10,11 @@ reales pero estáticos en `frontend/src/data/`. Antes de exponer este módulo en
 producción, `frontend/src/data/personasSeed.ts` (información real de personas)
 debe migrar a una tabla de esta base de datos con autenticación real — no debe
 quedar servida como código de frontend.
+
+## `backup-fuente/`
+
+Backup real del Campus anterior (datos de personas, matrículas, etc.) que sirve
+de material fuente para diseñar y poblar la base de datos de este backend.
+Está en `.gitignore` — igual que `frontend/src/data/private/`, nunca se sube a
+git, vive solo en este computador.
+

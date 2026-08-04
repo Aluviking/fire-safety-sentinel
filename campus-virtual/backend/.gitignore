@@ -1,0 +1,6 @@
+# Backup del Campus anterior (datos reales de personas) — nunca va a git.
+# Es material fuente para construir la base de datos real, no código.
+backup-fuente/
+
+# Credenciales reales de la base de datos — nunca van a git.
+config.php

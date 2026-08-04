@@ -7,12 +7,12 @@ import {
   Users, BookOpen, GraduationCap, DollarSign, FileText,
   Calendar, Award, ClipboardList, UserCheck, Building,
   ChevronRight, LayoutDashboard, AlertCircle, Briefcase,
-  Shield, TrendingUp, Clock,
+  Shield, TrendingUp, Clock, UserCog,
 } from "lucide-react";
-import { CAMPUS_SESSION, type CampusUser } from "./CampusLogin";
+import { useCampusAuth, type CampusUser } from "@/context/CampusAuthContext";
 import RegistrarEstudianteModal from "./RegistrarEstudianteModal";
-import PrematriculasView from "./views/PrematriculasView";
 import InformacionBasicaView from "./views/InformacionBasicaView";
+import UsuariosView from "./views/UsuariosView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
 const GFOLogoSmall = ({ className }: { className?: string }) => (
@@ -36,59 +36,18 @@ interface NavItem {
   subs?: SubItem[];
 }
 
+// Estructura definida por el cliente (2026-08-04) — solo lo que pidió +
+// lo que se sumó tras cruzar contra el backup real (ver Fase 1: Matrículas
+// queda integrada dentro de "Información básica" de Estudiantes, no como
+// menú aparte).
 const NAV_ITEMS: NavItem[] = [
   {
     label: "Institucional",
     icon: Building,
     subs: [
-      {
-        label: "Estudiantes", icon: GraduationCap,
-        subs: [
-          "Registrar estudiante",
-          "Prematrículas",
-          "Información básica",
-          "Información académica",
-          "Inscritos no matriculados",
-          "Preinscripciones",
-          "Establecer egresados graduados",
-          "Renovación masiva",
-          "Cancelación masiva",
-        ],
-      },
-      { label: "Docentes",        icon: UserCheck,      subs: ["Registrar docente", "Información básica"] },
-      { label: "Administrativos", icon: Briefcase,       subs: ["Registrar administrativo", "Información básica"] },
-      { label: "Familiares",      icon: Users,           subs: ["Registrar familiar", "Información básica"] },
-      { label: "Participantes",   icon: Users,           subs: ["Información básica"] },
-      {
-        label: "Comercial CRM", icon: TrendingUp,
-        subs: [
-          "Oportunidades", "Medios publicitarios", "Medios de contactos",
-          "Estados de negocio", "Campos personalizados", "Causas",
-          "Importar oportunidades", "Cambio masivo de asesor",
-        ],
-      },
-      {
-        label: "Bienestar Institucional", icon: Shield,
-        subs: ["Responder encuestas", "Administrar encuestas", "Ofertas laborales", "Solicitudes"],
-      },
-      {
-        label: "Establecimiento", icon: Building,
-        subs: [
-          "Configuración institucional", "Almacenamiento", "Auditorías", "Servicios Q10",
-          "Administrar servicios adicionales", "Configuración de prematrícula",
-          "Administrar cargos", "Importación de personas",
-        ],
-      },
-      { label: "Admisiones",                   icon: ClipboardList,  subs: ["Categorías examen de admisión"] },
-      { label: "Pedidos Q10 ID (Carnetización)", icon: FileText },
-      {
-        label: "Estructuración", icon: LayoutDashboard,
-        subs: [
-          "Sedes - jornadas", "Niveles", "Aulas", "Períodos", "Perfiles", "Empresas",
-          "Instituciones educativas", "Preguntas personalizadas", "Categorías documentos digitales",
-          "Criterios del observador", "Entidades administradoras", "Parametrización de informes",
-        ],
-      },
+      { label: "Estudiantes",      icon: GraduationCap, subs: ["Registrar estudiante", "Información básica"] },
+      { label: "Docentes",         icon: UserCheck,      subs: ["Registrar docente", "Información básica"] },
+      { label: "Administrativos",  icon: Briefcase,      subs: ["Registrar administrativo", "Información básica"] },
     ],
   },
   {
@@ -96,20 +55,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: BookOpen,
     subs: [
       { label: "Evaluaciones", icon: ClipboardList },
-      {
-        label: "Educación virtual v2", icon: BookOpen,
-        subs: ["Cursos ligeros", "Cursos virtuales", "Plantillas", "Certificados", "Banco de preguntas", "Aulas virtuales"],
-      },
-      { label: "Matrículas masivas a cursos", icon: GraduationCap },
-      { label: "Horarios programas",          icon: Calendar },
+      { label: "Educación virtual", icon: BookOpen },
       {
         label: "Estructuración", icon: LayoutDashboard,
         subs: [
-          "Asignaturas", "Programas", "Sedes - jornadas - programas", "Cursos", "Cerrar - cursos",
-          "Preguntas personalizadas programas", "Grupos", "Agrupaciones",
-          "Parámetros de evaluación asignaturas", "Parámetros evaluaciones",
-          "Tipos de cancelaciones", "Causas de cancelación", "Restricciones de evaluación",
-          "Requisitos de matrícula", "Requisitos de grado", "Parametrización de constancias y certificados",
+          "Crear programa", "Crear curso", "Asignaturas",
+          "Parámetros de constancias y certificados",
         ],
       },
     ],
@@ -129,19 +80,36 @@ const NAV_ITEMS: NavItem[] = [
       },
     ],
   },
-  { label: "Informes", icon: FileText, subs: [] },
+  {
+    label: "Informes", icon: FileText,
+    subs: [
+      { label: "Consolidado de notas", icon: ClipboardList },
+      { label: "Cartera general",      icon: FileText },
+      { label: "Gestión financiera",   icon: DollarSign },
+    ],
+  },
+  { label: "Usuarios", icon: UserCog },
 ];
+
+const ROLE_LABEL: Record<string, string> = {
+  super_admin: "Super Administrador",
+  admin: "Administrador",
+  docente: "Docente",
+  administrativo: "Administrativo",
+  estudiante: "Estudiante",
+  equipo: "Equipo",
+};
 
 /* ── Quick-access cards ───────────────────────────────────────────────────── */
 const QUICK_ACCESS = [
-  { icon: GraduationCap, label: "Estudiantes",  color: "#1E40AF", nav: "Institucional", sub: "Estudiantes"           },
-  { icon: UserCheck,     label: "Docentes",      color: "#065F46", nav: "Institucional", sub: "Docentes"             },
-  { icon: ClipboardList, label: "Evaluaciones",  color: "#92400E", nav: "Académico",     sub: "Evaluaciones"         },
-  { icon: BookOpen,      label: "Ed. Virtual",   color: "#6B21A8", nav: "Académico",     sub: "Educación virtual v2" },
-  { icon: Calendar,      label: "Horarios",      color: "#9F1239", nav: "Académico",     sub: "Horarios programas"   },
-  { icon: DollarSign,    label: "Tesorería",     color: "#1E3A5F", nav: "Tesorería",     sub: "Otros Ingresos"       },
-  { icon: FileText,      label: "Informes",      color: "#374151", nav: "Informes",      sub: ""                     },
-  { icon: Shield,        label: "Bienestar",     color: "#14532D", nav: "Institucional", sub: "Bienestar Institucional" },
+  { icon: GraduationCap, label: "Estudiantes",   color: "#1E40AF", nav: "Institucional", sub: "Estudiantes"     },
+  { icon: UserCheck,     label: "Docentes",       color: "#065F46", nav: "Institucional", sub: "Docentes"        },
+  { icon: Briefcase,     label: "Administrativos", color: "#92400E", nav: "Institucional", sub: "Administrativos" },
+  { icon: ClipboardList, label: "Evaluaciones",   color: "#6B21A8", nav: "Académico",     sub: "Evaluaciones"    },
+  { icon: BookOpen,      label: "Ed. Virtual",    color: "#9F1239", nav: "Académico",     sub: "Educación virtual" },
+  { icon: DollarSign,    label: "Tesorería",      color: "#1E3A5F", nav: "Tesorería",     sub: "Otros Ingresos"  },
+  { icon: FileText,      label: "Informes",       color: "#374151", nav: "Informes",      sub: "Consolidado de notas" },
+  { icon: UserCog,       label: "Usuarios",       color: "#14532D", nav: "Usuarios",      sub: ""                },
 ];
 
 /* ── NavDropdown (tema claro) ─────────────────────────────────────────────── */
@@ -315,7 +283,7 @@ function DashboardHome({ user, onNavigate }: { user: CampusUser; onNavigate: (na
                              bg-[#C41717]/10 border border-[#C41717]/20 text-[#C41717]
                              text-xs font-semibold tracking-wide">
               <span className="w-1.5 h-1.5 rounded-full bg-[#C41717] animate-pulse" />
-              {user.rol}
+              {ROLE_LABEL[user.role] ?? user.role}
             </span>
           </div>
           <div className="flex gap-3">
@@ -467,7 +435,7 @@ function DashboardHome({ user, onNavigate }: { user: CampusUser; onNavigate: (na
 /* ══ MAIN COMPONENT ═════════════════════════════════════════════════════════ */
 export default function CampusDashboard() {
   const navigate = useNavigate();
-  const [user, setUser]               = useState<CampusUser | null>(null);
+  const { currentUser: user, loading, logout: authLogout } = useCampusAuth();
   const [openMenu, setOpenMenu]       = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeNav, setActiveNav]     = useState<{ nav: string; sub: string } | null>(null);
@@ -475,16 +443,10 @@ export default function CampusDashboard() {
   const [modal, setModal]             = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CAMPUS_SESSION);
-      if (!raw) { navigate("/", { replace: true }); return; }
-      setUser(JSON.parse(raw) as CampusUser);
-    } catch {
-      navigate("/", { replace: true });
-    }
-  }, [navigate]);
+    if (!loading && !user) navigate("/", { replace: true });
+  }, [loading, user, navigate]);
 
-  const logout = () => { localStorage.removeItem(CAMPUS_SESSION); navigate("/", { replace: true }); };
+  const logout = () => { authLogout(); navigate("/", { replace: true }); };
 
   const handleNavigate = (nav: string, sub: string) => {
     // Modales específicos por acción
@@ -500,10 +462,12 @@ export default function CampusDashboard() {
 
   const toggleMenu = (label: string) => setOpenMenu((prev) => (prev === label ? null : label));
 
-  if (!user) return null;
+  if (loading || !user) return null;
+
+  const isAdmin = user.role === "admin" || user.role === "super_admin";
 
   /* Acceso restringido */
-  if (user.rol !== "Administrador") {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-[#F1F5F9] flex items-center justify-center px-6">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 max-w-sm w-full text-center">
@@ -513,8 +477,8 @@ export default function CampusDashboard() {
           </div>
           <h1 className="text-slate-800 font-bold text-xl mb-2">Acceso restringido</h1>
           <p className="text-slate-500 text-sm leading-relaxed mb-6">
-            Este panel está disponible únicamente para el{" "}
-            <span className="text-[#C41717] font-semibold">Super Administrador</span>{" "}
+            Este panel está disponible únicamente para{" "}
+            <span className="text-[#C41717] font-semibold">Administradores</span>{" "}
             de GFO Academy.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -607,7 +571,7 @@ export default function CampusDashboard() {
               </div>
               <div className="hidden sm:flex flex-col">
                 <span className="text-slate-700 text-xs font-semibold leading-tight">{user.nombre.split(" ")[0]}</span>
-                <span className="text-slate-400 text-[10px] leading-tight">{user.rol}</span>
+                <span className="text-slate-400 text-[10px] leading-tight">{ROLE_LABEL[user.role] ?? user.role}</span>
               </div>
               <button
                 onClick={logout}
@@ -722,8 +686,8 @@ export default function CampusDashboard() {
       <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 max-w-7xl w-full mx-auto">
         {!activeNav ? (
           <DashboardHome user={user} onNavigate={handleNavigate} />
-        ) : activeNav.sub === "Estudiantes › Prematrículas" ? (
-          <PrematriculasView />
+        ) : activeNav.nav === "Usuarios" ? (
+          <UsuariosView />
         ) : activeNav.sub === "Estudiantes › Información básica" ? (
           <InformacionBasicaView />
         ) : (
