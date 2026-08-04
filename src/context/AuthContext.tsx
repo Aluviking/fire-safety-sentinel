@@ -76,6 +76,7 @@ interface AuthContextType {
   upsertPermission: (data: Omit<Permission, "id" | "grantedAt">) => Promise<void>;
   getPermission: (equipoUserId: string, empresaId: string) => Permission | undefined;
   addTrace: (entry: { action: string; empresaId?: string; detail?: string }) => void;
+  refreshTrace: () => Promise<void>;
 }
 
 /* ─── Mapeo de filas de MySQL (snake_case) a los tipos de la app (camelCase) ── */
@@ -177,19 +178,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const loadTrace = useCallback(async () => {
+    try {
+      const t = await apiFetch<{ trace: unknown[] }>("/audit/list.php");
+      setTrace(t.trace.map(mapTraceRow));
+    } catch {
+      /* el Historial mostrará lo que ya tenía cargado si esto falla */
+    }
+  }, []);
+
   const loadAdminData = useCallback(async (role: Role) => {
     if (role !== "admin" && role !== "super_admin") return;
     try {
-      const [u, t] = await Promise.all([
-        apiFetch<{ users: unknown[] }>("/users/list.php"),
-        apiFetch<{ trace: unknown[] }>("/audit/list.php"),
-      ]);
+      const u = await apiFetch<{ users: unknown[] }>("/users/list.php");
       setUsers(u.users.map(mapUserRow));
-      setTrace(t.trace.map(mapTraceRow));
     } catch {
       /* el panel de admin mostrará listas vacías si esto falla */
     }
-  }, []);
+    await loadTrace();
+  }, [loadTrace]);
 
   // Sesión inicial: si hay token guardado, valida contra el servidor.
   useEffect(() => {
@@ -378,6 +385,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login, logout, register, createUser, createCompany, updateCompany, uploadCompanyPhoto,
       deleteUser, deleteCompany, changeRole,
       assignEmpresa, upsertPermission, getPermission, addTrace, uploadAvatar, uploadAd,
+      refreshTrace: loadTrace,
     }}>
       {children}
     </AuthContext.Provider>

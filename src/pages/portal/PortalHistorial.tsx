@@ -72,7 +72,7 @@ function groupByDay(trace: TraceEntry[]): { label: string; items: TraceEntry[] }
 }
 
 export default function PortalHistorial() {
-  const { currentUser, loading, trace } = useAuth();
+  const { currentUser, loading, trace, refreshTrace } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -81,6 +81,18 @@ export default function PortalHistorial() {
     const isAdmin = currentUser.role === "admin" || currentUser.role === "super_admin";
     if (!isAdmin) navigate("/portal/dashboard", { replace: true });
   }, [currentUser, loading, navigate]);
+
+  // El historial se veía "congelado" en la foto de cuando iniciaste sesión,
+  // porque solo se cargaba una vez (al login). Aquí lo refrescamos apenas se
+  // entra a la vista, y cada pocos segundos mientras se está viendo, para que
+  // los movimientos nuevos aparezcan casi en tiempo real.
+  useEffect(() => {
+    if (loading || !currentUser) return;
+    refreshTrace();
+    const interval = setInterval(refreshTrace, 10000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, currentUser]);
 
   const groups = useMemo(() => groupByDay(trace), [trace]);
 
