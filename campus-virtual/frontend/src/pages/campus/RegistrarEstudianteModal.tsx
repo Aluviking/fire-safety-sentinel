@@ -1,43 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight, User, Mail, Phone, MapPin, Calendar, FileText, BookOpen } from "lucide-react";
-
-/* ── Datos de referencia ──────────────────────────────────────────────────── */
-const TIPOS_ID = [
-  "Cédula de Ciudadanía", "Carné Diplomático",
-  "Cédula ó Identificación de Extranjería", "Certificado Cabildo u otro",
-  "DNI", "Driver License", "ID",
-  "Número de Identificación Tributaria", "Código NES",
-  "Número Único de Identificación Personal", "Pasaporte",
-  "Permiso Especial de Permanencia", "Registro Civil de Nacimiento",
-  "Salvoconducto de Permanencia", "Social Security Number",
-  "Permiso por Protección Temporal", "Tarjeta de Identidad", "Otros",
-  "Registro único de migrantes venezolanos", "NIT Extranjeros",
-];
-
-const SEXOS = ["Masculino", "Femenino", "Otro"];
-
-const PERIODOS = [
-  "2026-1 APH", "2026-BCI",   "2026-TECH",  "2026-2 TECC",
-  "2026-TECB",  "2026-TECA",  "2026-TECC",  "2025-TECB",
-  "2025-TECH",  "2025-TECA",  "2025-BCI",   "2024",
-  "2023",       "2022-2",
-];
-
-const SEDES = ["Principal - Fin de semana", "Principal - Única"];
-
-const PROGRAMAS: Record<string, string[]> = {
-  "Principal - Única": [
-    "BRIGADAS CONTRAINCENDIOS",
-    "CURSO FORMACION BOMBERIL",
-    "DIPLOMADO EN ATENCION PREHOSPITALARIA",
-    "TECNICO AUXLIAR EN SEGURIDAD Y SALUD EN EL TRABAJO",
-    "TECNICO LABORAL EN AUXILIAR DE ENFERMERIA",
-  ],
-  "Principal - Fin de semana": [
-    "DIPLOMADO EN ATENCION PREHOSPITALARIA",
-  ],
-};
+import { TIPOS_ID, SEXOS, PERIODOS, SEDES, PROGRAMAS_POR_SEDE } from "@/data/academicCatalog";
 
 /* ── Estado del formulario ────────────────────────────────────────────────── */
 interface FormData {
@@ -117,7 +81,7 @@ function FSelect({
   label, required, value, onChange, options, placeholder = "Seleccione", disabled,
 }: {
   label: string; required?: boolean; value: string; onChange: (v: string) => void;
-  options: string[]; placeholder?: string; disabled?: boolean;
+  options: readonly string[]; placeholder?: string; disabled?: boolean;
 }) {
   return (
     <div className="flex flex-col">
@@ -168,7 +132,7 @@ export default function RegistrarEstudianteModal({ isOpen, onClose }: Props) {
     }
   };
 
-  const programaOpts = PROGRAMAS[form.sedeJornada] ?? [];
+  const programaOpts = PROGRAMAS_POR_SEDE[form.sedeJornada] ?? [];
 
   const handleClose = () => { setForm(EMPTY); onClose(); };
 

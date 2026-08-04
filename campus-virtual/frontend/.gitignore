@@ -1,0 +1,17 @@
+node_modules
+dist
+dist-ssr
+*.local
+*.log
+*.tsbuildinfo
+
+# Datos reales de personas (nombres + cédulas de estudiantes/docentes/
+# administrativos de GFO Academy) — NUNCA se suben a git. Viven solo en este
+# computador hasta que exista un backend con autenticación real. Ver
+# campus-virtual/README.md.
+src/data/private/
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store

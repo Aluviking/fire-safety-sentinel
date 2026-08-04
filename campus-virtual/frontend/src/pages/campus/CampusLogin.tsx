@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, ArrowLeft, Lock, User, ChevronRight } from "lucide-react";
 import gfoLogo from "@/assets/gfo-academy-logo.jpeg";
@@ -55,7 +55,7 @@ export default function CampusLogin() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(CAMPUS_SESSION);
-      if (raw) navigate("/campus/dashboard", { replace: true });
+      if (raw) navigate("/dashboard", { replace: true });
     } catch { /* ignore malformed stored data */ }
   }, [navigate]);
 
@@ -68,7 +68,7 @@ export default function CampusLogin() {
       if (found) {
         const user: CampusUser = { username: found.username, nombre: found.nombre, rol: found.rol };
         localStorage.setItem(CAMPUS_SESSION, JSON.stringify(user));
-        navigate("/campus/dashboard");
+        navigate("/dashboard");
       } else {
         setError("Nombre de usuario o contraseña incorrectos.");
         setLoading(false);
@@ -170,15 +170,15 @@ export default function CampusLogin() {
         {/* Blob suave */}
         <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-[#C41717]/[0.03] blur-[80px] pointer-events-none" />
 
-        {/* Volver al sitio */}
-        <Link
-          to="/"
+        {/* Volver al sitio principal (fuera de esta app) */}
+        <a
+          href="/"
           className="absolute top-6 left-6 flex items-center gap-1.5
                      text-slate-400 hover:text-slate-600 text-xs tracking-wide transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Volver al sitio
-        </Link>
+        </a>
 
         {/* Logo mobile */}
         <div className="lg:hidden mb-8">

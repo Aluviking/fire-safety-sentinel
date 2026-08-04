@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import gfoLogo from "@/assets/gfo-academy-logo.jpeg";
 import {
@@ -477,14 +477,14 @@ export default function CampusDashboard() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(CAMPUS_SESSION);
-      if (!raw) { navigate("/campus", { replace: true }); return; }
+      if (!raw) { navigate("/", { replace: true }); return; }
       setUser(JSON.parse(raw) as CampusUser);
     } catch {
-      navigate("/campus", { replace: true });
+      navigate("/", { replace: true });
     }
   }, [navigate]);
 
-  const logout = () => { localStorage.removeItem(CAMPUS_SESSION); navigate("/campus", { replace: true }); };
+  const logout = () => { localStorage.removeItem(CAMPUS_SESSION); navigate("/", { replace: true }); };
 
   const handleNavigate = (nav: string, sub: string) => {
     // Modales específicos por acción
@@ -525,11 +525,11 @@ export default function CampusDashboard() {
             >
               Cerrar sesión
             </button>
-            <Link to="/"
+            <a href="/"
               className="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 hover:border-slate-300
                          text-slate-600 hover:text-slate-800 text-sm transition-all text-center">
               Volver al sitio
-            </Link>
+            </a>
           </div>
         </div>
       </div>
@@ -737,9 +737,9 @@ export default function CampusDashboard() {
         <p className="text-slate-400 text-[10px] tracking-wide">
           © {new Date().getFullYear()} GFO Academy. Campus Virtual
         </p>
-        <Link to="/" className="text-slate-400 hover:text-slate-600 text-xs transition-colors">
+        <a href="/" className="text-slate-400 hover:text-slate-600 text-xs transition-colors">
           Volver a SISO
-        </Link>
+        </a>
       </footer>
 
       {/* ── MODALES ─────────────────────────────────────────────────────────── */}

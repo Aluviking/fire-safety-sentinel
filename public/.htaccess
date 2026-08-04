@@ -22,8 +22,12 @@
   # por sector/fase PHVA, etc.) en muchos componentes de React. 'blob:' en
   # img-src es necesario porque el Portal Empresarial carga fotos protegidas
   # (logo/foto de empresa, avatares, anuncio de publicidad) vía fetch() +
-  # URL.createObjectURL(), que genera URLs blob: para el <img src>.
-  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.open-meteo.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+  # URL.createObjectURL(), que genera URLs blob: para el <img src>. 'blob:' en
+  # frame-src es necesario porque el botón "Ver" de PDF/imágenes abre el
+  # documento dentro de un <iframe src="blob:..."> en la pestaña nueva — sin
+  # esto, el navegador bloquea el iframe (cae a default-src 'self') y el
+  # visor queda en blanco sin avisar al usuario.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; frame-src 'self' blob:; connect-src 'self' https://api.open-meteo.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
 
   # Oculta la firma de versión del servidor
   Header unset X-Powered-By
