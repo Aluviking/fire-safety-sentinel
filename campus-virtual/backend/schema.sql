@@ -35,3 +35,93 @@ INSERT INTO users (id, nombre, email, username, password_hash, role) VALUES (
   '$2b$10$74VNHQbia3f8cSeBCMe2Be/QATNnayVtjPvwIsl0QqYoIEHcZrO3y',
   'super_admin'
 );
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 1 — Institucional: Estudiantes, Docentes, Administrativos, Matrículas
+-- ══════════════════════════════════════════════════════════════════════════
+-- Nombre completo se guarda en un solo campo (no separado en nombre/apellido)
+-- porque así vienen los datos reales del backup de Q10, y separar un nombre
+-- completo en partes de forma automática no es confiable en español (nombres
+-- compuestos, apellidos con "de la", etc.).
+
+CREATE TABLE IF NOT EXISTS estudiantes (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  identificacion  VARCHAR(30)  NOT NULL UNIQUE,
+  nombre_completo VARCHAR(200) NOT NULL,
+  genero          VARCHAR(20)  NULL,
+  tipo_documento  VARCHAR(80)  NULL,
+  celular         VARCHAR(30)  NULL,
+  correo          VARCHAR(190) NULL,
+  subgrupo_sisben VARCHAR(50)  NULL,
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Historial de matrícula de cada estudiante (un estudiante puede tener varias
+-- a lo largo del tiempo — distintos períodos/programas).
+CREATE TABLE IF NOT EXISTS matriculas (
+  id                INT AUTO_INCREMENT PRIMARY KEY,
+  estudiante_id     INT NOT NULL,
+  estado            VARCHAR(50)  NULL,
+  formalizada       TINYINT(1)   NULL,
+  sede              VARCHAR(100) NULL,
+  programa          VARCHAR(150) NULL,
+  nivel             VARCHAR(50)  NULL,
+  periodo           VARCHAR(30)  NULL,
+  fecha_egreso      DATE NULL,
+  fecha_cancelacion DATE NULL,
+  acta              VARCHAR(50)  NULL,
+  folio             VARCHAR(50)  NULL,
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (estudiante_id) REFERENCES estudiantes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS docentes (
+  id                   INT AUTO_INCREMENT PRIMARY KEY,
+  identificacion       VARCHAR(30)  NOT NULL UNIQUE,
+  nombre_completo      VARCHAR(200) NOT NULL,
+  genero               VARCHAR(20)  NULL,
+  tipo_documento       VARCHAR(80)  NULL,
+  municipio_expedicion VARCHAR(100) NULL,
+  fecha_nacimiento     DATE NULL,
+  municipio_nacimiento VARCHAR(100) NULL,
+  telefono             VARCHAR(30)  NULL,
+  celular              VARCHAR(30)  NULL,
+  correo               VARCHAR(190) NULL,
+  direccion            VARCHAR(200) NULL,
+  municipio_residencia VARCHAR(100) NULL,
+  tipo_sanguineo       VARCHAR(10)  NULL,
+  escalafon            VARCHAR(100) NULL,
+  calidad_desempeno    VARCHAR(100) NULL,
+  nivel_academico      VARCHAR(100) NULL,
+  especialidad         VARCHAR(150) NULL,
+  fecha_ingreso        DATE NULL,
+  tipo_vinculacion     VARCHAR(100) NULL,
+  estado               VARCHAR(50)  NULL,
+  created_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS administrativos (
+  id                   INT AUTO_INCREMENT PRIMARY KEY,
+  identificacion       VARCHAR(30)  NOT NULL UNIQUE,
+  nombre_completo      VARCHAR(200) NOT NULL,
+  genero               VARCHAR(20)  NULL,
+  tipo_documento       VARCHAR(80)  NULL,
+  municipio_expedicion VARCHAR(100) NULL,
+  fecha_nacimiento     DATE NULL,
+  municipio_nacimiento VARCHAR(100) NULL,
+  telefono             VARCHAR(30)  NULL,
+  celular              VARCHAR(30)  NULL,
+  correo               VARCHAR(190) NULL,
+  direccion            VARCHAR(200) NULL,
+  municipio_residencia VARCHAR(100) NULL,
+  tipo_sanguineo       VARCHAR(10)  NULL,
+  cargo                VARCHAR(100) NULL,
+  escalafon            VARCHAR(100) NULL,
+  calidad_desempeno    VARCHAR(100) NULL,
+  nivel_academico      VARCHAR(100) NULL,
+  especialidad         VARCHAR(150) NULL,
+  fecha_ingreso        DATE NULL,
+  tipo_vinculacion     VARCHAR(100) NULL,
+  estado               VARCHAR(50)  NULL,
+  created_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

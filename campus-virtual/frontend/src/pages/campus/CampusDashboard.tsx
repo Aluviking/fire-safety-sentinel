@@ -11,7 +11,9 @@ import {
 } from "lucide-react";
 import { useCampusAuth, type CampusUser } from "@/context/CampusAuthContext";
 import RegistrarEstudianteModal from "./RegistrarEstudianteModal";
+import RegistrarPersonalModal from "./RegistrarPersonalModal";
 import InformacionBasicaView from "./views/InformacionBasicaView";
+import PersonalInfoView from "./views/PersonalInfoView";
 import UsuariosView from "./views/UsuariosView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
@@ -455,6 +457,16 @@ export default function CampusDashboard() {
       setOpenMenu(null);
       return;
     }
+    if (sub === "Docentes › Registrar docente") {
+      setModal("registrar-docente");
+      setOpenMenu(null);
+      return;
+    }
+    if (sub === "Administrativos › Registrar administrativo") {
+      setModal("registrar-administrativo");
+      setOpenMenu(null);
+      return;
+    }
     setActiveNav({ nav, sub });
     setMobileMenuOpen(false);
     setOpenMenu(null);
@@ -690,6 +702,10 @@ export default function CampusDashboard() {
           <UsuariosView />
         ) : activeNav.sub === "Estudiantes › Información básica" ? (
           <InformacionBasicaView />
+        ) : activeNav.sub === "Docentes › Información básica" ? (
+          <PersonalInfoView tipo="docente" />
+        ) : activeNav.sub === "Administrativos › Información básica" ? (
+          <PersonalInfoView tipo="administrativo" />
         ) : (
           <ModulePlaceholder nav={activeNav.nav} sub={activeNav.sub} />
         )}
@@ -710,6 +726,16 @@ export default function CampusDashboard() {
       <RegistrarEstudianteModal
         isOpen={modal === "registrar-estudiante"}
         onClose={() => setModal(null)}
+      />
+      <RegistrarPersonalModal
+        isOpen={modal === "registrar-docente"}
+        onClose={() => setModal(null)}
+        tipo="docente"
+      />
+      <RegistrarPersonalModal
+        isOpen={modal === "registrar-administrativo"}
+        onClose={() => setModal(null)}
+        tipo="administrativo"
       />
     </div>
   );
