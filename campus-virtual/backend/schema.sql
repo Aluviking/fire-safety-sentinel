@@ -247,3 +247,79 @@ CREATE TABLE IF NOT EXISTS notas_credito (
   created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_notas_credito_ident (identificacion)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 3a — Académico: Estructuración (Programas, Asignaturas, Cursos)
+-- ══════════════════════════════════════════════════════════════════════════
+-- Asignaturas queda como catálogo reutilizable (una asignatura puede
+-- pertenecer a varios programas), tal como pidió el cliente — se enlaza vía
+-- la tabla intermedia programa_asignaturas.
+-- El campo "programa_asignatura_jornada" de cursos se guarda tal cual viene
+-- del backup (texto libre "Programa - Asignatura - Jornada"): forzar su
+-- separación en 3 columnas distintas con texto libre real es la forma más
+-- fácil de corromper datos que ya existen.
+
+CREATE TABLE IF NOT EXISTS programas (
+  id                        INT AUTO_INCREMENT PRIMARY KEY,
+  codigo                    VARCHAR(30)  NULL,
+  nombre                    VARCHAR(200) NOT NULL,
+  pensum                    VARCHAR(200) NULL,
+  abreviacion               VARCHAR(200) NULL,
+  num_resolucion            VARCHAR(50)  NULL,
+  fecha_resolucion          DATE         NULL,
+  disponible_oferta_laboral VARCHAR(10)  NULL,
+  estado                    VARCHAR(50)  NULL,
+  aplica_preinscripcion     VARCHAR(10)  NULL,
+  created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_programa_nombre (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS asignaturas (
+  id                     INT AUTO_INCREMENT PRIMARY KEY,
+  codigo                 VARCHAR(30)   NULL,
+  nombre                 VARCHAR(200)  NOT NULL,
+  abreviacion            VARCHAR(200)  NULL,
+  intensidad_semanal     INT           NULL,
+  intensidad_total       INT           NULL,
+  nivel                  VARCHAR(50)   NULL,
+  num_creditos           DECIMAL(6,2)  NULL,
+  aplica_practica_laboral VARCHAR(10)  NULL,
+  created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_asignatura_nombre (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Relación muchos-a-muchos: una asignatura puede repetirse en varios
+-- programas, tal como pidió el cliente explícitamente.
+CREATE TABLE IF NOT EXISTS programa_asignaturas (
+  id             INT AUTO_INCREMENT PRIMARY KEY,
+  programa_id    INT NOT NULL,
+  asignatura_id  INT NOT NULL,
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_programa_asignatura (programa_id, asignatura_id),
+  FOREIGN KEY (programa_id)   REFERENCES programas(id)   ON DELETE CASCADE,
+  FOREIGN KEY (asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS cursos (
+  id                          INT AUTO_INCREMENT PRIMARY KEY,
+  codigo_nombre               VARCHAR(200) NULL,
+  programa_id                 INT          NULL,
+  asignatura_id               INT          NULL,
+  programa_asignatura_jornada VARCHAR(255) NULL,
+  tipo_evaluacion             VARCHAR(50)  NULL,
+  cupo_maximo                 INT          NULL,
+  fecha_inicio                DATE         NULL,
+  fecha_fin                   DATE         NULL,
+  aula                        VARCHAR(100) NULL,
+  cerrado                     VARCHAR(10)  NULL,
+  archivado                   VARCHAR(10)  NULL,
+  docente_identificacion      VARCHAR(30)  NULL,
+  docente_nombre              VARCHAR(200) NULL,
+  horario                     VARCHAR(150) NULL,
+  periodo                     VARCHAR(30)  NULL,
+  created_at                  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_cursos_periodo (periodo),
+  INDEX idx_cursos_docente (docente_identificacion),
+  FOREIGN KEY (programa_id)   REFERENCES programas(id)   ON DELETE SET NULL,
+  FOREIGN KEY (asignatura_id) REFERENCES asignaturas(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

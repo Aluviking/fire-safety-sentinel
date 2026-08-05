@@ -20,6 +20,9 @@ import CreditosView from "./views/CreditosView";
 import PagosView from "./views/PagosView";
 import NotasCreditoView from "./views/NotasCreditoView";
 import CodeudoresInfoView from "./views/CodeudoresInfoView";
+import ProgramasView from "./views/ProgramasView";
+import AsignaturasView from "./views/AsignaturasView";
+import CursosView from "./views/CursosView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
 const GFOLogoSmall = ({ className }: { className?: string }) => (
@@ -726,6 +729,12 @@ export default function CampusDashboard() {
           <NotasCreditoView />
         ) : activeNav.sub === "Codeudores › Información básica" ? (
           <CodeudoresInfoView />
+        ) : activeNav.sub === "Estructuración › Crear programa" ? (
+          <ProgramasView />
+        ) : activeNav.sub === "Estructuración › Asignaturas" ? (
+          <AsignaturasView />
+        ) : activeNav.sub === "Estructuración › Crear curso" ? (
+          <CursosView />
         ) : (
           <ModulePlaceholder nav={activeNav.nav} sub={activeNav.sub} />
         )}
