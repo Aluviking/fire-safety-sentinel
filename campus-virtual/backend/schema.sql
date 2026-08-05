@@ -323,3 +323,44 @@ CREATE TABLE IF NOT EXISTS cursos (
   FOREIGN KEY (programa_id)   REFERENCES programas(id)   ON DELETE SET NULL,
   FOREIGN KEY (asignatura_id) REFERENCES asignaturas(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 3b — Académico: Evaluaciones
+-- ══════════════════════════════════════════════════════════════════════════
+-- "evaluaciones" es el detalle granular (un registro por parámetro de
+-- evaluación, ej. "QUIZ 1", "ESTRELLA"); "notas_finales" es el resumen ya
+-- consolidado por asignatura/período que trae el backup. El cliente pidió un
+-- solo ítem de menú ("Evaluaciones") pero ambos niveles son datos reales que
+-- no pueden quedar fuera, así que se muestran como 2 pestañas del mismo módulo.
+-- Igual que en cursos, se referencia al estudiante por identificación (sin FK
+-- estricta), mismo patrón ya usado en creditos/pagos.
+
+CREATE TABLE IF NOT EXISTS evaluaciones (
+  id                        INT AUTO_INCREMENT PRIMARY KEY,
+  codigo_curso              VARCHAR(50)   NULL,
+  periodo                   VARCHAR(30)   NULL,
+  identificacion_estudiante VARCHAR(30)   NULL,
+  asignatura                VARCHAR(200)  NULL,
+  parametro                 VARCHAR(200)  NULL,
+  porcentaje                DECIMAL(6,2)  NULL,
+  nota                      DECIMAL(6,2)  NULL,
+  inasistencias             INT           NULL,
+  observaciones             TEXT          NULL,
+  created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_evaluaciones_estudiante (identificacion_estudiante),
+  INDEX idx_evaluaciones_curso (codigo_curso)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS notas_finales (
+  id                        INT AUTO_INCREMENT PRIMARY KEY,
+  identificacion_estudiante VARCHAR(30)   NULL,
+  programa                  VARCHAR(200)  NULL,
+  periodo                   VARCHAR(30)   NULL,
+  asignatura                VARCHAR(200)  NULL,
+  aprobado                  VARCHAR(1)    NULL,
+  nota_asignatura           DECIMAL(6,2)  NULL,
+  promedio_acumulado        DECIMAL(6,2)  NULL,
+  tipo_nota                 VARCHAR(50)   NULL,
+  created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_notas_finales_estudiante (identificacion_estudiante)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
