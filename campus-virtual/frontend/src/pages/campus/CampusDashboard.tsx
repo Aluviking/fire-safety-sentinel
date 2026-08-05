@@ -24,6 +24,7 @@ import ProgramasView from "./views/ProgramasView";
 import AsignaturasView from "./views/AsignaturasView";
 import CursosView from "./views/CursosView";
 import EvaluacionesView from "./views/EvaluacionesView";
+import EducacionVirtualView from "./views/EducacionVirtualView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
 const GFOLogoSmall = ({ className }: { className?: string }) => (
@@ -724,6 +725,8 @@ export default function CampusDashboard() {
           <PersonalInfoView tipo="administrativo" />
         ) : activeNav.sub === "Evaluaciones" ? (
           <EvaluacionesView />
+        ) : activeNav.sub === "Educación virtual" ? (
+          <EducacionVirtualView />
         ) : activeNav.sub === "Créditos" ? (
           <CreditosView />
         ) : activeNav.sub === "Pagos" ? (

@@ -351,6 +351,29 @@ CREATE TABLE IF NOT EXISTS evaluaciones (
   INDEX idx_evaluaciones_curso (codigo_curso)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 3c — Académico: Educación virtual (Aulas virtuales)
+-- ══════════════════════════════════════════════════════════════════════════
+-- El backup trae un registro por asistente por sesión (ya viene "aplanado"),
+-- así que se importa tal cual, una fila = una asistencia real a una sesión.
+CREATE TABLE IF NOT EXISTS aulas_virtuales (
+  id                       INT AUTO_INCREMENT PRIMARY KEY,
+  fecha_inicio_sesion      DATETIME     NULL,
+  fecha_fin_sesion         DATETIME     NULL,
+  nombre_curso             VARCHAR(200) NULL,
+  asignatura               VARCHAR(200) NULL,
+  docente_nombre           VARCHAR(200) NULL,
+  docente_identificacion   VARCHAR(30)  NULL,
+  asistente_nombre         VARCHAR(200) NULL,
+  asistente_identificacion VARCHAR(30)  NULL,
+  asistente_externo        VARCHAR(10)  NULL,
+  fecha_ingreso_real       DATETIME     NULL,
+  fecha_salida_real        DATETIME     NULL,
+  created_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_aulas_virtuales_asistente (asistente_identificacion),
+  INDEX idx_aulas_virtuales_curso (nombre_curso)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS notas_finales (
   id                        INT AUTO_INCREMENT PRIMARY KEY,
   identificacion_estudiante VARCHAR(30)   NULL,
