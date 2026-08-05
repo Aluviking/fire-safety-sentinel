@@ -14,18 +14,9 @@ $parentFolderId = $body['parent_folder_id'] ?? null;
 if ($empresaId === '' || $name === '') fail('Datos inválidos.');
 if (!in_array($phase, ['P', 'H', 'V', 'A'], true)) fail('Fase PHVA inválida.');
 
-/* ── Crear carpetas/subcarpetas: Admin/Super Admin siempre, Equipo solo si
-      tiene el permiso "Editar" otorgado para esta empresa. ── */
-$canManage = false;
-if ($user['role'] === 'admin' || $user['role'] === 'super_admin') {
-    $canManage = true;
-} elseif ($user['role'] === 'equipo') {
-    $stmt = db()->prepare('SELECT can_edit FROM permissions WHERE equipo_user_id = ? AND empresa_id = ?');
-    $stmt->execute([$user['id'], $empresaId]);
-    $perm = $stmt->fetch();
-    $canManage = (bool)($perm['can_edit'] ?? false);
-}
-if (!$canManage) fail('No tienes permiso para crear carpetas aquí.', 403);
+/* ── Crear carpetas/subcarpetas: Admin/Super Admin siempre, Equipo o Cliente
+      solo si tienen el permiso "Editar" otorgado para esta empresa. ── */
+if (!has_permission($user, $empresaId, 'can_edit')) fail('No tienes permiso para crear carpetas aquí.', 403);
 
 $stmt = db()->prepare('SELECT nombre FROM companies WHERE id = ?');
 $stmt->execute([$empresaId]);

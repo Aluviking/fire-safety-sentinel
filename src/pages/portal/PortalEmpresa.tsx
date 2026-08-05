@@ -119,12 +119,12 @@ function formatBytes(bytes: number): string {
 
 /* ─── Carpeta de documentos (grid item) — se usa también para subcarpetas ── */
 function FolderItem({
-  folder, index, color, canUpload, canDelete, onOpen,
+  folder, index, color, canUpload, canDelete, canView, canDownload, onOpen,
   canManageFolder, canDeleteFolderPerm, onDeleteFolder, onRenameFolder,
   depth = 0, subfolders, onCreateSubfolder,
 }: {
   folder: FolderRow; index: number; color: string;
-  canUpload: boolean; canDelete: boolean;
+  canUpload: boolean; canDelete: boolean; canView: boolean; canDownload: boolean;
   onOpen: (name: string) => void;
   canManageFolder?: boolean;
   canDeleteFolderPerm?: boolean;
@@ -191,7 +191,7 @@ function FolderItem({
   };
 
   const handleDownload = (doc: DocumentRow) => {
-    apiDownload(`/documents/download.php?id=${doc.id}`, doc.original_filename).catch(() => { /* best-effort */ });
+    apiDownload(`/documents/download.php?id=${doc.id}&intent=download`, doc.original_filename).catch(() => { /* best-effort */ });
   };
 
   const OFFICE_EXTENSIONS = ["doc", "docx", "xls", "xlsx", "ppt", "pptx"];
@@ -229,7 +229,7 @@ function FolderItem({
     // link público — Chrome bloquea navegar una pestaña a una URL blob:
     // creada en otra ventana, por eso se inserta el iframe en vez de
     // redirigir la pestaña misma.
-    apiImage(`/documents/download.php?id=${doc.id}`)
+    apiImage(`/documents/download.php?id=${doc.id}&intent=view`)
       .then((url) => {
         viewerTab.document.title = doc.original_filename;
         viewerTab.document.body.style.margin = "0";
@@ -380,31 +380,44 @@ function FolderItem({
                           className="flex items-center gap-2 text-xs border-l-2 pl-2.5 py-1.5"
                           style={{ borderColor: color + "60" }}>
                         <FileText className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-                        <button
-                          onClick={() => handleDownload(d)}
-                          className="flex-1 min-w-0 flex flex-col items-start text-left text-slate-700 hover:text-[hsl(43_78%_40%)] hover:underline"
-                          title="Descargar"
-                        >
-                          <span className="w-full truncate">{d.original_filename}</span>
-                          <span className="w-full truncate text-[10px] text-slate-400 no-underline">
-                            {d.uploaded_by_name} · {new Date(d.uploaded_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
-                          </span>
-                        </button>
+                        {canView ? (
+                          <button
+                            onClick={() => handleView(d)}
+                            className="flex-1 min-w-0 flex flex-col items-start text-left text-slate-700 hover:text-[hsl(43_78%_40%)] hover:underline"
+                            title="Ver documento"
+                          >
+                            <span className="w-full truncate">{d.original_filename}</span>
+                            <span className="w-full truncate text-[10px] text-slate-400 no-underline">
+                              {d.uploaded_by_name} · {new Date(d.uploaded_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
+                            </span>
+                          </button>
+                        ) : (
+                          <div className="flex-1 min-w-0 flex flex-col items-start text-slate-500">
+                            <span className="w-full truncate">{d.original_filename}</span>
+                            <span className="w-full truncate text-[10px] text-slate-400">
+                              {d.uploaded_by_name} · {new Date(d.uploaded_at).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
+                            </span>
+                          </div>
+                        )}
                         <span className="text-slate-400 shrink-0 text-[10px]">{formatBytes(d.size_bytes)}</span>
-                        <button
-                          onClick={() => handleView(d)}
-                          className="shrink-0 text-slate-300 hover:text-[hsl(43_78%_40%)] transition-colors"
-                          title="Ver documento"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDownload(d)}
-                          className="shrink-0 text-slate-300 hover:text-[hsl(43_78%_40%)] transition-colors"
-                          title="Descargar"
-                        >
-                          <Download className="w-3 h-3" />
-                        </button>
+                        {canView && (
+                          <button
+                            onClick={() => handleView(d)}
+                            className="shrink-0 text-slate-300 hover:text-[hsl(43_78%_40%)] transition-colors"
+                            title="Ver documento"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {canDownload && (
+                          <button
+                            onClick={() => handleDownload(d)}
+                            className="shrink-0 text-slate-300 hover:text-[hsl(43_78%_40%)] transition-colors"
+                            title="Descargar"
+                          >
+                            <Download className="w-3 h-3" />
+                          </button>
+                        )}
                         {canDelete && (
                           <button
                             onClick={() => setPendingDelete(d)}
@@ -474,7 +487,7 @@ function FolderItem({
                       {subfolders?.map((sf, i) => (
                         <FolderItem
                           key={sf.id} folder={sf} index={i} color={color}
-                          canUpload={canUpload} canDelete={canDelete}
+                          canUpload={canUpload} canDelete={canDelete} canView={canView} canDownload={canDownload}
                           onOpen={onOpen} depth={depth + 1}
                           canManageFolder={canManageFolder}
                           canDeleteFolderPerm={canDeleteFolderPerm}
@@ -615,12 +628,12 @@ function AddFolderTile({
 
 /* ─── Panel de la fase activa: descripción + grid de carpetas ─────────────── */
 function PhvaActivePanel({
-  item, canUpload, canDelete, onFolderOpen,
+  item, canUpload, canDelete, canView, canDownload, onFolderOpen,
   canManageFolder, canDeleteFolderPerm, folders,
   onCreateFolder, onCreateSubfolder, onDeleteFolder, onRenameFolder,
 }: {
   item: typeof PHVA[number];
-  canUpload: boolean; canDelete: boolean;
+  canUpload: boolean; canDelete: boolean; canView: boolean; canDownload: boolean;
   onFolderOpen: (folder: string) => void;
   canManageFolder: boolean;
   canDeleteFolderPerm: boolean;
@@ -662,7 +675,7 @@ function PhvaActivePanel({
         {topFolders.map((f, i) => (
           <FolderItem
             key={f.id} folder={f} index={i} color={item.color}
-            canUpload={canUpload} canDelete={canDelete}
+            canUpload={canUpload} canDelete={canDelete} canView={canView} canDownload={canDownload}
             onOpen={onFolderOpen}
             canManageFolder={canManageFolder}
             canDeleteFolderPerm={canDeleteFolderPerm}
@@ -682,7 +695,7 @@ function PhvaActivePanel({
 export default function PortalEmpresa() {
   const { id } = useParams<{ id: string }>();
   const {
-    currentUser, loading, companies, getPermission, permissions, addTrace,
+    currentUser, loading, companies, getPermission, addTrace,
     progressByPhase, progressTotalByPhase, loadProgress,
   } = useAuth();
   const navigate = useNavigate();
@@ -784,19 +797,23 @@ export default function PortalEmpresa() {
     </div>
   );
 
-  /* ── Permission resolution ── */
+  /* ── Permission resolution ──
+     Ver/Subir/Editar/Descargar son 4 permisos independientes, otorgados por
+     Admin/Super Admin a un usuario específico (Equipo o Cliente) para una
+     empresa específica — misma lógica para ambos roles. Admin/Super Admin
+     siempre tienen acceso total. */
   const isAdmin  = currentUser?.role === "admin" || currentUser?.role === "super_admin";
   const isEquipo = currentUser?.role === "equipo";
 
-  const equipoPerm = isEquipo && id
-    ? getPermission(currentUser!.id, id)
+  const userPerm = (!isAdmin && currentUser && id)
+    ? getPermission(currentUser.id, id)
     : undefined;
 
-  const canEdit   = isAdmin || (isEquipo && !!equipoPerm?.canEdit);
-  const canUpload = isAdmin || (isEquipo && !!equipoPerm?.canUpload)
-    || (currentUser?.role === "cliente" && permissions.some((p) => p.empresaId === id && p.clienteCanUpload));
-  // Eliminar archivos es exclusivo de Admin/Super Admin — Equipo con "Editar"
-  // sigue viendo el botón de "Editar carpeta", pero no puede borrar nada.
+  const canView     = isAdmin || !!userPerm?.canView;
+  const canUpload   = isAdmin || !!userPerm?.canUpload;
+  const canEdit     = isAdmin || !!userPerm?.canEdit;
+  const canDownload = isAdmin || !!userPerm?.canDownload;
+  // Eliminar archivos/carpetas es exclusivo de Admin/Super Admin, sin excepción.
   const canDelete = isAdmin;
 
   const handleFolderOpen = (folder: string) => {
@@ -854,16 +871,18 @@ export default function PortalEmpresa() {
                   </div>
 
                   <div className="flex items-center gap-3 shrink-0">
-                    {/* Permission badge for equipo */}
-                    {isEquipo && (
-                      <span className={`flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border backdrop-blur-sm whitespace-nowrap
-                        ${canEdit || canUpload
-                          ? "text-amber-200 border-amber-300/50 bg-amber-500/20"
-                          : "text-slate-200 border-white/20 bg-white/10"}`}>
-                        {canEdit || canUpload ? <ShieldCheck className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                        {canEdit && canUpload ? "Editar & Subir" : canEdit ? "Solo editar" : canUpload ? "Solo subir" : "Solo lectura"}
-                      </span>
-                    )}
+                    {/* Insignia de permisos para Equipo y Cliente (Admin/Super Admin no la necesitan, siempre tienen todo) */}
+                    {!isAdmin && (() => {
+                      const granted = [canView && "Ver", canUpload && "Subir", canEdit && "Editar", canDownload && "Descargar"]
+                        .filter(Boolean).join(" · ");
+                      return (
+                        <span className={`flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border backdrop-blur-sm whitespace-nowrap
+                          ${granted ? "text-amber-200 border-amber-300/50 bg-amber-500/20" : "text-slate-200 border-white/20 bg-white/10"}`}>
+                          {granted ? <ShieldCheck className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                          {granted || "Sin acceso"}
+                        </span>
+                      );
+                    })()}
                     <DateWeatherWidget />
                   </div>
                 </div>
@@ -887,6 +906,8 @@ export default function PortalEmpresa() {
                 item={activeItem}
                 canUpload={canUpload}
                 canDelete={canDelete}
+                canView={canView}
+                canDownload={canDownload}
                 onFolderOpen={handleFolderOpen}
                 canManageFolder={canEdit}
                 canDeleteFolderPerm={canDelete}

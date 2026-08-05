@@ -35,18 +35,23 @@ CREATE TABLE IF NOT EXISTS sessions (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ─── Permisos (usuario Equipo × Empresa) ─────────────────────────────────────
+-- ─── Permisos (usuario Equipo o Cliente × Empresa) ───────────────────────────
+-- 4 permisos independientes, otorgados por Admin/Super Admin por usuario
+-- específico y por empresa específica — aplica igual para Equipo que para
+-- Cliente (antes Cliente solo tenía un flag genérico "cliente_can_upload" por
+-- empresa; ahora es granular por usuario, igual que Equipo).
 CREATE TABLE IF NOT EXISTS permissions (
   id                 INT AUTO_INCREMENT PRIMARY KEY,
-  equipo_user_id     VARCHAR(40) NOT NULL,
+  user_id            VARCHAR(40) NOT NULL,
   empresa_id         VARCHAR(40) NOT NULL,
-  can_edit           TINYINT(1)  NOT NULL DEFAULT 0,
+  can_view           TINYINT(1)  NOT NULL DEFAULT 0,
   can_upload         TINYINT(1)  NOT NULL DEFAULT 0,
-  cliente_can_upload TINYINT(1)  NOT NULL DEFAULT 0,
+  can_edit           TINYINT(1)  NOT NULL DEFAULT 0,
+  can_download       TINYINT(1)  NOT NULL DEFAULT 0,
   granted_by         VARCHAR(40) NOT NULL,
   granted_at         DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uniq_equipo_empresa (equipo_user_id, empresa_id),
-  FOREIGN KEY (equipo_user_id) REFERENCES users(id)     ON DELETE CASCADE,
+  UNIQUE KEY uniq_user_empresa (user_id, empresa_id),
+  FOREIGN KEY (user_id)        REFERENCES users(id)     ON DELETE CASCADE,
   FOREIGN KEY (empresa_id)     REFERENCES companies(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

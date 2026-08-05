@@ -18,18 +18,9 @@ $stmt->execute([$id]);
 $folder = $stmt->fetch();
 if (!$folder) fail('Carpeta no encontrada.', 404);
 
-/* ── Renombrar: Admin/Super Admin siempre, Equipo solo con permiso "Editar"
-      otorgado para esta empresa. ── */
-$canManage = false;
-if ($user['role'] === 'admin' || $user['role'] === 'super_admin') {
-    $canManage = true;
-} elseif ($user['role'] === 'equipo') {
-    $permStmt = db()->prepare('SELECT can_edit FROM permissions WHERE equipo_user_id = ? AND empresa_id = ?');
-    $permStmt->execute([$user['id'], $folder['empresa_id']]);
-    $perm = $permStmt->fetch();
-    $canManage = (bool)($perm['can_edit'] ?? false);
-}
-if (!$canManage) fail('No tienes permiso para editar esta carpeta.', 403);
+/* ── Renombrar: Admin/Super Admin siempre, Equipo o Cliente solo con permiso
+      "Editar" otorgado para esta empresa. ── */
+if (!has_permission($user, $folder['empresa_id'], 'can_edit')) fail('No tienes permiso para editar esta carpeta.', 403);
 
 if ($newName !== $folder['folder_name']) {
     $dup = db()->prepare(

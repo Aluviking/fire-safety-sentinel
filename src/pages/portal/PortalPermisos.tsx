@@ -22,24 +22,27 @@ export default function PortalPermisos() {
   const isAdmin = currentUser.role === "admin" || currentUser.role === "super_admin";
   if (!isAdmin) return null;
 
-  const equipoUsers = users.filter((u) => u.role === "equipo");
+  const equipoUsers  = users.filter((u) => u.role === "equipo");
+  const clienteUsers = users.filter((u) => u.role === "cliente" && u.empresaId);
 
-  const getPerm = (equipoUserId: string, empresaId: string): Permission | undefined =>
-    permissions.find((p) => p.equipoUserId === equipoUserId && p.empresaId === empresaId);
+  const PERM_FIELDS = ["canView", "canUpload", "canEdit", "canDownload"] as const;
+  type PermField = (typeof PERM_FIELDS)[number];
+  const FIELD_LABEL: Record<PermField, string> = {
+    canView: "Ver", canUpload: "Subir", canEdit: "Editar", canDownload: "Descargar",
+  };
 
-  const toggle = (
-    equipoUserId: string,
-    empresaId: string,
-    field: "canEdit" | "canUpload" | "clienteCanUpload",
-    current: boolean
-  ) => {
-    const existing = getPerm(equipoUserId, empresaId);
+  const getPerm = (userId: string, empresaId: string): Permission | undefined =>
+    permissions.find((p) => p.userId === userId && p.empresaId === empresaId);
+
+  const toggle = (userId: string, empresaId: string, field: PermField, current: boolean) => {
+    const existing = getPerm(userId, empresaId);
     upsertPermission({
-      equipoUserId,
+      userId,
       empresaId,
-      canEdit:           field === "canEdit"           ? !current : (existing?.canEdit           ?? false),
-      canUpload:         field === "canUpload"         ? !current : (existing?.canUpload         ?? false),
-      clienteCanUpload:  field === "clienteCanUpload"  ? !current : (existing?.clienteCanUpload  ?? false),
+      canView:     field === "canView"     ? !current : (existing?.canView     ?? false),
+      canUpload:   field === "canUpload"   ? !current : (existing?.canUpload   ?? false),
+      canEdit:     field === "canEdit"     ? !current : (existing?.canEdit     ?? false),
+      canDownload: field === "canDownload" ? !current : (existing?.canDownload ?? false),
       grantedBy: currentUser?.id ?? "admin-001",
     });
   };
@@ -57,7 +60,7 @@ export default function PortalPermisos() {
           <h1 className="font-display text-2xl tracking-[0.04em] text-gradient-gold">PERMISOS</h1>
         </div>
         <p className="text-sm text-slate-500 ml-[42px] mb-6">
-          Define qué puede editar o subir cada usuario de Equipo, por empresa.
+          Define qué puede ver, subir, editar o descargar cada usuario, por empresa. Cada permiso es independiente.
         </p>
 
         <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
@@ -102,16 +105,16 @@ export default function PortalPermisos() {
                           <div className="bg-slate-50 rounded-xl px-3 py-2 mb-3">
                             <div className="flex items-center gap-1 px-1 pb-1.5 text-[10px] text-slate-500">
                               <span className="w-[140px] shrink-0">Empresa</span>
-                              <span className="w-[50px] text-center shrink-0">Editar</span>
-                              <span className="w-[50px] text-center shrink-0">Subir</span>
-                              <span className="w-[50px] text-center shrink-0 leading-tight">Cliente<br/>Sube</span>
+                              {PERM_FIELDS.map((f) => (
+                                <span key={f} className="w-[50px] text-center shrink-0">{FIELD_LABEL[f]}</span>
+                              ))}
                             </div>
                             {companies.map((c) => {
                               const p = getPerm(u.id, c.id);
                               return (
                                 <div key={c.id} className="flex items-center gap-1 py-1.5 border-b border-slate-100 last:border-0">
                                   <span className="text-[11px] text-slate-700 w-[140px] shrink-0 truncate">{c.nombre}</span>
-                                  {(["canEdit", "canUpload", "clienteCanUpload"] as const).map((field) => (
+                                  {PERM_FIELDS.map((field) => (
                                     <div key={field} className="w-[50px] flex justify-center shrink-0">
                                       <button
                                         onClick={() => toggle(u.id, c.id, field, p?.[field] ?? false)}
@@ -134,6 +137,55 @@ export default function PortalPermisos() {
                     </AnimatePresence>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden mt-6">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h2 className="font-semibold text-slate-800 text-sm">Clientes</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Cada cliente solo ve su propia empresa asignada.</p>
+          </div>
+
+          <div className="p-6">
+            {clienteUsers.length === 0 ? (
+              <p className="text-center text-sm text-slate-500 py-6">No hay usuarios con rol Cliente asignados a una empresa aún.</p>
+            ) : (
+              <div className="bg-slate-50 rounded-xl px-3 py-2">
+                <div className="flex items-center gap-1 px-1 pb-1.5 text-[10px] text-slate-500">
+                  <span className="flex-1 min-w-0">Cliente</span>
+                  {PERM_FIELDS.map((f) => (
+                    <span key={f} className="w-[50px] text-center shrink-0">{FIELD_LABEL[f]}</span>
+                  ))}
+                </div>
+                {clienteUsers.map((u) => {
+                  const empresaId = u.empresaId!;
+                  const p = getPerm(u.id, empresaId);
+                  const empresa = companies.find((c) => c.id === empresaId);
+                  return (
+                    <div key={u.id} className="flex items-center gap-1 py-1.5 border-b border-slate-100 last:border-0">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-medium text-slate-700 truncate">{u.nombre}</p>
+                        <p className="text-[10px] text-slate-400 truncate">{empresa?.nombre ?? "—"}</p>
+                      </div>
+                      {PERM_FIELDS.map((field) => (
+                        <div key={field} className="w-[50px] flex justify-center shrink-0">
+                          <button
+                            onClick={() => toggle(u.id, empresaId, field, p?.[field] ?? false)}
+                            className={`w-8 h-4 rounded-full transition-colors duration-200 relative
+                              ${p?.[field] ? "bg-amber-400" : "bg-slate-300"}`}
+                          >
+                            <span
+                              className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all duration-200
+                                ${p?.[field] ? "left-[18px]" : "left-0.5"}`}
+                            />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

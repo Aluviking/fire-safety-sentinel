@@ -17,21 +17,7 @@ $folder = $folderStmt->fetch();
 if (!$folder) fail('Carpeta no encontrada.', 404);
 $empresaId = $folder['empresa_id'];
 
-/* ── Resolver permiso de subida según rol ── */
-$canUpload = false;
-if ($user['role'] === 'admin' || $user['role'] === 'super_admin') {
-    $canUpload = true;
-} elseif ($user['role'] === 'equipo') {
-    $stmt = db()->prepare('SELECT can_upload FROM permissions WHERE equipo_user_id = ? AND empresa_id = ?');
-    $stmt->execute([$user['id'], $empresaId]);
-    $perm = $stmt->fetch();
-    $canUpload = (bool)($perm['can_upload'] ?? false);
-} elseif ($user['role'] === 'cliente' && $user['empresa_id'] === $empresaId) {
-    $stmt = db()->prepare('SELECT 1 FROM permissions WHERE empresa_id = ? AND cliente_can_upload = 1 LIMIT 1');
-    $stmt->execute([$empresaId]);
-    $canUpload = (bool)$stmt->fetch();
-}
-if (!$canUpload) fail('No tienes permiso para subir archivos aquí.', 403);
+if (!has_permission($user, $empresaId, 'can_upload')) fail('No tienes permiso para subir archivos aquí.', 403);
 
 /* ── Validaciones de archivo ── */
 $maxBytes = 15 * 1024 * 1024; // 15 MB

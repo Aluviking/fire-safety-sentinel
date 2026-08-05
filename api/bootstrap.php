@@ -116,6 +116,20 @@ function require_role(array $user, array $roles): void
     if (!in_array($user['role'], $roles, true)) fail('No autorizado.', 403);
 }
 
+/* ─── Permisos granulares (Ver/Subir/Editar/Descargar) por usuario+empresa ──
+   Admin/Super Admin siempre tienen todo. Equipo y Cliente se resuelven igual,
+   por fila específica en `permissions` (user_id, empresa_id) — ya no hay
+   distinción de lógica entre esos dos roles a este nivel. */
+function has_permission(array $user, string $empresaId, string $field): bool
+{
+    if ($user['role'] === 'admin' || $user['role'] === 'super_admin') return true;
+    if (!in_array($field, ['can_view', 'can_upload', 'can_edit', 'can_download'], true)) return false;
+    $stmt = db()->prepare("SELECT $field FROM permissions WHERE user_id = ? AND empresa_id = ?");
+    $stmt->execute([$user['id'], $empresaId]);
+    $perm = $stmt->fetch();
+    return (bool) ($perm[$field] ?? false);
+}
+
 function log_trace(array $user, string $action, ?string $empresaId = null, ?string $detail = null): void
 {
     $stmt = db()->prepare(

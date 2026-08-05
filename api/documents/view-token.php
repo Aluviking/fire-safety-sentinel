@@ -18,7 +18,7 @@ $stmt->execute([$id]);
 $doc = $stmt->fetch();
 if (!$doc) fail('No encontrado.', 404);
 
-if ($user['role'] === 'cliente' && $user['empresa_id'] !== $doc['empresa_id']) fail('No autorizado.', 403);
+if (!has_permission($user, $doc['empresa_id'], 'can_view')) fail('No tienes permiso para esto.', 403);
 
 $secret = config('view_link_secret');
 if (!$secret) fail('Vista previa no configurada en el servidor.', 500);

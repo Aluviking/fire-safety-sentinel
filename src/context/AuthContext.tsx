@@ -24,11 +24,12 @@ export interface Company {
 
 export interface Permission {
   id: number;
-  equipoUserId: string;
+  userId: string;
   empresaId: string;
-  canEdit: boolean;
+  canView: boolean;
   canUpload: boolean;
-  clienteCanUpload: boolean; // admin otorga esto para que el cliente de esta empresa pueda subir
+  canEdit: boolean;
+  canDownload: boolean;
   grantedBy: string;
   grantedAt: string; // ISO timestamp
 }
@@ -74,7 +75,7 @@ interface AuthContextType {
   changeRole: (userId: string, role: Role) => Promise<void>;
   assignEmpresa: (userId: string, empresaId: string | undefined) => Promise<void>;
   upsertPermission: (data: Omit<Permission, "id" | "grantedAt">) => Promise<void>;
-  getPermission: (equipoUserId: string, empresaId: string) => Permission | undefined;
+  getPermission: (userId: string, empresaId: string) => Permission | undefined;
   addTrace: (entry: { action: string; empresaId?: string; detail?: string }) => void;
   refreshTrace: () => Promise<void>;
 }
@@ -98,11 +99,12 @@ function mapCompanyRow(row: any): Company {
 function mapPermissionRow(row: any): Permission {
   return {
     id: Number(row.id),
-    equipoUserId: row.equipo_user_id,
+    userId: row.user_id,
     empresaId: row.empresa_id,
-    canEdit: !!Number(row.can_edit),
+    canView: !!Number(row.can_view),
     canUpload: !!Number(row.can_upload),
-    clienteCanUpload: !!Number(row.cliente_can_upload),
+    canEdit: !!Number(row.can_edit),
+    canDownload: !!Number(row.can_download),
     grantedBy: row.granted_by,
     grantedAt: row.granted_at,
   };
@@ -370,8 +372,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadPermissions();
   };
 
-  const getPermission = (equipoUserId: string, empresaId: string) =>
-    permissions.find((p) => p.equipoUserId === equipoUserId && p.empresaId === empresaId);
+  const getPermission = (userId: string, empresaId: string) =>
+    permissions.find((p) => p.userId === userId && p.empresaId === empresaId);
 
   // Best-effort: no bloquea la UI ni rompe el flujo si falla.
   const addTrace = (entry: { action: string; empresaId?: string; detail?: string }) => {
