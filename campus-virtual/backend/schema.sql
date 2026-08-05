@@ -249,6 +249,47 @@ CREATE TABLE IF NOT EXISTS notas_credito (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ══════════════════════════════════════════════════════════════════════════
+-- Fase 4 — Informes (+ 2 tablas del backup que no se habían usado en
+-- ninguna fase anterior: Homologaciones/Habilitaciones y Modificaciones de
+-- créditos). El resto de "Informes" son reportes agregados sobre datos que
+-- ya existen (creditos, pagos_pendientes, pagos_realizados, notas_credito,
+-- notas_finales), sin tablas nuevas.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS homologaciones (
+  id                        INT AUTO_INCREMENT PRIMARY KEY,
+  identificacion_estudiante VARCHAR(30)  NULL,
+  tipo                      VARCHAR(50)  NULL,
+  asignatura                VARCHAR(200) NULL,
+  institucion_origen        VARCHAR(200) NULL,
+  nota                      DECIMAL(6,2) NULL,
+  observaciones             TEXT         NULL,
+  estado                    VARCHAR(50)  NULL,
+  periodo                   VARCHAR(30)  NULL,
+  docente                   VARCHAR(200) NULL,
+  created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_homologaciones_estudiante (identificacion_estudiante)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS modificaciones_creditos (
+  id                       INT AUTO_INCREMENT PRIMARY KEY,
+  pagare                   VARCHAR(50)   NULL,
+  nota_modificacion        VARCHAR(100)  NULL,
+  valor_anterior           DECIMAL(14,2) NULL,
+  valor_posterior          DECIMAL(14,2) NULL,
+  valor_nota_credito       DECIMAL(14,2) NULL,
+  fecha                    DATE          NULL,
+  justificacion            TEXT          NULL,
+  cajero                   VARCHAR(150)  NULL,
+  anulado                  VARCHAR(10)   NULL,
+  fecha_anulacion          DATE          NULL,
+  cajero_anulacion         VARCHAR(150)  NULL,
+  justificacion_anulacion  TEXT          NULL,
+  created_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_modificaciones_creditos_pagare (pagare)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
 -- Fase 3a — Académico: Estructuración (Programas, Asignaturas, Cursos)
 -- ══════════════════════════════════════════════════════════════════════════
 -- Asignaturas queda como catálogo reutilizable (una asignatura puede

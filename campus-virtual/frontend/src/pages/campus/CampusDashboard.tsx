@@ -25,6 +25,9 @@ import AsignaturasView from "./views/AsignaturasView";
 import CursosView from "./views/CursosView";
 import EvaluacionesView from "./views/EvaluacionesView";
 import EducacionVirtualView from "./views/EducacionVirtualView";
+import ConsolidadoNotasView from "./views/ConsolidadoNotasView";
+import CarteraGeneralView from "./views/CarteraGeneralView";
+import GestionFinancieraView from "./views/GestionFinancieraView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
 const GFOLogoSmall = ({ className }: { className?: string }) => (
@@ -741,6 +744,12 @@ export default function CampusDashboard() {
           <AsignaturasView />
         ) : activeNav.sub === "Estructuración › Crear curso" ? (
           <CursosView />
+        ) : activeNav.sub === "Consolidado de notas" ? (
+          <ConsolidadoNotasView />
+        ) : activeNav.sub === "Cartera general" ? (
+          <CarteraGeneralView />
+        ) : activeNav.sub === "Gestión financiera" ? (
+          <GestionFinancieraView />
         ) : (
           <ModulePlaceholder nav={activeNav.nav} sub={activeNav.sub} />
         )}
