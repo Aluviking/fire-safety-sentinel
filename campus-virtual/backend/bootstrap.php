@@ -112,3 +112,35 @@ function require_role(array $user, array $roles): void
 {
     if (!in_array($user['role'], $roles, true)) fail('No autorizado.', 403);
 }
+
+/* ─── reCAPTCHA v2 (Google) ───────────────────────────────────────────────
+   Verifica el token contra la API de Google desde el servidor — la única
+   parte que realmente cuenta como seguridad (el widget en el navegador por
+   sí solo no evita nada, cualquiera puede llamar a la API directo). */
+function verify_recaptcha(?string $token): bool
+{
+    if (!$token) return false;
+    $secret = config('recaptcha_secret');
+    if (!$secret) return false;
+
+    $payload = http_build_query([
+        'secret'   => $secret,
+        'response' => $token,
+        'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+    ]);
+
+    $context = stream_context_create([
+        'http' => [
+            'method'  => 'POST',
+            'header'  => "Content-Type: application/x-www-form-urlencoded\r\n",
+            'content' => $payload,
+            'timeout' => 6,
+        ],
+    ]);
+
+    $result = @file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, $context);
+    if ($result === false) return false;
+
+    $data = json_decode($result, true);
+    return is_array($data) && !empty($data['success']);
+}

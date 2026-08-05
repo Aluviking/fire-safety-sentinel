@@ -1,30 +1,29 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, ArrowLeft, Lock, User, ChevronRight } from "lucide-react";
-import gfoLogo from "@/assets/gfo-academy-logo.jpeg";
+import gfoLogo from "@/assets/gfo-academy-logo.png";
+import mascotImg from "@/assets/personaje-mascota.png";
 import { useCampusAuth } from "@/context/CampusAuthContext";
+import Recaptcha, { type RecaptchaHandle } from "@/components/Recaptcha";
 
-/* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
-const GFOLogo = ({ size = "lg" }: { size?: "sm" | "lg" }) => (
-  <div
-    className={`rounded-2xl bg-white border border-slate-200
-                shadow-[0_4px_24px_rgba(0,0,0,0.10)]
-                flex items-center justify-center overflow-hidden
-                ${size === "lg" ? "p-5 w-52 h-52" : "p-2 w-28 h-28"}`}
-  >
-    <img src={gfoLogo} alt="GFO Academy" className="w-full h-full object-contain" />
-  </div>
+/* ── Logo GFO Academy — PNG con fondo transparente real, se integra directo
+   sin ninguna caja ni círculo. ── */
+const GFOLogo = ({ className = "h-16" }: { className?: string }) => (
+  <img
+    src={gfoLogo}
+    alt="GFO Academy"
+    className={`w-auto object-contain ${className}`}
+  />
 );
 
-/* ── Decorative grid background ───────────────────────────────────────────── */
-const GridBg = () => (
+/* ── Fondo de puntos sutil ─────────────────────────────────────────────────── */
+const DotGridBg = () => (
   <div
-    className="absolute inset-0 opacity-[0.045]"
+    className="absolute inset-0 opacity-[0.05] pointer-events-none"
     style={{
-      backgroundImage:
-        "linear-gradient(rgba(0,0,0,1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,1) 1px, transparent 1px)",
-      backgroundSize: "56px 56px",
+      backgroundImage: "radial-gradient(rgba(0,0,0,1) 1.4px, transparent 1.4px)",
+      backgroundSize: "26px 26px",
     }}
   />
 );
@@ -39,6 +38,8 @@ export default function CampusLogin() {
   const [remember, setRemember] = useState(false);
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<RecaptchaHandle>(null);
 
   useEffect(() => {
     if (!authLoading && currentUser) navigate("/dashboard", { replace: true });
@@ -47,278 +48,283 @@ export default function CampusLogin() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!recaptchaToken) {
+      setError("Confirma que no eres un robot.");
+      return;
+    }
     setLoading(true);
-    const res = await login(username.trim(), password);
+    const res = await login(username.trim(), password, recaptchaToken);
     if (res.ok) {
       navigate("/dashboard");
     } else {
       setError(res.error ?? "Nombre de usuario o contraseña incorrectos.");
       setLoading(false);
+      recaptchaRef.current?.reset();
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-[#F1F5F9]">
+    <div className="h-[100dvh] w-screen overflow-hidden flex flex-col bg-black">
+      {/* ══ FONDO — diagonal rojo/negro + blanco, igual que antes ═══════════ */}
+      <div className="flex-1 relative flex items-center justify-center min-h-0 px-4 py-[clamp(1rem,3vh,2rem)]">
+        <div className="absolute inset-0 bg-white" />
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-[#E02020] via-[#B01313] to-[#1a0505]
+                     lg:[clip-path:polygon(38%_0,100%_0,100%_100%,10%_100%)]"
+        />
+        <DotGridBg />
+        <div className="absolute top-[-10%] right-[-10%] w-72 h-72 rounded-full bg-white/10 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] left-[-5%] w-72 h-72 rounded-full bg-[#C41717]/[0.05] blur-[100px] pointer-events-none" />
 
-      {/* ══ PANEL IZQUIERDO — Branding ════════════════════════════════════════ */}
-      <motion.div
-        initial={{ opacity: 0, x: -32 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-        className="hidden lg:flex lg:w-[52%] relative flex-col overflow-hidden bg-white"
-      >
-        {/* Blobs decorativos */}
-        <div className="absolute top-0 right-0 w-[480px] h-[480px] rounded-full bg-[#C41717]/[0.04] blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-10 left-10 w-[360px] h-[360px] rounded-full bg-[#C41717]/[0.03] blur-[100px] pointer-events-none" />
-        <GridBg />
-
-        {/* Barra accent izquierda */}
-        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-transparent via-[#C41717]/60 to-transparent" />
-
-        {/* Contenido centrado */}
-        <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-14 xl:px-20">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.88 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.65, delay: 0.2 }}
-            className="mb-10"
-          >
-            <GFOLogo size="lg" />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 22 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.35 }}
-          >
-            <p className="text-slate-400 text-xs font-semibold tracking-[0.28em] uppercase mb-4">
-              Le damos la bienvenida a
-            </p>
-
-            <h1 className="text-slate-900 font-black text-4xl xl:text-[2.6rem] leading-[1.08] tracking-tight">
-              GESTIÓN Y<br />
-              <span style={{ color: "#C41717" }}>FORMACIÓN</span>
-              <br />ORGANIZACIONAL
-            </h1>
-
-            <div className="flex items-center justify-center gap-3 my-6">
-              <div className="h-px w-14 bg-[#C41717]/35" />
-              <div className="w-1.5 h-1.5 rounded-full bg-[#C41717]/55" />
-              <div className="h-px w-14 bg-[#C41717]/35" />
-            </div>
-
-            <p className="text-slate-500 text-sm leading-relaxed max-w-[300px] mx-auto">
-              Plataforma académica integral para el desarrollo y formación
-              profesional en HSE y gestión organizacional.
-            </p>
-          </motion.div>
-
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.55 }}
-            className="flex items-center gap-10 mt-10 pt-10 border-t border-slate-200 w-full justify-center"
-          >
-            {[
-              { n: "20+",  l: "Años"        },
-              { n: "500+", l: "Estudiantes" },
-              { n: "30+",  l: "Programas"   },
-            ].map(({ n, l }) => (
-              <div key={l} className="flex flex-col items-center gap-1.5">
-                <span className="text-[1.6rem] font-black text-slate-900 leading-none">{n}</span>
-                <span className="text-[10px] text-slate-400 tracking-[0.18em] uppercase">{l}</span>
-              </div>
-            ))}
-          </motion.div>
-        </div>
-
-        {/* Footer del panel izquierdo */}
-        <div className="relative z-10 py-5 text-center border-t border-slate-100">
-          <p className="text-slate-300 text-[10px] tracking-[0.22em] uppercase">
-            GFO Academy · Campus Virtual · {new Date().getFullYear()}
-          </p>
-        </div>
-      </motion.div>
-
-      {/* ══ PANEL DERECHO — Formulario ════════════════════════════════════════ */}
-      <motion.div
-        initial={{ opacity: 0, x: 28 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex-1 flex flex-col justify-center items-center px-6 sm:px-14 lg:px-16 py-12 relative bg-[#F1F5F9]"
-      >
-        {/* Blob suave */}
-        <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-[#C41717]/[0.03] blur-[80px] pointer-events-none" />
-
-        {/* Volver al sitio principal (fuera de esta app) */}
+        {/* Volver al sitio principal */}
         <a
           href="/"
-          className="absolute top-6 left-6 flex items-center gap-1.5
-                     text-slate-400 hover:text-slate-600 text-xs tracking-wide transition-colors"
+          className="absolute top-4 left-4 sm:top-6 sm:left-6 z-30 flex items-center gap-1.5
+                     text-white/80 hover:text-white lg:text-slate-500 lg:hover:text-slate-800
+                     text-xs font-medium tracking-wide transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Volver al sitio
         </a>
 
-        {/* Logo mobile */}
-        <div className="lg:hidden mb-8">
-          <GFOLogo size="sm" />
-        </div>
+        {/* ══ Columna centrada: mascota (mobile/tablet) + tarjeta ══════════ */}
+        <div className="relative z-10 flex flex-col items-center w-full max-w-[980px] max-h-full">
+          {/* Mascota — solo tablet (sm-lg), no en celular. En celular no hace
+              falta, sobra espacio; en tablet sí sobresale encima de la tarjeta
+              igual que en desktop. */}
+          <img
+            src={mascotImg}
+            alt="Mascota GFO Academy"
+            className="hidden sm:block lg:hidden relative z-20 w-auto object-contain shrink-0
+                       drop-shadow-[0_14px_22px_rgba(0,0,0,0.25)]"
+            style={{ height: "clamp(170px,30vh,340px)" }}
+          />
 
-        <div className="w-full max-w-[390px] relative z-10">
-          {/* Encabezado */}
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
-            className="mb-8"
-          >
-            <h2 className="text-slate-900 font-bold text-2xl xl:text-[1.65rem] mb-2 tracking-tight">
-              Ingresa a tu cuenta
-            </h2>
-            <p className="text-slate-500 text-sm">
-              Accede al Campus Virtual de GFO Academy
+          <div className="hidden sm:block lg:hidden text-center px-6 mt-3 mb-5 shrink-0">
+            <h1 className="text-white font-black text-[clamp(1.3rem,3.2vh,1.7rem)] leading-[1.2] tracking-tight">
+              Aprende y certifícate <span className="text-white/90">con nosotros</span>
+            </h1>
+            <p className="text-white/70 text-[clamp(0.8rem,2vh,0.95rem)] mt-2 leading-relaxed">
+              Campus Virtual · Gestión académica en Seguridad y Salud en el Trabajo.
             </p>
-          </motion.div>
+          </div>
 
-          {/* Formulario */}
-          <motion.form
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.25 }}
-            onSubmit={handleLogin}
-            className="flex flex-col gap-4"
+          <div className="grid w-full max-h-full">
+          {/* Capa gris detrás, mismo tamaño y forma exactos que la tarjeta —
+              así el vidrio toma un tono gris neutro en vez del rojo de fondo,
+              y el texto se lee mucho mejor. */}
+          <div style={{ gridArea: "1 / 1" }} className="rounded-[1.75rem] bg-slate-300" />
+
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            style={{ gridArea: "1 / 1" }}
+            className="max-h-full overflow-y-auto lg:overflow-visible
+                       flex flex-col lg:flex-row
+                       bg-white/70 backdrop-blur-2xl border border-white/80
+                       shadow-[0_25px_80px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.9)]
+                       rounded-[1.75rem]"
           >
-            {/* Usuario */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-slate-500 text-[10.5px] font-bold tracking-[0.14em] uppercase">
-                Nombre de usuario
-              </label>
-              <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[15px] h-[15px] text-slate-400 pointer-events-none" />
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="tu usuario"
-                  required
-                  autoComplete="username"
-                  className="w-full bg-white border border-slate-200 rounded-xl
-                             pl-10 pr-4 py-3.5 text-slate-800 text-sm placeholder:text-slate-400
-                             focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10
-                             transition-all duration-200 shadow-sm"
-                />
-              </div>
+          {/* ── Lado visual (solo desktop) ── */}
+          <div className="hidden lg:flex lg:w-[42%] relative flex-col items-center justify-end border-r border-white/50 overflow-visible">
+            <div className="absolute inset-[6%] rounded-full bg-[#C41717]/[0.05] blur-3xl pointer-events-none" />
+            <img
+              src={mascotImg}
+              alt="Mascota GFO Academy"
+              className="relative z-10 w-auto object-contain drop-shadow-[0_22px_34px_rgba(0,0,0,0.2)] -mt-20"
+              style={{ height: "clamp(320px,58vh,600px)" }}
+            />
+
+            <div className="relative z-10 text-center px-8 pb-8">
+              <h1 className="text-slate-900 font-black text-[clamp(1.1rem,2.4vh,1.6rem)] leading-[1.2] tracking-tight">
+                Aprende y certifícate
+                <br />
+                <span style={{ color: "#C41717" }}>con nosotros</span>
+              </h1>
+              <p className="text-slate-500 text-[clamp(0.7rem,1.4vh,0.8rem)] mt-2 leading-relaxed max-w-[240px] mx-auto">
+                Campus Virtual · Gestión académica en Seguridad y Salud en el Trabajo.
+              </p>
+            </div>
+          </div>
+
+          {/* ── Lado formulario ── */}
+          <div className="relative flex-1 flex flex-col justify-center px-6 py-6 sm:px-10 sm:py-8">
+            {/* Encabezado móvil — logo arriba, todo centrado dentro de la tarjeta */}
+            <div className="sm:hidden text-center mb-6">
+              <GFOLogo className="h-14 mx-auto mb-3" />
+              <p className="text-[#C41717] font-bold text-[13px] tracking-tight mb-2">
+                Aprende y certifícate con nosotros
+              </p>
+              <h2 className="text-slate-900 font-bold text-xl tracking-tight">
+                Ingresa a tu cuenta
+              </h2>
+              <p className="text-slate-500 text-[13px] mt-1">
+                Accede al Campus Virtual de GFO Academy
+              </p>
             </div>
 
-            {/* Contraseña */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-slate-500 text-[10.5px] font-bold tracking-[0.14em] uppercase">
-                Contraseña
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[15px] h-[15px] text-slate-400 pointer-events-none" />
-                <input
-                  type={showPass ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  autoComplete="current-password"
-                  className="w-full bg-white border border-slate-200 rounded-xl
-                             pl-10 pr-11 py-3.5 text-slate-800 text-sm placeholder:text-slate-400
-                             focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10
-                             transition-all duration-200 shadow-sm"
-                />
+            {/* Encabezado tablet/desktop — logo integrado junto al texto */}
+            <div className="hidden sm:flex mb-5 items-center justify-between gap-3">
+              <div>
+                <h2 className="text-slate-900 font-bold text-xl sm:text-[1.6rem] tracking-tight">
+                  Ingresa a tu cuenta
+                </h2>
+                <p className="text-slate-500 text-[13px] mt-1">
+                  Accede al Campus Virtual de GFO Academy
+                </p>
+              </div>
+              <GFOLogo className="h-14 sm:h-20 shrink-0" />
+            </div>
+
+            <form onSubmit={handleLogin} className="flex flex-col gap-3.5">
+              {/* Usuario */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-slate-400 text-[10px] font-bold tracking-[0.14em] uppercase">
+                  Nombre de usuario
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[15px] h-[15px] text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="tu usuario"
+                    required
+                    autoComplete="username"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl
+                               pl-10 pr-4 py-3 text-slate-800 text-sm placeholder:text-slate-400
+                               focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10
+                               transition-all duration-200"
+                  />
+                </div>
+              </div>
+
+              {/* Contraseña */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-slate-400 text-[10px] font-bold tracking-[0.14em] uppercase">
+                  Contraseña
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[15px] h-[15px] text-slate-400 pointer-events-none" />
+                  <input
+                    type={showPass ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    autoComplete="current-password"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl
+                               pl-10 pr-11 py-3 text-slate-800 text-sm placeholder:text-slate-400
+                               focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10
+                               transition-all duration-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(!showPass)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2
+                               text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Recordarme */}
+              <div className="flex items-center justify-between -mt-0.5">
+                <label className="flex items-center gap-2 cursor-pointer select-none group">
+                  <div
+                    role="checkbox"
+                    aria-checked={remember}
+                    tabIndex={0}
+                    onClick={() => setRemember(!remember)}
+                    onKeyDown={(e) => e.key === " " && setRemember(!remember)}
+                    className={`w-4 h-4 rounded-[4px] border flex items-center justify-center
+                                transition-all duration-200 cursor-pointer
+                                ${remember
+                                  ? "bg-[#C41717] border-[#C41717]"
+                                  : "bg-white border-slate-300 group-hover:border-slate-400"}`}
+                  >
+                    {remember && (
+                      <svg viewBox="0 0 10 8" className="w-2.5 h-2.5">
+                        <path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.8"
+                              strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-slate-500 text-[13px]">¿Recordarme?</span>
+                </label>
                 <button
                   type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2
-                             text-slate-400 hover:text-slate-600 transition-colors"
+                  className="text-[#C41717]/80 hover:text-[#C41717] text-[13px] transition-colors"
                 >
-                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  ¿Olvidaste tu contraseña?
                 </button>
               </div>
-            </div>
 
-            {/* Recordarme + contraseña olvidada */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2.5 cursor-pointer select-none group">
-                <div
-                  role="checkbox"
-                  aria-checked={remember}
-                  tabIndex={0}
-                  onClick={() => setRemember(!remember)}
-                  onKeyDown={(e) => e.key === " " && setRemember(!remember)}
-                  className={`w-4 h-4 rounded-[4px] border flex items-center justify-center
-                              transition-all duration-200 cursor-pointer
-                              ${remember
-                                ? "bg-[#C41717] border-[#C41717]"
-                                : "bg-white border-slate-300 group-hover:border-slate-400"}`}
+              {/* Verificación de seguridad */}
+              <Recaptcha ref={recaptchaRef} onChange={setRecaptchaToken} />
+
+              {/* Error */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-2.5 bg-red-50 border border-red-200
+                             rounded-xl px-4 py-2.5"
                 >
-                  {remember && (
-                    <svg viewBox="0 0 10 8" className="w-2.5 h-2.5">
-                      <path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.8"
-                            strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                    </svg>
-                  )}
-                </div>
-                <span className="text-slate-500 text-sm">¿Recordarme?</span>
-              </label>
-              <button
-                type="button"
-                className="text-[#C41717]/80 hover:text-[#C41717] text-sm transition-colors"
-              >
-                ¿Olvidaste tu contraseña?
-              </button>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2.5 bg-red-50 border border-red-200
-                           rounded-xl px-4 py-3"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                <span className="text-red-600 text-sm">{error}</span>
-              </motion.div>
-            )}
-
-            {/* Botón ingresar */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 mt-1 py-[14px]
-                         rounded-xl font-bold text-sm tracking-[0.06em] text-white
-                         bg-[#C41717] hover:bg-[#B01313]
-                         shadow-[0_4px_22px_rgba(196,23,23,0.28)]
-                         hover:shadow-[0_6px_30px_rgba(196,23,23,0.40)]
-                         active:scale-[0.98] transition-all duration-200
-                         disabled:opacity-55 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Verificando...
-                </>
-              ) : (
-                <>
-                  Ingresar
-                  <ChevronRight className="w-4 h-4" />
-                </>
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                  <span className="text-red-600 text-[13px]">{error}</span>
+                </motion.div>
               )}
-            </button>
-          </motion.form>
-        </div>
 
-        {/* Footer */}
-        <p className="absolute bottom-5 text-slate-400 text-[10px] tracking-[0.18em]">
-          © {new Date().getFullYear()} GFO Academy. Gestión y Formación Organizacional
+              {/* Botón ingresar */}
+              <button
+                type="submit"
+                disabled={loading || !recaptchaToken}
+                className="w-full flex items-center justify-center gap-2 mt-1 py-3.5
+                           rounded-xl font-bold text-sm tracking-[0.06em] text-white
+                           bg-[#C41717] hover:bg-[#B01313]
+                           shadow-[0_8px_28px_rgba(196,23,23,0.3)]
+                           active:scale-[0.98] transition-all duration-200
+                           disabled:opacity-55 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Verificando...
+                  </>
+                ) : (
+                  <>
+                    Ingresar
+                    <ChevronRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+          </motion.div>
+          </div>
+        </div>
+      </div>
+
+      {/* ══ PIE DE PÁGINA — de toda la pantalla ══════════════════════════════ */}
+      <div className="shrink-0 bg-black flex items-center justify-center px-4 py-1.5 sm:py-0 sm:h-[clamp(28px,4.5svh,40px)]">
+        <p className="text-white/60 text-[9px] sm:text-[11px] tracking-wide text-center leading-tight">
+          <span className="block sm:inline">© {new Date().getFullYear()} GFO Academy · Gestión y Formación Organizacional</span>
+          <span className="block sm:inline">
+            {" "}— Powered by{" "}
+            <a
+              href="https://www.rubikcontroldigital.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-white/80 hover:text-white transition-colors"
+            >
+              Rubik Control Digital
+            </a>
+          </span>
         </p>
-      </motion.div>
+      </div>
     </div>
   );
 }

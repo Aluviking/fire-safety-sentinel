@@ -18,4 +18,9 @@ return [
         'https://www.siso.com.co',
         'http://localhost:8082',
     ],
+
+    // Clave SECRETA de reCAPTCHA v2 (google.com/recaptcha/admin) — nunca la
+    // clave de sitio (esa es pública y va en el frontend). Se usa para
+    // verificar el token contra la API de Google en cada intento de login.
+    'recaptcha_secret' => 'CAMBIA_tu_secret_key_de_recaptcha',
 ];

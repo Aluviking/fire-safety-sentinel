@@ -4,10 +4,12 @@ require __DIR__ . '/../bootstrap.php';
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
 
 $body = json_body();
-$identifier = trim($body['identifier'] ?? '');
-$password   = $body['password'] ?? '';
+$identifier     = trim($body['identifier'] ?? '');
+$password       = $body['password'] ?? '';
+$recaptchaToken = $body['recaptchaToken'] ?? null;
 
 if ($identifier === '' || $password === '') fail('Correo/usuario y contraseña son requeridos.');
+if (!verify_recaptcha($recaptchaToken)) fail('Verificación de seguridad fallida. Intenta de nuevo.', 400);
 
 $stmt = db()->prepare('SELECT * FROM users WHERE email = ? OR username = ?');
 $stmt->execute([$identifier, $identifier]);

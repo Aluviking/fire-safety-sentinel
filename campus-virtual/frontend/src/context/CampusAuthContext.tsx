@@ -16,7 +16,7 @@ interface CampusAuthContextType {
   currentUser: CampusUser | null;
   loading: boolean;
   users: CampusUser[];
-  login: (emailOrUsername: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  login: (emailOrUsername: string, password: string, recaptchaToken: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
   createUser: (data: { nombre: string; email: string; username: string; password: string; role: Role }) => Promise<{ ok: boolean; error?: string }>;
   deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
@@ -65,11 +65,11 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const login = async (emailOrUsername: string, password: string) => {
+  const login = async (emailOrUsername: string, password: string, recaptchaToken: string) => {
     try {
       const data = await apiFetch<{ token: string; user: unknown }>("/auth/login.php", {
         method: "POST",
-        json: { identifier: emailOrUsername, password },
+        json: { identifier: emailOrUsername, password, recaptchaToken },
       });
       const user = mapUserRow(data.user);
       setToken(data.token);
