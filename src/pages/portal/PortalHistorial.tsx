@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ScrollText, Eye, FolderOpen, Upload, Trash2, Pencil,
-  Users, Shield, UserPlus, Building2, UserMinus, ImageIcon, Megaphone, FolderPlus,
+  Users, Shield, UserPlus, Building2, UserMinus, ImageIcon, Megaphone, FolderPlus, KeyRound,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import type { TraceEntry } from "@/context/AuthContext";
@@ -20,6 +20,8 @@ const ACTION_LABEL: Record<string, string> = {
   user_create:   "Creó usuario",
   company_create: "Creó empresa",
   user_delete:   "Eliminó usuario",
+  user_update:   "Editó usuario",
+  password_reset: "Restableció contraseña",
   company_delete: "Eliminó empresa",
   avatar_update: "Actualizó foto de perfil",
   ad_update: "Actualizó publicidad",
@@ -35,6 +37,7 @@ const ACTION_ACCENT: Record<string, string> = {
   upload_file: "#16a34a", delete_file: "#dc2626", edit_folder: "#d97706",
   role_change: "#9333ea", perm_change: "#ea580c", user_create: "#0d9488",
   company_create: "#4f46e5", user_delete: "#dc2626", company_delete: "#dc2626",
+  user_update: "#d97706", password_reset: "#be123c",
   avatar_update: "#0891b2", ad_update: "#c026d3",
   company_update: "#d97706", company_photo_update: "#0891b2",
   folder_create: "#0d9488", folder_delete: "#dc2626", folder_rename: "#d97706",
@@ -45,6 +48,7 @@ const ACTION_ICON: Record<string, React.ElementType> = {
   upload_file: Upload, delete_file: Trash2, edit_folder: Pencil,
   role_change: Users, perm_change: Shield, user_create: UserPlus,
   company_create: Building2, user_delete: UserMinus, company_delete: Trash2,
+  user_update: Pencil, password_reset: KeyRound,
   avatar_update: ImageIcon, ad_update: Megaphone,
   company_update: Pencil, company_photo_update: ImageIcon,
   folder_create: FolderPlus, folder_delete: Trash2, folder_rename: Pencil,

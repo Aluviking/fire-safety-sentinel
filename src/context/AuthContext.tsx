@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { apiFetch, setToken, getToken } from "@/lib/api";
-import { AD_DISMISS_KEY } from "@/pages/portal/AdSidebar";
+import { AD_POPUP_DISMISS_KEY } from "@/pages/portal/AdPopup";
 
 export type Role = "super_admin" | "admin" | "equipo" | "cliente";
 
@@ -69,6 +69,8 @@ interface AuthContextType {
   updateCompany: (companyId: string, data: { nombre: string; nit: string }) => Promise<{ ok: boolean; error?: string }>;
   uploadCompanyPhoto: (companyId: string, file: File) => Promise<{ ok: boolean; error?: string }>;
   deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
+  updateUser: (userId: string, data: { nombre: string; email: string; username: string }) => Promise<{ ok: boolean; error?: string }>;
+  resetPassword: (userId: string, newPassword: string) => Promise<{ ok: boolean; error?: string }>;
   deleteCompany: (companyId: string) => Promise<{ ok: boolean; error?: string }>;
   uploadAvatar: (userId: string, file: File) => Promise<{ ok: boolean; error?: string }>;
   uploadAd: (file: File) => Promise<{ ok: boolean; error?: string }>;
@@ -229,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCurrentUser(user);
       // El anuncio de publicidad debe reaparecer en cada inicio de sesión nuevo,
       // aunque sea el mismo anuncio ya cerrado antes.
-      sessionStorage.removeItem(AD_DISMISS_KEY);
+      sessionStorage.removeItem(AD_POPUP_DISMISS_KEY);
       await Promise.all([loadCompanies(), loadPermissions(), loadAdminData(user.role), loadProgress()]);
       return { ok: true };
     } catch (e) {
@@ -239,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try { await apiFetch("/auth/logout.php", { method: "POST" }); } catch { /* best-effort */ }
-    sessionStorage.removeItem(AD_DISMISS_KEY);
+    sessionStorage.removeItem(AD_POPUP_DISMISS_KEY);
     setToken(null);
     setCurrentUser(null);
     setUsers([]);
@@ -320,6 +322,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUser = async (userId: string, data: { nombre: string; email: string; username: string }) => {
+    try {
+      await apiFetch("/users/update.php", { method: "POST", json: { userId, ...data } });
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...data } : u)));
+      if (currentUser?.id === userId) setCurrentUser((c) => (c ? { ...c, ...data } : c));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
+  const resetPassword = async (userId: string, newPassword: string) => {
+    try {
+      await apiFetch("/users/reset-password.php", { method: "POST", json: { userId, newPassword } });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
   const deleteCompany = async (companyId: string) => {
     try {
       await apiFetch("/companies/delete.php", { method: "POST", json: { id: companyId } });
@@ -385,7 +407,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentUser, loading, users, companies, permissions, trace,
       progress, progressTotal, progressByPhase, progressTotalByPhase, loadProgress,
       login, logout, register, createUser, createCompany, updateCompany, uploadCompanyPhoto,
-      deleteUser, deleteCompany, changeRole,
+      deleteUser, updateUser, resetPassword, deleteCompany, changeRole,
       assignEmpresa, upsertPermission, getPermission, addTrace, uploadAvatar, uploadAd,
       refreshTrace: loadTrace,
     }}>

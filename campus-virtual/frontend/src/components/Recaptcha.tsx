@@ -67,12 +67,18 @@ const Recaptcha = forwardRef<RecaptchaHandle, { onChange: (token: string | null)
       },
     }));
 
+    // El widget de Google tiene un tamaño fijo (304×78px) — se achica un poco
+    // con transform:scale para que ocupe menos alto en la tarjeta, sin perder
+    // funcionalidad (el iframe sigue siendo clickeable normalmente).
+    const SCALE = 0.82;
     return (
-      <div className="flex justify-center">
-        <div ref={containerRef} className={ready ? "" : "hidden"} />
-        {!ready && (
-          <div className="h-[78px] w-[304px] max-w-full rounded-md bg-slate-100 animate-pulse" />
-        )}
+      <div className="flex justify-center overflow-hidden" style={{ height: 78 * SCALE }}>
+        <div style={{ transform: `scale(${SCALE})`, transformOrigin: "top center" }}>
+          <div ref={containerRef} className={ready ? "" : "hidden"} />
+          {!ready && (
+            <div className="h-[78px] w-[304px] max-w-full rounded-md bg-slate-100 animate-pulse" />
+          )}
+        </div>
       </div>
     );
   }

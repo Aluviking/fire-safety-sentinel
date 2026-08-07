@@ -12,7 +12,7 @@ import { PortalTopNav } from "./PortalTopNav";
 import { FolderShell } from "./FolderShell";
 import { PHVA, type LetraPhva } from "./phvaData";
 import { DateWeatherWidget } from "./DateWeatherWidget";
-import { AdSidebar } from "./AdSidebar";
+import { AdPopup } from "./AdPopup";
 import { HeroImageSlider } from "./HeroImageSlider";
 import { DASHBOARD_BANNER_IMAGES } from "./heroBanners";
 
@@ -920,10 +920,12 @@ export default function PortalEmpresa() {
             </AnimatePresence>
           </div>
 
-          {/* Publicidad — solo Cliente y Equipo */}
-          {(currentUser?.role === "cliente" || isEquipo) && <AdSidebar />}
         </div>
       </main>
+
+      {/* Publicidad — Cliente y Equipo, como popup emergente centrado que no
+          resta espacio de layout (ver AdPopup.tsx). Admin/Super Admin no la ven. */}
+      {(currentUser?.role === "cliente" || isEquipo) && <AdPopup />}
     </div>
   );
 }
