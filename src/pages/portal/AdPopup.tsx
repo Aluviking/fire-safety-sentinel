@@ -96,8 +96,8 @@ export function AdPopup() {
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="w-full max-h-[70vh] aspect-[9/16] bg-slate-100">
-                <img src={imgUrl} alt="Publicidad" className="w-full h-full object-cover" />
+              <div className="w-full max-h-[70vh] aspect-[9/16] bg-slate-100 flex items-center justify-center">
+                <img src={imgUrl} alt="Publicidad" className="w-full h-full object-contain" />
               </div>
             </motion.div>
           </div>
