@@ -134,7 +134,7 @@ export default function CampusLogin() {
         </a>
 
         {/* ══ Columna centrada: foto del equipo (mobile/tablet) + tarjeta ═══ */}
-        <div className="relative z-10 flex flex-col items-center w-full max-w-[980px] max-h-full">
+        <div className="relative z-10 flex flex-col items-center w-full max-w-[1180px] max-h-full">
           {/* Tagline — solo tablet, ANTES de la foto (la foto queda pegada
               a la tarjeta para poder sobresalir encima de ella). */}
           <div className="hidden sm:block lg:hidden text-center px-6 mb-3 shrink-0">

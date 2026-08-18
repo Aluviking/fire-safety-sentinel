@@ -26,8 +26,12 @@
   # frame-src es necesario porque el botón "Ver" de PDF/imágenes abre el
   # documento dentro de un <iframe src="blob:..."> en la pestaña nueva — sin
   # esto, el navegador bloquea el iframe (cae a default-src 'self') y el
-  # visor queda en blanco sin avisar al usuario.
-  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; frame-src 'self' blob:; connect-src 'self' https://api.open-meteo.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+  # visor queda en blanco sin avisar al usuario. google.com/gstatic.com en
+  # script-src/frame-src/connect-src son para el reCAPTCHA real del login de
+  # Campus Virtual (Recaptcha.tsx) — sin esto el script de Google se bloquea
+  # silenciosamente y el checkbox nunca aparece, dejando el login sin poder
+  # enviarse (recaptchaToken nunca se llena).
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; frame-src 'self' blob: https://www.google.com; connect-src 'self' https://api.open-meteo.com https://www.google.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
 
   # Oculta la firma de versión del servidor
   Header unset X-Powered-By
