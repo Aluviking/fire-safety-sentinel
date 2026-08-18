@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight, User, Mail, Phone, FileText } from "lucide-react";
 import { TIPOS_ID, SEXOS, PERIODOS, SEDES, PROGRAMAS_POR_SEDE } from "@/data/academicCatalog";
@@ -94,22 +94,47 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 interface FormData {
   nombreCompleto: string; tipoId: string; numeroId: string;
-  genero: string; correo: string; celular: string;
+  genero: string; correo: string; celular: string; subgrupoSisben: string;
   periodo: string; sedeJornada: string; programa: string;
 }
 
 const EMPTY: FormData = {
   nombreCompleto: "", tipoId: "", numeroId: "",
-  genero: "", correo: "", celular: "",
+  genero: "", correo: "", celular: "", subgrupoSisben: "",
   periodo: "", sedeJornada: "", programa: "",
 };
 
-interface Props { isOpen: boolean; onClose: () => void; onCreated?: () => void; }
+export interface EstudianteEditable {
+  id: number; identificacion: string; nombre_completo: string;
+  genero: string | null; tipo_documento: string | null;
+  celular: string | null; correo: string | null; subgrupo_sisben: string | null;
+}
 
-export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated }: Props) {
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreated?: () => void;
+  editing?: EstudianteEditable | null;
+}
+
+export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, editing }: Props) {
   const [form, setForm] = useState<FormData>(EMPTY);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const isEditing = !!editing;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (editing) {
+      setForm({
+        nombreCompleto: editing.nombre_completo, tipoId: editing.tipo_documento ?? "", numeroId: editing.identificacion,
+        genero: editing.genero ?? "", correo: editing.correo ?? "", celular: editing.celular ?? "",
+        subgrupoSisben: editing.subgrupo_sisben ?? "", periodo: "", sedeJornada: "", programa: "",
+      });
+    } else {
+      setForm(EMPTY);
+    }
+  }, [isOpen, editing]);
 
   const set = (field: keyof FormData) => (value: string) => {
     if (field === "periodo") setForm((f) => ({ ...f, periodo: value, sedeJornada: "", programa: "" }));
@@ -129,24 +154,41 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated }:
     }
     setSubmitting(true);
     try {
-      await apiFetch("/estudiantes/create.php", {
-        method: "POST",
-        json: {
-          identificacion: form.numeroId.trim(),
-          nombreCompleto: form.nombreCompleto.trim(),
-          genero: form.genero || null,
-          tipoDocumento: form.tipoId || null,
-          celular: form.celular || null,
-          correo: form.correo || null,
-          periodo: form.periodo || null,
-          sede: form.sedeJornada || null,
-          programa: form.programa || null,
-        },
-      });
+      if (isEditing && editing) {
+        await apiFetch("/estudiantes/update.php", {
+          method: "POST",
+          json: {
+            id: editing.id,
+            identificacion: form.numeroId.trim(),
+            nombreCompleto: form.nombreCompleto.trim(),
+            genero: form.genero || null,
+            tipoDocumento: form.tipoId || null,
+            celular: form.celular || null,
+            correo: form.correo || null,
+            subgrupoSisben: form.subgrupoSisben || null,
+          },
+        });
+      } else {
+        await apiFetch("/estudiantes/create.php", {
+          method: "POST",
+          json: {
+            identificacion: form.numeroId.trim(),
+            nombreCompleto: form.nombreCompleto.trim(),
+            genero: form.genero || null,
+            tipoDocumento: form.tipoId || null,
+            celular: form.celular || null,
+            correo: form.correo || null,
+            subgrupoSisben: form.subgrupoSisben || null,
+            periodo: form.periodo || null,
+            sede: form.sedeJornada || null,
+            programa: form.programa || null,
+          },
+        });
+      }
       onCreated?.();
       handleClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al registrar el estudiante.");
+      setError(e instanceof Error ? e.message : `Error al ${isEditing ? "editar" : "registrar"} el estudiante.`);
     } finally {
       setSubmitting(false);
     }
@@ -175,9 +217,9 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated }:
               <div className="mt-1 sm:mt-0">
                 <div className="flex items-center gap-1 text-slate-400 text-[11px] mb-1.5">
                   <span>Institucional</span><ChevronRight className="w-3 h-3" /><span>Estudiantes</span>
-                  <ChevronRight className="w-3 h-3" /><span className="text-[#C41717] font-semibold">Nuevo registro</span>
+                  <ChevronRight className="w-3 h-3" /><span className="text-[#C41717] font-semibold">{isEditing ? "Editar registro" : "Nuevo registro"}</span>
                 </div>
-                <h2 className="text-slate-900 font-bold text-lg sm:text-xl leading-tight">Registrar estudiante</h2>
+                <h2 className="text-slate-900 font-bold text-lg sm:text-xl leading-tight">{isEditing ? "Editar estudiante" : "Registrar estudiante"}</h2>
               </div>
               <button onClick={handleClose} className="p-2 -mr-1 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all shrink-0">
                 <X className="w-5 h-5" />
@@ -195,21 +237,24 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated }:
               <Section title="Contacto">
                 <FInput label="Correo electrónico" type="email" icon={Mail} value={form.correo} onChange={set("correo")} />
                 <FInput label="Celular" type="tel" icon={Phone} value={form.celular} onChange={set("celular")} />
+                <FInput label="Subgrupo Sisbén" value={form.subgrupoSisben} onChange={set("subgrupoSisben")} />
               </Section>
 
-              <Section title="Matrícula académica">
-                <FSelect label="Período" value={form.periodo} onChange={set("periodo")} options={PERIODOS} />
-                <FSelect
-                  label="Sede - jornada" value={form.sedeJornada} onChange={set("sedeJornada")}
-                  options={SEDES} disabled={!form.periodo}
-                  placeholder={form.periodo ? "Seleccione" : "Primero seleccione período"}
-                />
-                <FSelect
-                  label="Programa" value={form.programa} onChange={set("programa")}
-                  options={programaOpts} disabled={!form.sedeJornada}
-                  placeholder={!form.sedeJornada ? "Primero seleccione sede" : "Seleccione"}
-                />
-              </Section>
+              {!isEditing && (
+                <Section title="Matrícula académica">
+                  <FSelect label="Período" value={form.periodo} onChange={set("periodo")} options={PERIODOS} />
+                  <FSelect
+                    label="Sede - jornada" value={form.sedeJornada} onChange={set("sedeJornada")}
+                    options={SEDES} disabled={!form.periodo}
+                    placeholder={form.periodo ? "Seleccione" : "Primero seleccione período"}
+                  />
+                  <FSelect
+                    label="Programa" value={form.programa} onChange={set("programa")}
+                    options={programaOpts} disabled={!form.sedeJornada}
+                    placeholder={!form.sedeJornada ? "Primero seleccione sede" : "Seleccione"}
+                  />
+                </Section>
+              )}
 
               {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
             </div>
@@ -227,7 +272,7 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated }:
                   className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold
                              transition-all shadow-sm hover:shadow-[0_4px_14px_rgba(196,23,23,0.30)] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {submitting ? "Registrando..." : "Registrar estudiante"}
+                  {submitting ? "Guardando..." : isEditing ? "Guardar cambios" : "Registrar estudiante"}
                 </button>
               </div>
             </div>

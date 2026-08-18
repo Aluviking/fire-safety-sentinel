@@ -1,7 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2, Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { useCampusAuth } from "@/context/CampusAuthContext";
+import RegistrarEstudianteModal, { type EstudianteEditable } from "../RegistrarEstudianteModal";
+import { ConfirmModal } from "../ConfirmModal";
 
 interface Matricula {
   id: number;
@@ -76,19 +79,37 @@ function Pagination({
 
 /* ══ Vista principal ═════════════════════════════════════════════════════════ */
 export default function InformacionBasicaView() {
+  const { currentUser } = useCampusAuth();
+  const isSuperAdmin = currentUser?.role === "super_admin";
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchActive, setSearchActive] = useState("");
   const [page, setPage]               = useState(1);
+  const [editing, setEditing]         = useState<EstudianteEditable | null>(null);
+  const [deleting, setDeleting]       = useState<{ id: number; nombre: string } | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     apiFetch<{ estudiantes: Estudiante[] }>("/estudiantes/list.php")
       .then((data) => setEstudiantes(data.estudiantes))
       .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar estudiantes."))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(load, []);
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    try {
+      await apiFetch("/estudiantes/delete.php", { method: "POST", json: { id: deleting.id } });
+      setDeleting(null);
+      load();
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Error al eliminar el estudiante.");
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = searchActive.trim().toLowerCase();
@@ -168,11 +189,12 @@ export default function InformacionBasicaView() {
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Identificación</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Contacto</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Matrícula</th>
+                      {isSuperAdmin && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {pageData.length === 0 ? (
-                      <tr><td colSpan={4} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
+                      <tr><td colSpan={isSuperAdmin ? 5 : 4} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
                     ) : (
                       pageData.map((est, idx) => {
                         const ultima = est.matriculas[0];
@@ -194,6 +216,18 @@ export default function InformacionBasicaView() {
                                 <span className="text-slate-300 text-xs">Sin matrícula</span>
                               )}
                             </td>
+                            {isSuperAdmin && (
+                              <td className="px-4 py-2">
+                                <div className="flex items-center justify-end gap-2.5">
+                                  <button onClick={() => setEditing(est)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => setDeleting({ id: est.id, nombre: est.nombre_completo })} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         );
                       })
@@ -214,6 +248,20 @@ export default function InformacionBasicaView() {
           )}
         </div>
       </div>
+
+      <RegistrarEstudianteModal
+        isOpen={!!editing}
+        onClose={() => setEditing(null)}
+        onCreated={load}
+        editing={editing}
+      />
+      <ConfirmModal
+        open={!!deleting}
+        title="Eliminar estudiante"
+        message={`¿Eliminar a "${deleting?.nombre}"? También se eliminarán sus matrículas asociadas. Esta acción no se puede deshacer.`}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </motion.div>
   );
 }

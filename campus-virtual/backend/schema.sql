@@ -428,3 +428,21 @@ CREATE TABLE IF NOT EXISTS notas_finales (
   created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_notas_finales_estudiante (identificacion_estudiante)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 5 — Auditoría: quién editó/eliminó qué en los datos maestros
+-- (Estudiantes, Docentes, Administrativos, Programas, Asignaturas, Cursos,
+-- Codeudores, Usuarios). Estas acciones quedan exclusivas al Super Admin —
+-- ver bootstrap.php (log_trace) y audit/list.php.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS audit_trace (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  user_id    VARCHAR(40)  NOT NULL,
+  user_name  VARCHAR(150) NOT NULL,
+  user_role  VARCHAR(30)  NOT NULL,
+  action     VARCHAR(50)  NOT NULL,
+  detail     TEXT         NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_audit_trace_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

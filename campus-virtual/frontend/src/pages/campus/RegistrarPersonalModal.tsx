@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight, User, Mail, Phone, FileText, Briefcase } from "lucide-react";
 import { TIPOS_ID, SEXOS } from "@/data/academicCatalog";
@@ -61,26 +61,67 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 interface FormData {
-  nombreCompleto: string; tipoId: string; numeroId: string;
-  genero: string; correo: string; celular: string; cargo: string;
+  nombreCompleto: string; tipoId: string; numeroId: string; genero: string; cargo: string;
+  correo: string; celular: string; telefono: string; direccion: string;
+  municipioExpedicion: string; fechaNacimiento: string; municipioNacimiento: string; municipioResidencia: string;
+  tipoSanguineo: string; escalafon: string; calidadDesempeno: string; nivelAcademico: string;
+  especialidad: string; fechaIngreso: string; tipoVinculacion: string; estado: string;
 }
-const EMPTY: FormData = { nombreCompleto: "", tipoId: "", numeroId: "", genero: "", correo: "", celular: "", cargo: "" };
+const EMPTY: FormData = {
+  nombreCompleto: "", tipoId: "", numeroId: "", genero: "", cargo: "",
+  correo: "", celular: "", telefono: "", direccion: "",
+  municipioExpedicion: "", fechaNacimiento: "", municipioNacimiento: "", municipioResidencia: "",
+  tipoSanguineo: "", escalafon: "", calidadDesempeno: "", nivelAcademico: "",
+  especialidad: "", fechaIngreso: "", tipoVinculacion: "", estado: "Activo",
+};
+
+export interface PersonalEditable {
+  id: number; identificacion: string; nombre_completo: string; genero: string | null;
+  tipo_documento: string | null; correo: string | null; celular: string | null; telefono: string | null;
+  direccion: string | null; municipio_expedicion: string | null; fecha_nacimiento: string | null;
+  municipio_nacimiento: string | null; municipio_residencia: string | null; tipo_sanguineo: string | null;
+  cargo?: string | null; escalafon: string | null; calidad_desempeno: string | null; nivel_academico: string | null;
+  especialidad: string | null; fecha_ingreso: string | null; tipo_vinculacion: string | null; estado: string | null;
+}
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onCreated?: () => void;
   tipo: "docente" | "administrativo";
+  editing?: PersonalEditable | null;
 }
 
 const TIPO_LABEL = { docente: "docente", administrativo: "administrativo" } as const;
-const TIPO_ENDPOINT = { docente: "/docentes/create.php", administrativo: "/administrativos/create.php" } as const;
+const TIPO_CREATE_ENDPOINT = { docente: "/docentes/create.php", administrativo: "/administrativos/create.php" } as const;
+const TIPO_UPDATE_ENDPOINT = { docente: "/docentes/update.php", administrativo: "/administrativos/update.php" } as const;
 
-export default function RegistrarPersonalModal({ isOpen, onClose, onCreated, tipo }: Props) {
+export default function RegistrarPersonalModal({ isOpen, onClose, onCreated, tipo, editing }: Props) {
   const [form, setForm] = useState<FormData>(EMPTY);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const isEditing = !!editing;
   const set = (field: keyof FormData) => (value: string) => setForm((f) => ({ ...f, [field]: value }));
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (editing) {
+      setForm({
+        nombreCompleto: editing.nombre_completo, tipoId: editing.tipo_documento ?? "", numeroId: editing.identificacion,
+        genero: editing.genero ?? "", cargo: editing.cargo ?? "",
+        correo: editing.correo ?? "", celular: editing.celular ?? "", telefono: editing.telefono ?? "",
+        direccion: editing.direccion ?? "", municipioExpedicion: editing.municipio_expedicion ?? "",
+        fechaNacimiento: editing.fecha_nacimiento ?? "", municipioNacimiento: editing.municipio_nacimiento ?? "",
+        municipioResidencia: editing.municipio_residencia ?? "", tipoSanguineo: editing.tipo_sanguineo ?? "",
+        escalafon: editing.escalafon ?? "", calidadDesempeno: editing.calidad_desempeno ?? "",
+        nivelAcademico: editing.nivel_academico ?? "", especialidad: editing.especialidad ?? "",
+        fechaIngreso: editing.fecha_ingreso ?? "", tipoVinculacion: editing.tipo_vinculacion ?? "",
+        estado: editing.estado ?? "Activo",
+      });
+    } else {
+      setForm(EMPTY);
+    }
+  }, [isOpen, editing]);
 
   const handleClose = () => { setForm(EMPTY); setError(""); onClose(); };
 
@@ -92,22 +133,38 @@ export default function RegistrarPersonalModal({ isOpen, onClose, onCreated, tip
     }
     setSubmitting(true);
     try {
-      await apiFetch(TIPO_ENDPOINT[tipo], {
-        method: "POST",
-        json: {
-          identificacion: form.numeroId.trim(),
-          nombreCompleto: form.nombreCompleto.trim(),
-          genero: form.genero || null,
-          tipoDocumento: form.tipoId || null,
-          celular: form.celular || null,
-          correo: form.correo || null,
-          ...(tipo === "administrativo" ? { cargo: form.cargo || null } : {}),
-        },
-      });
+      const payload = {
+        identificacion: form.numeroId.trim(),
+        nombreCompleto: form.nombreCompleto.trim(),
+        genero: form.genero || null,
+        tipoDocumento: form.tipoId || null,
+        celular: form.celular || null,
+        correo: form.correo || null,
+        telefono: form.telefono || null,
+        direccion: form.direccion || null,
+        municipioExpedicion: form.municipioExpedicion || null,
+        fechaNacimiento: form.fechaNacimiento || null,
+        municipioNacimiento: form.municipioNacimiento || null,
+        municipioResidencia: form.municipioResidencia || null,
+        tipoSanguineo: form.tipoSanguineo || null,
+        escalafon: form.escalafon || null,
+        calidadDesempeno: form.calidadDesempeno || null,
+        nivelAcademico: form.nivelAcademico || null,
+        especialidad: form.especialidad || null,
+        fechaIngreso: form.fechaIngreso || null,
+        tipoVinculacion: form.tipoVinculacion || null,
+        estado: form.estado || "Activo",
+        ...(tipo === "administrativo" ? { cargo: form.cargo || null } : {}),
+      };
+      if (isEditing && editing) {
+        await apiFetch(TIPO_UPDATE_ENDPOINT[tipo], { method: "POST", json: { id: editing.id, ...payload } });
+      } else {
+        await apiFetch(TIPO_CREATE_ENDPOINT[tipo], { method: "POST", json: payload });
+      }
       onCreated?.();
       handleClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : `Error al registrar el ${TIPO_LABEL[tipo]}.`);
+      setError(e instanceof Error ? e.message : `Error al ${isEditing ? "editar" : "registrar"} el ${TIPO_LABEL[tipo]}.`);
     } finally {
       setSubmitting(false);
     }
@@ -121,7 +178,7 @@ export default function RegistrarPersonalModal({ isOpen, onClose, onCreated, tip
             className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={handleClose} />
           <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full sm:max-w-xl max-h-[92vh] sm:max-h-[88vh] flex flex-col rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl"
+            className="relative w-full sm:max-w-2xl lg:max-w-4xl max-h-[92vh] sm:max-h-[88vh] flex flex-col rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40 shrink-0" />
@@ -130,9 +187,11 @@ export default function RegistrarPersonalModal({ isOpen, onClose, onCreated, tip
                 <div className="flex items-center gap-1 text-slate-400 text-[11px] mb-1.5">
                   <span>Institucional</span><ChevronRight className="w-3 h-3" />
                   <span className="capitalize">{TIPO_LABEL[tipo]}s</span><ChevronRight className="w-3 h-3" />
-                  <span className="text-[#C41717] font-semibold">Nuevo registro</span>
+                  <span className="text-[#C41717] font-semibold">{isEditing ? "Editar registro" : "Nuevo registro"}</span>
                 </div>
-                <h2 className="text-slate-900 font-bold text-lg sm:text-xl leading-tight capitalize">Registrar {TIPO_LABEL[tipo]}</h2>
+                <h2 className="text-slate-900 font-bold text-lg sm:text-xl leading-tight capitalize">
+                  {isEditing ? `Editar ${TIPO_LABEL[tipo]}` : `Registrar ${TIPO_LABEL[tipo]}`}
+                </h2>
               </div>
               <button onClick={handleClose} className="p-2 -mr-1 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all shrink-0">
                 <X className="w-5 h-5" />
@@ -145,6 +204,10 @@ export default function RegistrarPersonalModal({ isOpen, onClose, onCreated, tip
                 <FSelect label="Tipo de identificación" value={form.tipoId} onChange={set("tipoId")} options={TIPOS_ID} />
                 <FInput label="Número de identificación" required icon={FileText} value={form.numeroId} onChange={set("numeroId")} />
                 <FSelect label="Género" value={form.genero} onChange={set("genero")} options={SEXOS} />
+                <FInput label="Municipio de expedición" value={form.municipioExpedicion} onChange={set("municipioExpedicion")} />
+                <FInput label="Fecha de nacimiento" type="date" value={form.fechaNacimiento} onChange={set("fechaNacimiento")} />
+                <FInput label="Municipio de nacimiento" value={form.municipioNacimiento} onChange={set("municipioNacimiento")} />
+                <FInput label="Tipo sanguíneo" value={form.tipoSanguineo} onChange={set("tipoSanguineo")} />
                 {tipo === "administrativo" && (
                   <FInput label="Cargo" icon={Briefcase} value={form.cargo} onChange={set("cargo")} />
                 )}
@@ -152,6 +215,18 @@ export default function RegistrarPersonalModal({ isOpen, onClose, onCreated, tip
               <Section title="Contacto">
                 <FInput label="Correo electrónico" type="email" icon={Mail} value={form.correo} onChange={set("correo")} />
                 <FInput label="Celular" type="tel" icon={Phone} value={form.celular} onChange={set("celular")} />
+                <FInput label="Teléfono" type="tel" value={form.telefono} onChange={set("telefono")} />
+                <FInput label="Dirección" value={form.direccion} onChange={set("direccion")} />
+                <FInput label="Municipio de residencia" value={form.municipioResidencia} onChange={set("municipioResidencia")} />
+              </Section>
+              <Section title="Datos laborales">
+                <FInput label="Escalafón" value={form.escalafon} onChange={set("escalafon")} />
+                <FInput label="Calidad del desempeño" value={form.calidadDesempeno} onChange={set("calidadDesempeno")} />
+                <FInput label="Nivel académico" value={form.nivelAcademico} onChange={set("nivelAcademico")} />
+                <FInput label="Especialidad" value={form.especialidad} onChange={set("especialidad")} />
+                <FInput label="Fecha de ingreso" type="date" value={form.fechaIngreso} onChange={set("fechaIngreso")} />
+                <FInput label="Tipo de vinculación" value={form.tipoVinculacion} onChange={set("tipoVinculacion")} />
+                <FInput label="Estado" value={form.estado} onChange={set("estado")} />
               </Section>
               {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
             </div>
@@ -167,7 +242,7 @@ export default function RegistrarPersonalModal({ isOpen, onClose, onCreated, tip
                 <button onClick={handleAceptar} disabled={submitting}
                   className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold
                              transition-all shadow-sm hover:shadow-[0_4px_14px_rgba(196,23,23,0.30)] disabled:opacity-60 disabled:cursor-not-allowed capitalize">
-                  {submitting ? "Registrando..." : `Registrar ${TIPO_LABEL[tipo]}`}
+                  {submitting ? "Guardando..." : isEditing ? "Guardar cambios" : `Registrar ${TIPO_LABEL[tipo]}`}
                 </button>
               </div>
             </div>

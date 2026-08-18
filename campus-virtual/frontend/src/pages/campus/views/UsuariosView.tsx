@@ -1,7 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { UserPlus, Trash2, Users as UsersIcon } from "lucide-react";
+import { UserPlus, Trash2, Users as UsersIcon, Pencil, KeyRound, Check, X as XIcon } from "lucide-react";
 import { useCampusAuth, type Role } from "@/context/CampusAuthContext";
+import { ResetPasswordModal } from "../ResetPasswordModal";
+
+const INPUT_CLASS = "w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "estudiante",     label: "Estudiante" },
@@ -110,13 +114,59 @@ function CreateUserForm({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
 /* ══ Vista principal ═════════════════════════════════════════════════════════ */
 export default function UsuariosView() {
-  const { currentUser, users, changeRole, deleteUser } = useCampusAuth();
+  const { currentUser, users, changeRole, deleteUser, updateUser, resetPassword, logout } = useCampusAuth();
+  const navigate = useNavigate();
   const isSuperAdmin = currentUser?.role === "super_admin";
+
+  const [resettingUser, setResettingUser] = useState<{ id: string; nombre: string } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editNombre, setEditNombre] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editError, setEditError] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   const handleDelete = async (id: string, nombre: string) => {
     if (!window.confirm(`¿Eliminar a "${nombre}"? Esta acción no se puede deshacer.`)) return;
     const res = await deleteUser(id);
     if (!res.ok) window.alert(res.error ?? "Error al eliminar el usuario.");
+  };
+
+  const startEdit = (u: { id: string; nombre: string; email: string; username: string }) => {
+    setEditingId(u.id);
+    setEditNombre(u.nombre);
+    setEditEmail(u.email);
+    setEditUsername(u.username);
+    setEditError("");
+  };
+
+  const cancelEdit = () => setEditingId(null);
+
+  const submitEdit = async (e: React.FormEvent, userId: string) => {
+    e.preventDefault();
+    if (!editNombre.trim() || !editEmail.includes("@") || editUsername.length < 4) {
+      setEditError("Revisa los datos: correo válido y usuario mín. 4 caracteres.");
+      return;
+    }
+    setEditSubmitting(true);
+    const res = await updateUser(userId, { nombre: editNombre.trim(), email: editEmail.trim(), username: editUsername.trim() });
+    setEditSubmitting(false);
+    if (!res.ok) { setEditError(res.error ?? "Error."); return; }
+    setEditingId(null);
+  };
+
+  const confirmResetPassword = async (newPassword: string) => {
+    if (!resettingUser) return;
+    const res = await resetPassword(resettingUser.id, newPassword);
+    if (!res.ok) { window.alert(res.error ?? "Error al restablecer la contraseña."); return; }
+    // El servidor cierra todas las sesiones activas del usuario al cambiar su
+    // contraseña. Si el Super Admin se restableció su propia clave, su sesión
+    // actual también quedó invalidada — hay que sacarlo limpiamente.
+    if (resettingUser.id === currentUser?.id) {
+      window.alert("Tu contraseña fue actualizada. Debes iniciar sesión de nuevo.");
+      await logout();
+      navigate("/", { replace: true });
+    }
   };
 
   return (
@@ -150,37 +200,89 @@ export default function UsuariosView() {
             {users.map((u) => {
               const targetIsAdminTier = u.role === "admin" || u.role === "super_admin";
               const locked = targetIsAdminTier && !isSuperAdmin;
+              const isEditing = editingId === u.id;
               return (
-                <div key={u.id} className="py-3.5 flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-full bg-[#C41717]/15 border border-[#C41717]/30
-                                  flex items-center justify-center shrink-0">
-                    <span className="text-[#C41717] text-sm font-bold">{u.nombre.charAt(0)}</span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-800 truncate">{u.nombre}</p>
-                    <p className="text-xs text-slate-500 truncate">{u.email}</p>
-                  </div>
-                  <select
-                    value={u.role}
-                    disabled={locked}
-                    onChange={(e) => changeRole(u.id, e.target.value as Role)}
-                    className="text-xs bg-white border border-slate-300 rounded-lg px-2 py-1.5
-                               text-slate-700 cursor-pointer focus:outline-none shrink-0
-                               disabled:opacity-60 disabled:cursor-not-allowed
-                               focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
-                  >
-                    {ROLE_OPTIONS.filter((r) => isSuperAdmin || (r.value !== "admin" && r.value !== "super_admin") || r.value === u.role).map((r) => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
-                  </select>
-                  {u.id !== currentUser?.id && !locked && (
-                    <button
-                      onClick={() => handleDelete(u.id, u.nombre)}
-                      className="shrink-0 text-slate-400 hover:text-red-500 transition-colors"
-                      title="Eliminar usuario"
+                <div key={u.id} className="py-3.5">
+                  {isEditing ? (
+                    <form onSubmit={(e) => submitEdit(e, u.id)} className="flex items-start gap-3.5">
+                      <div className="w-10 h-10 rounded-full bg-[#C41717]/15 border border-[#C41717]/30
+                                      flex items-center justify-center shrink-0">
+                        <span className="text-[#C41717] text-sm font-bold">{u.nombre.charAt(0)}</span>
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <input value={editNombre} onChange={(e) => setEditNombre(e.target.value)} placeholder="Nombre completo" className={INPUT_CLASS} />
+                        <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Correo" type="email" className={INPUT_CLASS} />
+                        <input value={editUsername} onChange={(e) => setEditUsername(e.target.value)} placeholder="Usuario" className={INPUT_CLASS} />
+                        {editError && <p className="text-[11px] text-red-500">{editError}</p>}
+                      </div>
+                      <div className="flex flex-col gap-1.5 shrink-0">
+                        <button
+                          type="submit" disabled={editSubmitting} title="Guardar cambios"
+                          className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100
+                                     flex items-center justify-center transition-colors disabled:opacity-60"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button" onClick={cancelEdit} title="Cancelar"
+                          className="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200
+                                     flex items-center justify-center transition-colors"
+                        >
+                          <XIcon className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-full bg-[#C41717]/15 border border-[#C41717]/30
+                                    flex items-center justify-center shrink-0">
+                      <span className="text-[#C41717] text-sm font-bold">{u.nombre.charAt(0)}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-800 truncate">{u.nombre}</p>
+                      <p className="text-xs text-slate-500 truncate">{u.email}</p>
+                    </div>
+                    <select
+                      value={u.role}
+                      disabled={locked}
+                      onChange={(e) => changeRole(u.id, e.target.value as Role)}
+                      className="text-xs bg-white border border-slate-300 rounded-lg px-2 py-1.5
+                                 text-slate-700 cursor-pointer focus:outline-none shrink-0
+                                 disabled:opacity-60 disabled:cursor-not-allowed
+                                 focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                      {ROLE_OPTIONS.filter((r) => isSuperAdmin || (r.value !== "admin" && r.value !== "super_admin") || r.value === u.role).map((r) => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                      ))}
+                    </select>
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => startEdit(u)}
+                        className="shrink-0 text-slate-400 hover:text-[#C41717] transition-colors"
+                        title="Editar datos"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => setResettingUser({ id: u.id, nombre: u.nombre })}
+                        className="shrink-0 text-slate-400 hover:text-blue-600 transition-colors"
+                        title="Restablecer contraseña"
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {u.id !== currentUser?.id && !locked && (
+                      <button
+                        onClick={() => handleDelete(u.id, u.nombre)}
+                        className="shrink-0 text-slate-400 hover:text-red-500 transition-colors"
+                        title="Eliminar usuario"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                   )}
                 </div>
               );
@@ -191,6 +293,12 @@ export default function UsuariosView() {
           </div>
         </div>
       </div>
+
+      <ResetPasswordModal
+        user={resettingUser}
+        onConfirm={confirmResetPassword}
+        onCancel={() => setResettingUser(null)}
+      />
     </motion.div>
   );
 }

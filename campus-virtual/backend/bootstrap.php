@@ -113,6 +113,15 @@ function require_role(array $user, array $roles): void
     if (!in_array($user['role'], $roles, true)) fail('No autorizado.', 403);
 }
 
+/* ─── Auditoría ────────────────────────────────────────────────────────── */
+function log_trace(array $user, string $action, ?string $detail = null): void
+{
+    $stmt = db()->prepare(
+        'INSERT INTO audit_trace (user_id, user_name, user_role, action, detail) VALUES (?,?,?,?,?)'
+    );
+    $stmt->execute([$user['id'], $user['nombre'], $user['role'], $action, $detail]);
+}
+
 /* ─── reCAPTCHA v2 (Google) ───────────────────────────────────────────────
    Verifica el token contra la API de Google desde el servidor — la única
    parte que realmente cuenta como seguridad (el widget en el navegador por

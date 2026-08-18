@@ -1,27 +1,42 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { useCampusAuth } from "@/context/CampusAuthContext";
+import RegistrarCodeudorModal, { type CodeudorEditable } from "../RegistrarCodeudorModal";
+import { ConfirmModal } from "../ConfirmModal";
 
-interface Codeudor {
-  id: number;
-  identificacion: string;
-  nombre_completo: string;
-  celular: string | null;
-  correo: string | null;
-}
+type Codeudor = CodeudorEditable;
 
 export default function CodeudoresInfoView() {
+  const { currentUser } = useCampusAuth();
+  const isSuperAdmin = currentUser?.role === "super_admin";
   const [codeudores, setCodeudores] = useState<Codeudor[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState("");
+  const [editing, setEditing]       = useState<CodeudorEditable | null>(null);
+  const [deleting, setDeleting]     = useState<{ id: number; nombre: string } | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     apiFetch<{ codeudores: Codeudor[] }>("/codeudores/list.php")
       .then((data) => setCodeudores(data.codeudores))
       .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar."))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(load, []);
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    try {
+      await apiFetch("/codeudores/delete.php", { method: "POST", json: { id: deleting.id } });
+      setDeleting(null);
+      load();
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Error al eliminar el codeudor.");
+    }
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-3">
@@ -55,6 +70,7 @@ export default function CodeudoresInfoView() {
                     <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Nombre completo</th>
                     <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Identificación</th>
                     <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Contacto</th>
+                    {isSuperAdmin && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Acciones</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -63,6 +79,18 @@ export default function CodeudoresInfoView() {
                       <td className="px-4 py-2 text-slate-800 font-medium">{c.nombre_completo}</td>
                       <td className="px-4 py-2 text-slate-600 font-mono text-[13px]">{c.identificacion}</td>
                       <td className="px-4 py-2 text-slate-500 text-xs">{c.celular ?? "—"}{c.correo ? ` · ${c.correo}` : ""}</td>
+                      {isSuperAdmin && (
+                        <td className="px-4 py-2">
+                          <div className="flex items-center justify-end gap-2.5">
+                            <button onClick={() => setEditing(c)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => setDeleting({ id: c.id, nombre: c.nombre_completo })} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -71,6 +99,20 @@ export default function CodeudoresInfoView() {
           )}
         </div>
       </div>
+
+      <RegistrarCodeudorModal
+        isOpen={!!editing}
+        onClose={() => setEditing(null)}
+        onCreated={load}
+        editing={editing}
+      />
+      <ConfirmModal
+        open={!!deleting}
+        title="Eliminar codeudor"
+        message={`¿Eliminar a "${deleting?.nombre}"? Esta acción no se puede deshacer.`}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </motion.div>
   );
 }

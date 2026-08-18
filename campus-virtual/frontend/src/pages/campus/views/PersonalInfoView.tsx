@@ -1,18 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2, Pencil, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { useCampusAuth } from "@/context/CampusAuthContext";
+import RegistrarPersonalModal, { type PersonalEditable } from "../RegistrarPersonalModal";
+import { ConfirmModal } from "../ConfirmModal";
 
-interface Persona {
-  id: number;
-  identificacion: string;
-  nombre_completo: string;
-  correo: string | null;
-  celular: string | null;
-  cargo?: string | null;
-  escalafon: string | null;
-  estado: string | null;
-}
+type Persona = PersonalEditable;
 
 const PAGE_SIZE = 10;
 
@@ -65,23 +59,43 @@ const CONFIG = {
   administrativo: { endpoint: "/administrativos/list.php", key: "administrativos", titulo: "Administrativos" },
 } as const;
 
+const DELETE_ENDPOINT = { docente: "/docentes/delete.php", administrativo: "/administrativos/delete.php" } as const;
+const TIPO_LABEL_ES = { docente: "docente", administrativo: "administrativo" } as const;
+
 export default function PersonalInfoView({ tipo }: Props) {
   const { endpoint, key, titulo } = CONFIG[tipo];
+  const { currentUser } = useCampusAuth();
+  const isSuperAdmin = currentUser?.role === "super_admin";
   const [personas, setPersonas]       = useState<Persona[]>([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchActive, setSearchActive] = useState("");
   const [page, setPage]               = useState(1);
+  const [editing, setEditing]         = useState<PersonalEditable | null>(null);
+  const [deleting, setDeleting]       = useState<{ id: number; nombre: string } | null>(null);
 
-  useEffect(() => {
+  const load = () => {
     setLoading(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     apiFetch<Record<string, any>>(endpoint)
       .then((data) => setPersonas(data[key]))
       .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar."))
       .finally(() => setLoading(false));
-  }, [endpoint, key]);
+  };
+
+  useEffect(load, [endpoint, key]);
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    try {
+      await apiFetch(DELETE_ENDPOINT[tipo], { method: "POST", json: { id: deleting.id } });
+      setDeleting(null);
+      load();
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Error al eliminar.");
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = searchActive.trim().toLowerCase();
@@ -158,11 +172,12 @@ export default function PersonalInfoView({ tipo }: Props) {
                         <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Cargo</th>
                       )}
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Estado</th>
+                      {isSuperAdmin && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {pageData.length === 0 ? (
-                      <tr><td colSpan={5} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
+                      <tr><td colSpan={isSuperAdmin ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
                     ) : (
                       pageData.map((p, idx) => (
                         <tr key={p.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
@@ -175,6 +190,18 @@ export default function PersonalInfoView({ tipo }: Props) {
                               {p.estado ?? "—"}
                             </span>
                           </td>
+                          {isSuperAdmin && (
+                            <td className="px-4 py-2">
+                              <div className="flex items-center justify-end gap-2.5">
+                                <button onClick={() => setEditing(p)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => setDeleting({ id: p.id, nombre: p.nombre_completo })} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))
                     )}
@@ -194,6 +221,21 @@ export default function PersonalInfoView({ tipo }: Props) {
           )}
         </div>
       </div>
+
+      <RegistrarPersonalModal
+        isOpen={!!editing}
+        onClose={() => setEditing(null)}
+        onCreated={load}
+        tipo={tipo}
+        editing={editing}
+      />
+      <ConfirmModal
+        open={!!deleting}
+        title={`Eliminar ${TIPO_LABEL_ES[tipo]}`}
+        message={`¿Eliminar a "${deleting?.nombre}"? Esta acción no se puede deshacer.`}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </motion.div>
   );
 }

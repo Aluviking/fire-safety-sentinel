@@ -7,7 +7,7 @@ import {
   Users, BookOpen, GraduationCap, DollarSign, FileText,
   Calendar, Award, ClipboardList, UserCheck, Building,
   ChevronRight, LayoutDashboard, AlertCircle, Briefcase,
-  Shield, TrendingUp, Clock, UserCog,
+  Shield, TrendingUp, Clock, UserCog, ScrollText,
 } from "lucide-react";
 import { useCampusAuth, type CampusUser } from "@/context/CampusAuthContext";
 import RegistrarEstudianteModal from "./RegistrarEstudianteModal";
@@ -28,6 +28,7 @@ import EducacionVirtualView from "./views/EducacionVirtualView";
 import ConsolidadoNotasView from "./views/ConsolidadoNotasView";
 import CarteraGeneralView from "./views/CarteraGeneralView";
 import GestionFinancieraView from "./views/GestionFinancieraView";
+import HistorialView from "./views/HistorialView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
 const GFOLogoSmall = ({ className }: { className?: string }) => (
@@ -106,6 +107,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { label: "Usuarios", icon: UserCog },
+  { label: "Historial", icon: ScrollText },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
@@ -497,6 +499,8 @@ export default function CampusDashboard() {
   if (loading || !user) return null;
 
   const isAdmin = user.role === "admin" || user.role === "super_admin";
+  const isSuperAdmin = user.role === "super_admin";
+  const visibleNavItems = NAV_ITEMS.filter((item) => item.label !== "Historial" || isSuperAdmin);
 
   /* Acceso restringido */
   if (!isAdmin) {
@@ -562,7 +566,7 @@ export default function CampusDashboard() {
 
           {/* Nav escritorio */}
           <nav className="hidden lg:flex items-center gap-0.5 ml-2">
-            {NAV_ITEMS.map((item) =>
+            {visibleNavItems.map((item) =>
               item.subs && item.subs.length > 0 ? (
                 <NavDropdown
                   key={item.label}
@@ -634,7 +638,7 @@ export default function CampusDashboard() {
               className="lg:hidden border-t border-slate-200 overflow-hidden"
             >
               <div className="px-4 py-3 space-y-1">
-                {NAV_ITEMS.map((item) => (
+                {visibleNavItems.map((item) => (
                   <div key={item.label}>
                     <button
                       onClick={() => { if (!item.subs?.length) handleNavigate(item.label, ""); else toggleMenu(item.label); }}
@@ -720,6 +724,8 @@ export default function CampusDashboard() {
           <DashboardHome user={user} onNavigate={handleNavigate} />
         ) : activeNav.nav === "Usuarios" ? (
           <UsuariosView />
+        ) : activeNav.nav === "Historial" && isSuperAdmin ? (
+          <HistorialView />
         ) : activeNav.sub === "Estudiantes › Información básica" ? (
           <InformacionBasicaView />
         ) : activeNav.sub === "Docentes › Información básica" ? (

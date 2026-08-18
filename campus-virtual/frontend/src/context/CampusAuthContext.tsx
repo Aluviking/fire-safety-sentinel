@@ -20,6 +20,8 @@ interface CampusAuthContextType {
   logout: () => Promise<void>;
   createUser: (data: { nombre: string; email: string; username: string; password: string; role: Role }) => Promise<{ ok: boolean; error?: string }>;
   deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
+  updateUser: (userId: string, data: { nombre: string; email: string; username: string }) => Promise<{ ok: boolean; error?: string }>;
+  resetPassword: (userId: string, newPassword: string) => Promise<{ ok: boolean; error?: string }>;
   changeRole: (userId: string, role: Role) => Promise<{ ok: boolean; error?: string }>;
 }
 
@@ -108,6 +110,26 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUser = async (userId: string, data: { nombre: string; email: string; username: string }) => {
+    try {
+      await apiFetch("/users/update.php", { method: "POST", json: { userId, ...data } });
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...data } : u)));
+      if (currentUser?.id === userId) setCurrentUser((c) => (c ? { ...c, ...data } : c));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
+  const resetPassword = async (userId: string, newPassword: string) => {
+    try {
+      await apiFetch("/users/reset-password.php", { method: "POST", json: { userId, newPassword } });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
   const changeRole = async (userId: string, role: Role) => {
     try {
       await apiFetch("/users/update-role.php", { method: "POST", json: { userId, role } });
@@ -119,7 +141,7 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <CampusAuthContext.Provider value={{ currentUser, loading, users, login, logout, createUser, deleteUser, changeRole }}>
+    <CampusAuthContext.Provider value={{ currentUser, loading, users, login, logout, createUser, deleteUser, updateUser, resetPassword, changeRole }}>
       {children}
     </CampusAuthContext.Provider>
   );

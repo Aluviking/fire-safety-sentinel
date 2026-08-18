@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight, User, Mail, Phone, FileText } from "lucide-react";
 import { apiFetch } from "@/lib/api";
@@ -33,13 +33,30 @@ function FInput({ label, required, type = "text", value, onChange, icon: Icon }:
 interface FormData { nombreCompleto: string; numeroId: string; correo: string; celular: string; }
 const EMPTY: FormData = { nombreCompleto: "", numeroId: "", correo: "", celular: "" };
 
-interface Props { isOpen: boolean; onClose: () => void; onCreated?: () => void; }
+export interface CodeudorEditable {
+  id: number; identificacion: string; nombre_completo: string; celular: string | null; correo: string | null;
+}
 
-export default function RegistrarCodeudorModal({ isOpen, onClose, onCreated }: Props) {
+interface Props { isOpen: boolean; onClose: () => void; onCreated?: () => void; editing?: CodeudorEditable | null; }
+
+export default function RegistrarCodeudorModal({ isOpen, onClose, onCreated, editing }: Props) {
   const [form, setForm] = useState<FormData>(EMPTY);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const isEditing = !!editing;
   const set = (field: keyof FormData) => (value: string) => setForm((f) => ({ ...f, [field]: value }));
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (editing) {
+      setForm({
+        nombreCompleto: editing.nombre_completo, numeroId: editing.identificacion,
+        correo: editing.correo ?? "", celular: editing.celular ?? "",
+      });
+    } else {
+      setForm(EMPTY);
+    }
+  }, [isOpen, editing]);
 
   const handleClose = () => { setForm(EMPTY); setError(""); onClose(); };
 
@@ -51,19 +68,21 @@ export default function RegistrarCodeudorModal({ isOpen, onClose, onCreated }: P
     }
     setSubmitting(true);
     try {
-      await apiFetch("/codeudores/create.php", {
-        method: "POST",
-        json: {
-          identificacion: form.numeroId.trim(),
-          nombreCompleto: form.nombreCompleto.trim(),
-          celular: form.celular || null,
-          correo: form.correo || null,
-        },
-      });
+      const payload = {
+        identificacion: form.numeroId.trim(),
+        nombreCompleto: form.nombreCompleto.trim(),
+        celular: form.celular || null,
+        correo: form.correo || null,
+      };
+      if (isEditing && editing) {
+        await apiFetch("/codeudores/update.php", { method: "POST", json: { id: editing.id, ...payload } });
+      } else {
+        await apiFetch("/codeudores/create.php", { method: "POST", json: payload });
+      }
       onCreated?.();
       handleClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error al registrar el codeudor.");
+      setError(e instanceof Error ? e.message : `Error al ${isEditing ? "editar" : "registrar"} el codeudor.`);
     } finally {
       setSubmitting(false);
     }
@@ -85,9 +104,9 @@ export default function RegistrarCodeudorModal({ isOpen, onClose, onCreated }: P
               <div>
                 <div className="flex items-center gap-1 text-slate-400 text-[11px] mb-1.5">
                   <span>Tesorería</span><ChevronRight className="w-3 h-3" /><span>Codeudores</span>
-                  <ChevronRight className="w-3 h-3" /><span className="text-[#C41717] font-semibold">Nuevo registro</span>
+                  <ChevronRight className="w-3 h-3" /><span className="text-[#C41717] font-semibold">{isEditing ? "Editar registro" : "Nuevo registro"}</span>
                 </div>
-                <h2 className="text-slate-900 font-bold text-lg sm:text-xl leading-tight">Registrar codeudor</h2>
+                <h2 className="text-slate-900 font-bold text-lg sm:text-xl leading-tight">{isEditing ? "Editar codeudor" : "Registrar codeudor"}</h2>
               </div>
               <button onClick={handleClose} className="p-2 -mr-1 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all shrink-0">
                 <X className="w-5 h-5" />
@@ -113,7 +132,7 @@ export default function RegistrarCodeudorModal({ isOpen, onClose, onCreated }: P
                 <button onClick={handleAceptar} disabled={submitting}
                   className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold
                              transition-all shadow-sm hover:shadow-[0_4px_14px_rgba(196,23,23,0.30)] disabled:opacity-60 disabled:cursor-not-allowed">
-                  {submitting ? "Registrando..." : "Registrar codeudor"}
+                  {submitting ? "Guardando..." : isEditing ? "Guardar cambios" : "Registrar codeudor"}
                 </button>
               </div>
             </div>
