@@ -10,7 +10,7 @@ import logoOmnibvs from "@/assets/certificaciones/omnibvs.jpeg";
 import logoSaveALife from "@/assets/certificaciones/save-a-life.jpeg";
 import logoStopTheBleed from "@/assets/certificaciones/stop-the-bleed.jpeg";
 
-const CAMPUS_URL = "https://site2.q10.com/login?ReturnUrl=%2F&aplentId=0d310659-db68-4e7b-af78-aa3ab62eb1f2";
+const CAMPUS_URL = "/campus-virtual/";
 
 type ModalItem = { name: string; desc?: string };
 type ModalGroup = { heading?: string; items: ModalItem[] };

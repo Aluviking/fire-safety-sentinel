@@ -24,6 +24,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Install Campus Virtual frontend dependencies
+        working-directory: campus-virtual/frontend
+        run: npm ci
+
+      - name: Build Campus Virtual frontend
+        working-directory: campus-virtual/frontend
+        run: npm run build
+
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
@@ -38,6 +46,7 @@ jobs:
             --exclude='DO_NOT_UPLOAD_HERE' \
             --exclude='api' \
             --exclude='campus-api' \
+            --exclude='campus-virtual' \
             --exclude='private_uploads' \
             -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o UserKnownHostsFile=~/.ssh/known_hosts" \
             dist/ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}
@@ -63,3 +72,14 @@ jobs:
             --exclude='config.php' \
             -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o UserKnownHostsFile=~/.ssh/known_hosts" \
             api/ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/api
+
+      - name: Deploy Campus Virtual frontend via rsync
+        run: |
+          # Build estático puro (igual que el dist/ raíz) — se sirve bajo
+          # siso.com.co/campus-virtual/, por eso vite.config.ts tiene
+          # base: "/campus-virtual/" y el build va a esa misma subcarpeta.
+          # --delete es seguro aquí: no hay config.php ni nada server-only
+          # en este dist/, todo lo controla el build.
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o UserKnownHostsFile=~/.ssh/known_hosts" \
+            campus-virtual/frontend/dist/ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/campus-virtual

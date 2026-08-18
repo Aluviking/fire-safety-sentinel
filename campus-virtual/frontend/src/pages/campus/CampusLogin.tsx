@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, ArrowLeft, Lock, User, ChevronRight, type LucideIcon } from "lucide-react";
 import gfoLogo from "@/assets/gfo-academy-logo.png";
-import mascotImg from "@/assets/personaje-mascota.png";
+import heroImg from "@/assets/portada-cutout.webp";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import Recaptcha, { type RecaptchaHandle } from "@/components/Recaptcha";
 
@@ -133,10 +133,10 @@ export default function CampusLogin() {
           Volver al sitio
         </a>
 
-        {/* ══ Columna centrada: mascota (mobile/tablet) + tarjeta ══════════ */}
+        {/* ══ Columna centrada: foto del equipo (mobile/tablet) + tarjeta ═══ */}
         <div className="relative z-10 flex flex-col items-center w-full max-w-[980px] max-h-full">
-          {/* Tagline — solo tablet, ANTES de la mascota (la mascota queda
-              pegada a la tarjeta para poder sobresalir encima de ella). */}
+          {/* Tagline — solo tablet, ANTES de la foto (la foto queda pegada
+              a la tarjeta para poder sobresalir encima de ella). */}
           <div className="hidden sm:block lg:hidden text-center px-6 mb-3 shrink-0">
             <h1 className="text-white font-black text-[clamp(1.3rem,3.2vh,1.7rem)] leading-[1.2] tracking-tight">
               {TAGLINE_TITLE} <span className="text-white/90">{TAGLINE_HIGHLIGHT}</span>
@@ -146,13 +146,14 @@ export default function CampusLogin() {
             </p>
           </div>
 
-          {/* Mascota — solo tablet (sm-lg), no en celular. Sobresale encima
-              del borde de la tarjeta con margen negativo (aquí sí funciona
-              bien porque la mascota va en flujo normal, no dentro de un
-              panel que se estira a la altura de la tarjeta como en desktop). */}
+          {/* Foto del equipo — solo tablet (sm-lg), no en celular. Sobresale
+              encima del borde de la tarjeta con margen negativo (aquí sí
+              funciona bien porque la foto va en flujo normal, no dentro de
+              un panel que se estira a la altura de la tarjeta como en
+              desktop). */}
           <img
-            src={mascotImg}
-            alt="Mascota GFO Academy"
+            src={heroImg}
+            alt="Equipo GFO Academy"
             className="hidden sm:block lg:hidden relative z-30 w-auto object-contain shrink-0
                        drop-shadow-[0_14px_22px_rgba(0,0,0,0.25)] -mb-16"
             style={{ height: "clamp(170px,30vh,340px)" }}
@@ -182,12 +183,12 @@ export default function CampusLogin() {
                     superior de la tarjeta) — la salida es siempre la misma
                     cantidad exacta de píxeles, sin importar el tamaño de ventana.
                     Alto FIJO (no en vh): el alto de la tarjeta no depende de la
-                    ventana (lo define su contenido), así que el personaje debe
+                    ventana (lo define su contenido), así que la foto debe
                     medirse igual — antes usaba vh y en pantallas altas terminaba
                     más alto que la tarjeta completa, tapando el texto de abajo. */}
                 <img
-                  src={mascotImg}
-                  alt="Mascota GFO Academy"
+                  src={heroImg}
+                  alt="Equipo GFO Academy"
                   className="absolute z-10 left-1/2 -translate-x-1/2 w-auto object-contain drop-shadow-[0_22px_34px_rgba(0,0,0,0.2)]"
                   style={{ height: "420px", top: "-60px" }}
                 />

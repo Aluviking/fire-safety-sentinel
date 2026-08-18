@@ -114,7 +114,7 @@ const ROLE_LABEL: Record<string, string> = {
   docente: "Docente",
   administrativo: "Administrativo",
   estudiante: "Estudiante",
-  equipo: "Equipo",
+  equipo: "Coordinador",
 };
 
 /* ── Quick-access cards ───────────────────────────────────────────────────── */

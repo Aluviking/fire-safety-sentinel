@@ -342,7 +342,7 @@ const HeroSection = () => {
 
             {/* Campus Virtual — oscuro con borde dorado */}
             <a
-              href="https://site2.q10.com/login?ReturnUrl=%2F&aplentId=0d310659-db68-4e7b-af78-aa3ab62eb1f2"
+              href="/campus-virtual/"
               target="_blank"
               rel="noopener noreferrer"
               className="group relative flex-1 min-w-[140px] overflow-hidden

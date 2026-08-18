@@ -7,7 +7,7 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: "estudiante",     label: "Estudiante" },
   { value: "docente",        label: "Docente" },
   { value: "administrativo", label: "Administrativo" },
-  { value: "equipo",         label: "Equipo" },
+  { value: "equipo",         label: "Coordinador" },
   { value: "admin",          label: "Admin" },
   { value: "super_admin",    label: "Super Admin" },
 ];
