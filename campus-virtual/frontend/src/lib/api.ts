@@ -42,3 +42,18 @@ export async function apiFetch<T = unknown>(path: string, options: ApiOptions = 
   }
   return data as T;
 }
+
+/**
+ * Carga una imagen protegida (requiere Authorization) y devuelve un object URL
+ * listo para usar en un <img src>. El caller debe hacer URL.revokeObjectURL al
+ * desmontar para no filtrar memoria.
+ */
+export async function apiImage(path: string): Promise<string> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error("No se pudo cargar la imagen.");
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}

@@ -461,3 +461,42 @@ CREATE TABLE IF NOT EXISTS aulas_recursos (
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_aula_recurso_nombre (nombre)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 7 — Educación virtual v2 (resto de módulos, sin datos importados de
+-- Q10 — empiezan vacíos, se llenan a mano desde la interfaz).
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- "Usuarios inscritos" es solo informativo (no hay sistema de inscripción de
+-- estudiantes a cursos ligeros en este proyecto todavía) — el Super Admin lo
+-- edita a mano si quiere reflejar un número real.
+CREATE TABLE IF NOT EXISTS cursos_ligeros (
+  id                    INT AUTO_INCREMENT PRIMARY KEY,
+  nombre                VARCHAR(200) NOT NULL,
+  categoria             VARCHAR(100) NULL,
+  docente_identificacion VARCHAR(30) NULL,
+  docente_nombre        VARCHAR(200) NULL,
+  estado                VARCHAR(20)  NOT NULL DEFAULT 'No publicado',
+  usuarios_inscritos    INT          NOT NULL DEFAULT 0,
+  created_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS plantillas_educacion_virtual (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  asignatura_id INT         NULL,
+  fecha         DATE        NULL,
+  estado        VARCHAR(30) NOT NULL DEFAULT 'Creada',
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (asignatura_id) REFERENCES asignaturas(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- imagen_path guarda el nombre del archivo en `uploads_dir` (fuera de
+-- public_html, servido solo vía certificados/image.php con autenticación),
+-- mismo patrón que companies.photo_path en Portal Empresarial.
+CREATE TABLE IF NOT EXISTS certificados_plantillas (
+  id             INT AUTO_INCREMENT PRIMARY KEY,
+  nombre         VARCHAR(150) NOT NULL,
+  imagen_path    VARCHAR(255) NULL,
+  predeterminado TINYINT(1)   NOT NULL DEFAULT 0,
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

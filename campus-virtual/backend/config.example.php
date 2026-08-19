@@ -5,11 +5,22 @@
  * Bases de datos. config.php NUNCA debe subirse a git (ya está en .gitignore).
  */
 
+// campus-api/ vive dentro de public_html/ una vez desplegado (mismo nivel que
+// api/), así que subir dos niveles desde aquí da la ruta justo al lado de
+// public_html — crea ahí una carpeta "private_uploads_campus" (fuera del
+// webroot, no descargable por URL directa). Nombre distinto al de Portal
+// Empresarial para no mezclar los dos sistemas de archivos.
+$uploadsDir = dirname(__DIR__, 2) . '/private_uploads_campus';
+
 return [
     'db_host' => 'localhost',
     'db_name' => 'CAMBIA_nombre_de_tu_base_de_datos',
     'db_user' => 'CAMBIA_usuario_de_la_base_de_datos',
     'db_pass' => 'CAMBIA_contraseña_de_la_base_de_datos',
+
+    // Carpeta FUERA de public_html donde se guardan los archivos subidos
+    // (ej. imágenes de certificados).
+    'uploads_dir' => $uploadsDir,
 
     // Orígenes permitidos para llamar a esta API (Campus Virtual en producción
     // y el servidor local de desarrollo de Vite).
