@@ -37,16 +37,18 @@ import CertificadosView from "./views/CertificadosView";
 import PerfilesView from "./views/PerfilesView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
-// Sin forma "cuadrada" propia (ni rounded-xl/border/shadow fijos) — cada
-// lugar donde se usa decide su propia forma vía className, para que el logo
-// del navbar (píldora, sin borde) y el del footer (tarjeta) no compartan un
-// mismo marco rígido.
-const GFOLogoSmall = ({ className }: { className?: string }) => (
+// Sin forma fija propia (ni rounded/border/shadow/tamaño de imagen) — cada
+// lugar donde se usa decide su propia forma vía className/imgClassName, para
+// que el logo del navbar (más grande, esquinas suaves) y el del footer
+// (tarjeta chica) no compartan un mismo marco rígido.
+const GFOLogoSmall = ({
+  className, imgClassName = "h-7 w-auto object-contain",
+}: { className?: string; imgClassName?: string }) => (
   <div
     className={`bg-white flex items-center justify-center overflow-hidden shrink-0 ${className ?? ""}`}
     style={{ padding: "4px 10px" }}
   >
-    <img src={gfoLogo} alt="GFO Academy" className="h-7 w-auto object-contain" />
+    <img src={gfoLogo} alt="GFO Academy" className={imgClassName} />
   </div>
 );
 
@@ -175,6 +177,37 @@ function filterNavItems(items: NavItem[], canVer: (modulo: string) => boolean, v
     })
     .filter((item): item is NavItem => item !== null);
 }
+
+// Aplana el árbol de navegación (ya filtrado por permisos) en una lista de
+// destinos buscables, con el mismo par (nav, sub) que espera handleNavigate
+// — incluye también los ítems que abren un modal (ej. "Registrar
+// estudiante"), ya que handleNavigate los intercepta igual por ese mismo par.
+interface SearchResult { label: string; nav: string; sub: string }
+function flattenNavItems(items: NavItem[]): SearchResult[] {
+  const out: SearchResult[] = [];
+  for (const item of items) {
+    if (!item.subs || item.subs.length === 0) {
+      out.push({ label: item.label, nav: item.label, sub: "" });
+      continue;
+    }
+    for (const sub of item.subs) {
+      if (!sub.subs || sub.subs.length === 0) {
+        out.push({ label: `${item.label} › ${sub.label}`, nav: item.label, sub: sub.label });
+        continue;
+      }
+      for (const s3 of sub.subs) {
+        out.push({ label: `${item.label} › ${sub.label} › ${s3}`, nav: item.label, sub: `${sub.label} › ${s3}` });
+      }
+    }
+  }
+  return out;
+}
+// Quita marcas diacríticas (acentos) tras descomponer NFD, para que buscar
+// "informacion" también encuentre "Información" — construido con
+// fromCharCode (no un literal en el código fuente) para evitar cualquier
+// ambigüedad de codificación con los propios caracteres combinantes.
+const DIACRITICS_RE = new RegExp(`[${String.fromCharCode(0x0300)}-${String.fromCharCode(0x036f)}]`, "g");
+const normalize = (s: string) => s.normalize("NFD").replace(DIACRITICS_RE, "").toLowerCase();
 
 const ROLE_LABEL: Record<string, string> = {
   super_admin: "Super Administrador",
@@ -667,9 +700,20 @@ export default function CampusDashboard() {
     setSearchParams(params, { replace: true });
   };
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen]   = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const [modal, setModal]             = useState<string | null>(null);
   const [resumen, setResumen]         = useState<ResumenData | null>(null);
   const [resumenLoading, setResumenLoading] = useState(true);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [searchOpen]);
 
   useEffect(() => {
     if (!loading && !user) navigate("/", { replace: true });
@@ -743,6 +787,10 @@ export default function CampusDashboard() {
     .filter((item) => item.label !== "Perfiles" || isSuperAdmin)
     .filter((item) => item.label !== "Usuarios" || canVer("usuarios"));
 
+  const searchResults = searchQuery.trim()
+    ? flattenNavItems(visibleNavItems).filter((r) => normalize(r.label).includes(normalize(searchQuery.trim()))).slice(0, 8)
+    : [];
+
   /* Acceso restringido */
   if (!canEnter) {
     return (
@@ -786,23 +834,47 @@ export default function CampusDashboard() {
 
           {/* Logo */}
           <button onClick={() => setActiveNav(null)} className="shrink-0">
-            <GFOLogoSmall className="rounded-full" />
+            <GFOLogoSmall className="rounded-xl" imgClassName="h-10 w-auto object-contain" />
           </button>
 
-          <div className="hidden sm:block h-6 w-px bg-white/25 mx-1" />
-
-          {/* Búsqueda */}
-          <div className="hidden md:flex flex-1 max-w-xs relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          {/* Búsqueda de módulos — real: filtra sobre lo que el usuario puede ver y navega al elegir */}
+          <div ref={searchRef} className="hidden md:flex flex-1 max-w-xs relative ml-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none z-10" />
             <input
               type="search"
               placeholder="Buscar módulo..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+              onFocus={() => setSearchOpen(true)}
               className="w-full bg-white border border-white/40 rounded-lg
                          pl-9 pr-4 py-2 text-slate-800 text-sm placeholder:text-slate-400
                          focus:outline-none focus:border-white focus:ring-2 focus:ring-white/40 transition-all"
             />
+            <AnimatePresence>
+              {searchOpen && searchQuery.trim() && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}
+                  className="absolute top-full left-0 mt-1.5 w-full min-w-[260px] rounded-xl bg-white border border-slate-200
+                             shadow-[0_8px_32px_rgba(0,0,0,0.16)] z-50 overflow-hidden"
+                >
+                  <div className="max-h-72 overflow-y-auto py-1.5">
+                    {searchResults.length === 0 ? (
+                      <p className="text-center text-xs text-slate-400 py-4">Sin resultados</p>
+                    ) : (
+                      searchResults.map((r) => (
+                        <button
+                          key={r.label}
+                          onClick={() => { handleNavigate(r.nav, r.sub); setSearchQuery(""); setSearchOpen(false); }}
+                          className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                        >
+                          {r.label}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Nav escritorio */}
