@@ -7,9 +7,10 @@ import {
   Users, BookOpen, GraduationCap, DollarSign, FileText,
   Calendar, Award, ClipboardList, UserCheck, Building,
   ChevronRight, LayoutDashboard, AlertCircle, Briefcase,
-  Shield, TrendingUp, Clock, UserCog, ScrollText, ShieldCheck,
+  Shield, TrendingUp, Clock, UserCog, ScrollText, ShieldCheck, Video,
 } from "lucide-react";
 import { useCampusAuth, type CampusUser } from "@/context/CampusAuthContext";
+import { apiFetch } from "@/lib/api";
 import RegistrarEstudianteModal from "./RegistrarEstudianteModal";
 import RegistrarPersonalModal from "./RegistrarPersonalModal";
 import RegistrarCodeudorModal from "./RegistrarCodeudorModal";
@@ -36,9 +37,13 @@ import CertificadosView from "./views/CertificadosView";
 import PerfilesView from "./views/PerfilesView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
+// Sin forma "cuadrada" propia (ni rounded-xl/border/shadow fijos) — cada
+// lugar donde se usa decide su propia forma vía className, para que el logo
+// del navbar (píldora, sin borde) y el del footer (tarjeta) no compartan un
+// mismo marco rígido.
 const GFOLogoSmall = ({ className }: { className?: string }) => (
   <div
-    className={`rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden shrink-0 ${className ?? ""}`}
+    className={`bg-white flex items-center justify-center overflow-hidden shrink-0 ${className ?? ""}`}
     style={{ padding: "4px 10px" }}
   >
     <img src={gfoLogo} alt="GFO Academy" className="h-7 w-auto object-contain" />
@@ -181,16 +186,32 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 /* ── Quick-access cards ───────────────────────────────────────────────────── */
+// Cada `sub` debe coincidir EXACTO con lo que espera el switch de <main> más
+// abajo (activeNav.sub) — antes varios de estos apuntaban a un valor que no
+// existía en ese switch y caían silenciosamente en ModulePlaceholder ("en
+// construcción"). Se priorizan accesos rápidos de verdad útiles (crear
+// curso/programa, cursos ligeros, aulas virtuales) sobre categorías genéricas.
 const QUICK_ACCESS = [
-  { icon: GraduationCap, label: "Estudiantes",   color: "#1E40AF", nav: "Institucional", sub: "Estudiantes"     },
-  { icon: UserCheck,     label: "Docentes",       color: "#065F46", nav: "Institucional", sub: "Docentes"        },
-  { icon: Briefcase,     label: "Administrativos", color: "#92400E", nav: "Institucional", sub: "Administrativos" },
-  { icon: ClipboardList, label: "Evaluaciones",   color: "#6B21A8", nav: "Académico",     sub: "Evaluaciones"    },
-  { icon: BookOpen,      label: "Ed. Virtual",    color: "#9F1239", nav: "Académico",     sub: "Educación virtual › Cursos ligeros" },
-  { icon: DollarSign,    label: "Tesorería",      color: "#1E3A5F", nav: "Tesorería",     sub: "Otros Ingresos"  },
-  { icon: FileText,      label: "Informes",       color: "#374151", nav: "Informes",      sub: "Consolidado de notas" },
-  { icon: UserCog,       label: "Usuarios",       color: "#14532D", nav: "Usuarios",      sub: ""                },
+  { icon: GraduationCap,   label: "Estudiantes",    color: "#1E40AF", nav: "Institucional", sub: "Estudiantes › Información básica" },
+  { icon: UserCheck,       label: "Docentes",        color: "#065F46", nav: "Institucional", sub: "Docentes › Información básica" },
+  { icon: BookOpen,        label: "Crear curso",     color: "#9F1239", nav: "Académico",     sub: "Estructuración › Crear curso" },
+  { icon: LayoutDashboard, label: "Crear programa",  color: "#6B21A8", nav: "Académico",     sub: "Estructuración › Crear programa" },
+  { icon: Award,           label: "Cursos ligeros",  color: "#92400E", nav: "Académico",     sub: "Educación virtual › Cursos ligeros" },
+  { icon: Video,           label: "Aulas virtuales", color: "#1E3A5F", nav: "Académico",     sub: "Educación virtual › Aulas virtuales" },
+  { icon: ClipboardList,   label: "Evaluaciones",    color: "#374151", nav: "Académico",     sub: "Evaluaciones" },
+  { icon: UserCog,         label: "Usuarios",        color: "#14532D", nav: "Usuarios",      sub: "" },
 ];
+
+/* ── Datos reales del panel de inicio (anuncios/clases/auditoría/contadores) ── */
+interface AnuncioReciente { origen: string; origen_nombre: string; titulo: string; mensaje: string | null; importancia: string; created_at: string }
+interface ClaseProxima { origen: string; origen_nombre: string; titulo: string; fecha_inicio: string; fecha_fin: string | null }
+interface AuditoriaReciente { id: number; user_name: string; action: string; detail: string | null; created_at: string }
+interface ResumenData {
+  anuncios: AnuncioReciente[];
+  clases: ClaseProxima[];
+  auditoria: AuditoriaReciente[];
+  stats: { cursos: number; pagosPendientes: number; notificaciones: number };
+}
 
 /* ── NavDropdown (tema claro) ─────────────────────────────────────────────── */
 function NavDropdown({
@@ -314,6 +335,94 @@ function NavDropdown({
   );
 }
 
+/* ── Campana de notificaciones (real: anuncios + auditoría de los últimos 7 días) ── */
+function NotificationBell({
+  resumen, loading, isSuperAdmin, onGoHistorial,
+}: { resumen: ResumenData | null; loading: boolean; isSuperAdmin: boolean; onGoHistorial: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const count = resumen?.stats.notificaciones ?? 0;
+  const items = resumen
+    ? [
+        ...resumen.anuncios.map((a, i) => ({
+          key: `a-${i}`, titulo: a.titulo, detalle: `${a.origen}: ${a.origen_nombre}`, fecha: a.created_at,
+        })),
+        ...resumen.auditoria.map((a) => ({
+          key: `h-${a.id}`, titulo: a.detail ?? a.action, detalle: a.user_name, fecha: a.created_at,
+        })),
+      ]
+        .sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime())
+        .slice(0, 8)
+    : [];
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="relative p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-all"
+      >
+        <Bell className="w-4 h-4" />
+        {count > 0 && (
+          <span className="absolute top-0.5 right-0.5 min-w-[15px] h-[15px] px-[3px] rounded-full bg-white
+                           text-[#C41717] text-[9px] font-bold leading-[15px] text-center">
+            {count > 9 ? "9+" : count}
+          </span>
+        )}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full right-0 mt-1.5 w-80 max-w-[90vw] rounded-xl bg-white border border-slate-200
+                       shadow-[0_8px_32px_rgba(0,0,0,0.16)] z-50 overflow-hidden"
+          >
+            <div className="h-[3px] bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/30" />
+            <div className="px-4 py-3 border-b border-slate-100">
+              <p className="text-slate-700 text-sm font-semibold">Notificaciones</p>
+              <p className="text-slate-400 text-[11px] mt-0.5">Actividad de los últimos 7 días</p>
+            </div>
+            <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+              {loading ? (
+                <p className="text-center text-slate-400 text-xs py-8">Cargando...</p>
+              ) : items.length === 0 ? (
+                <p className="text-center text-slate-400 text-xs py-8">Sin novedades por ahora.</p>
+              ) : (
+                items.map((it) => (
+                  <div key={it.key} className="px-4 py-3 hover:bg-slate-50 transition-colors">
+                    <p className="text-slate-700 text-xs font-medium leading-snug">{it.titulo}</p>
+                    <p className="text-slate-400 text-[11px] mt-0.5">
+                      {it.detalle} · {new Date(it.fecha).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+            {isSuperAdmin && (
+              <button
+                onClick={() => { setOpen(false); onGoHistorial(); }}
+                className="w-full text-center py-2.5 text-xs font-semibold text-[#C41717] hover:bg-[#C41717]/5 border-t border-slate-100 transition-colors"
+              >
+                Ver historial completo
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /* ── Module placeholder ───────────────────────────────────────────────────── */
 function ModulePlaceholder({ nav, sub }: { nav: string; sub: string }) {
   const title = sub || nav;
@@ -343,8 +452,64 @@ function ModulePlaceholder({ nav, sub }: { nav: string; sub: string }) {
   );
 }
 
+/* ── Programas destacados (reales, solo los que están Publicado) ─────────── */
+interface ProgramaDestacado { id: number; nombre: string; dias_disponibles: number | null; publicado: number }
+function ProgramasDestacados({ onNavigate }: { onNavigate: (nav: string, sub: string) => void }) {
+  const [programas, setProgramas] = useState<ProgramaDestacado[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    apiFetch<{ programas: ProgramaDestacado[] }>("/programas/list.php")
+      .then((d) => setProgramas(d.programas.filter((p) => p.publicado)))
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+  }, []);
+
+  // Nada que mostrar todavía, o ningún programa publicado — no se inventa
+  // contenido de relleno, la sección simplemente no aparece.
+  if (!loaded || programas.length === 0) return null;
+
+  return (
+    <div>
+      <h2 className="text-slate-400 text-xs font-bold tracking-[0.2em] uppercase mb-4 flex items-center gap-2">
+        <span className="h-px flex-1 bg-slate-200" />
+        Programas destacados
+        <span className="h-px flex-1 bg-slate-200" />
+      </h2>
+      <div className="grid sm:grid-cols-3 gap-3">
+        {programas.slice(0, 3).map((p) => (
+          <button
+            key={p.id}
+            onClick={() => onNavigate("Académico", "Estructuración › Crear programa")}
+            className="flex items-center gap-4 rounded-2xl bg-white border border-slate-200 shadow-sm
+                       px-4 py-4 hover:shadow-md hover:border-slate-300 transition-all text-left group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[#C41717]/8 border border-[#C41717]/15
+                            flex items-center justify-center shrink-0">
+              <GraduationCap className="w-5 h-5 text-[#C41717]/65" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-slate-700 text-sm font-medium leading-snug truncate">{p.nombre}</p>
+              <div className="flex gap-3 mt-1">
+                <span className="text-slate-400 text-[11px]">
+                  {p.dias_disponibles != null ? `${p.dias_disponibles} días` : "Sin fecha límite"}
+                </span>
+                <span className="text-slate-300">·</span>
+                <span className="text-emerald-600 text-[11px] font-medium">Publicado</span>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#C41717]/50 transition-colors shrink-0" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Dashboard Home ───────────────────────────────────────────────────────── */
-function DashboardHome({ user, onNavigate }: { user: CampusUser; onNavigate: (nav: string, sub: string) => void }) {
+function DashboardHome({
+  user, onNavigate, resumen, resumenLoading,
+}: { user: CampusUser; onNavigate: (nav: string, sub: string) => void; resumen: ResumenData | null; resumenLoading: boolean }) {
   const hour     = new Date().getHours();
   const greeting = hour < 12 ? "Buenos días" : hour < 18 ? "Buenas tardes" : "Buenas noches";
 
@@ -368,9 +533,9 @@ function DashboardHome({ user, onNavigate }: { user: CampusUser; onNavigate: (na
           </div>
           <div className="flex gap-3">
             {[
-              { label: "Cursos",     value: "3", icon: BookOpen      },
-              { label: "Pendientes", value: "5", icon: ClipboardList },
-              { label: "Mensajes",   value: "2", icon: Bell          },
+              { label: "Cursos",     value: resumenLoading ? "—" : String(resumen?.stats.cursos ?? 0),          icon: BookOpen      },
+              { label: "Pagos pend.", value: resumenLoading ? "—" : String(resumen?.stats.pagosPendientes ?? 0), icon: ClipboardList },
+              { label: "Novedades",  value: resumenLoading ? "—" : String(resumen?.stats.notificaciones ?? 0),   icon: Bell          },
             ].map(({ label, value, icon: Icon }) => (
               <div key={label}
                    className="flex flex-col items-center gap-1 bg-slate-50 rounded-xl
@@ -424,90 +589,60 @@ function DashboardHome({ user, onNavigate }: { user: CampusUser; onNavigate: (na
             <h3 className="text-slate-700 text-sm font-semibold">Anuncios recientes</h3>
           </div>
           <div className="divide-y divide-slate-100">
-            {[
-              { title: "Inicio de semestre 2026-I",        date: "Hoy",    type: "info"   },
-              { title: "Actualización plataforma virtual",  date: "Ayer",   type: "update" },
-              { title: "Programas HSE disponibles",         date: "15 Jun", type: "new"    },
-              { title: "Certificaciones disponibles",       date: "12 Jun", type: "cert"   },
-            ].map(({ title, date, type }) => (
-              <div key={title} className="flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
-                <div className={`mt-1 w-2 h-2 rounded-full shrink-0
-                                 ${type === "info"   ? "bg-blue-400"
-                                 : type === "update" ? "bg-amber-400"
-                                 : type === "new"    ? "bg-emerald-400"
-                                                     : "bg-[#C41717]"}`} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-slate-700 text-sm leading-snug">{title}</p>
-                  <p className="text-slate-400 text-xs mt-0.5">{date}</p>
+            {resumenLoading ? (
+              <p className="text-slate-400 text-xs text-center py-8">Cargando...</p>
+            ) : (resumen?.anuncios.length ?? 0) === 0 ? (
+              <p className="text-slate-400 text-xs text-center py-8">Aún no hay anuncios publicados.</p>
+            ) : (
+              resumen!.anuncios.map((a, i) => (
+                <div key={`${a.origen}-${a.titulo}-${i}`} className="flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
+                  <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${a.importancia === "Importante" ? "bg-[#C41717]" : "bg-blue-400"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-700 text-sm leading-snug">{a.titulo}</p>
+                    <p className="text-slate-400 text-xs mt-0.5">
+                      {a.origen}: {a.origen_nombre} · {new Date(a.created_at).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
         <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
             <Calendar className="w-4 h-4 text-[#C41717]/60" />
-            <h3 className="text-slate-700 text-sm font-semibold">Próximas actividades</h3>
+            <h3 className="text-slate-700 text-sm font-semibold">Próximas clases virtuales</h3>
           </div>
           <div className="divide-y divide-slate-100">
-            {[
-              { title: "Evaluación SST Módulo 3",      time: "Hoy 10:00 AM",   badge: "Evaluación" },
-              { title: "Seminario Gestión del Riesgo", time: "Mañana 8:00 AM", badge: "Seminario"  },
-              { title: "Entrega Proyecto Final",        time: "23 Jun",         badge: "Tarea"      },
-              { title: "Clausura Semestre",             time: "30 Jun",         badge: "Evento"     },
-            ].map(({ title, time, badge }) => (
-              <div key={title} className="flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
-                <div className="flex flex-col items-center shrink-0 w-10">
-                  <span className="text-[#C41717]/70 text-[10px] font-bold">{time.split(" ")[0]}</span>
-                  <span className="text-slate-400 text-[9px]">{time.split(" ").slice(1).join(" ")}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-slate-700 text-sm leading-snug">{title}</p>
-                  <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-slate-100
-                                   text-slate-500 text-[10px] font-medium">
-                    {badge}
-                  </span>
-                </div>
-              </div>
-            ))}
+            {resumenLoading ? (
+              <p className="text-slate-400 text-xs text-center py-8">Cargando...</p>
+            ) : (resumen?.clases.length ?? 0) === 0 ? (
+              <p className="text-slate-400 text-xs text-center py-8">No hay clases virtuales programadas.</p>
+            ) : (
+              resumen!.clases.map((c, i) => {
+                const d = new Date(c.fecha_inicio);
+                return (
+                  <div key={`${c.origen}-${c.titulo}-${i}`} className="flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
+                    <div className="flex flex-col items-center shrink-0 w-10">
+                      <span className="text-[#C41717]/70 text-[10px] font-bold">{d.toLocaleDateString("es-CO", { day: "numeric", month: "short" })}</span>
+                      <span className="text-slate-400 text-[9px]">{d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-slate-700 text-sm leading-snug">{c.titulo}</p>
+                      <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-medium">
+                        {c.origen}: {c.origen_nombre}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
 
-      {/* Programas destacados */}
-      <div>
-        <h2 className="text-slate-400 text-xs font-bold tracking-[0.2em] uppercase mb-4 flex items-center gap-2">
-          <span className="h-px flex-1 bg-slate-200" />
-          Programas destacados
-          <span className="h-px flex-1 bg-slate-200" />
-        </h2>
-        <div className="grid sm:grid-cols-3 gap-3">
-          {[
-            { icon: Shield,    label: "ISO 45001 · SST",       hrs: "40h", lvl: "Intermedio" },
-            { icon: Award,     label: "Gestión del Riesgo",     hrs: "32h", lvl: "Avanzado"   },
-            { icon: Briefcase, label: "PESV · Seguridad Vial",  hrs: "24h", lvl: "Básico"     },
-          ].map(({ icon: Icon, label, hrs, lvl }) => (
-            <div key={label}
-                 className="flex items-center gap-4 rounded-2xl bg-white border border-slate-200 shadow-sm
-                            px-4 py-4 hover:shadow-md hover:border-slate-300 transition-all cursor-pointer group">
-              <div className="w-10 h-10 rounded-xl bg-[#C41717]/8 border border-[#C41717]/15
-                              flex items-center justify-center shrink-0">
-                <Icon className="w-5 h-5 text-[#C41717]/65" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-slate-700 text-sm font-medium leading-snug truncate">{label}</p>
-                <div className="flex gap-3 mt-1">
-                  <span className="text-slate-400 text-[11px]">{hrs}</span>
-                  <span className="text-slate-300">·</span>
-                  <span className="text-slate-400 text-[11px]">{lvl}</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#C41717]/50 transition-colors shrink-0" />
-            </div>
-          ))}
-        </div>
-      </div>
+      <ProgramasDestacados onNavigate={onNavigate} />
     </motion.div>
   );
 }
@@ -533,10 +668,24 @@ export default function CampusDashboard() {
   };
   const [searchQuery, setSearchQuery] = useState("");
   const [modal, setModal]             = useState<string | null>(null);
+  const [resumen, setResumen]         = useState<ResumenData | null>(null);
+  const [resumenLoading, setResumenLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) navigate("/", { replace: true });
   }, [loading, user, navigate]);
+
+  // Datos reales para la campana de notificaciones y el inicio (anuncios,
+  // próximas clases, auditoría reciente, contadores) — un solo fetch
+  // compartido por ambos, no aplica a estudiante/docente (tienen su propio
+  // panel y nunca llegan a montar este componente).
+  useEffect(() => {
+    if (loading || !user || user.role === "estudiante" || user.role === "docente") return;
+    apiFetch<ResumenData>("/dashboard/resumen.php")
+      .then(setResumen)
+      .catch(() => {})
+      .finally(() => setResumenLoading(false));
+  }, [loading, user]);
 
   // Estudiante y Docente tienen su propio panel, distinto a este (que es el
   // panel administrativo) — se redirige automático, sin mostrar "Acceso
@@ -637,7 +786,7 @@ export default function CampusDashboard() {
 
           {/* Logo */}
           <button onClick={() => setActiveNav(null)} className="shrink-0">
-            <GFOLogoSmall />
+            <GFOLogoSmall className="rounded-full" />
           </button>
 
           <div className="hidden sm:block h-6 w-px bg-white/25 mx-1" />
@@ -684,10 +833,12 @@ export default function CampusDashboard() {
 
           {/* Acciones derecha */}
           <div className="flex items-center gap-1.5 ml-auto">
-            <button className="relative p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-all">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-white" />
-            </button>
+            <NotificationBell
+              resumen={resumen}
+              loading={resumenLoading}
+              isSuperAdmin={isSuperAdmin}
+              onGoHistorial={() => setActiveNav({ nav: "Historial", sub: "" })}
+            />
             <button className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-all">
               <HelpCircle className="w-4 h-4" />
             </button>
@@ -813,7 +964,7 @@ export default function CampusDashboard() {
       {/* ── CONTENIDO PRINCIPAL ─────────────────────────────────────────────── */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 max-w-7xl w-full mx-auto">
         {!activeNav ? (
-          <DashboardHome user={user} onNavigate={handleNavigate} />
+          <DashboardHome user={user} onNavigate={handleNavigate} resumen={resumen} resumenLoading={resumenLoading} />
         ) : activeNav.nav === "Usuarios" ? (
           <UsuariosView />
         ) : activeNav.nav === "Perfiles" && isSuperAdmin ? (
@@ -865,7 +1016,7 @@ export default function CampusDashboard() {
 
       {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
       <footer className="bg-white border-t border-slate-200 py-4 px-6 flex items-center justify-between">
-        <GFOLogoSmall className="opacity-70" />
+        <GFOLogoSmall className="rounded-xl border border-slate-200 shadow-sm opacity-70" />
         <p className="text-slate-400 text-[10px] tracking-wide">
           © {new Date().getFullYear()} GFO Academy. Campus Virtual
         </p>
