@@ -30,6 +30,7 @@ const ACTION_LABEL: Record<string, string> = {
   curso_ligero_update: "Editó curso ligero", curso_ligero_delete: "Eliminó curso ligero",
   plantilla_update: "Editó plantilla", plantilla_delete: "Eliminó plantilla",
   certificado_update: "Editó certificado", certificado_delete: "Eliminó certificado",
+  perfil_create: "Creó perfil", perfil_update: "Editó perfil", perfil_delete: "Eliminó perfil",
 };
 
 const ACTION_ICON: Record<string, React.ElementType> = {
@@ -46,6 +47,7 @@ const ACTION_ICON: Record<string, React.ElementType> = {
   curso_ligero_update: Pencil, curso_ligero_delete: UserMinus,
   plantilla_update: Pencil, plantilla_delete: UserMinus,
   certificado_update: Pencil, certificado_delete: UserMinus,
+  perfil_create: UserPlus, perfil_update: Pencil, perfil_delete: UserMinus,
 };
 
 const ACTION_ACCENT: Record<string, string> = {
@@ -62,6 +64,7 @@ const ACTION_ACCENT: Record<string, string> = {
   curso_ligero_update: "#d97706", curso_ligero_delete: "#dc2626",
   plantilla_update: "#d97706", plantilla_delete: "#dc2626",
   certificado_update: "#d97706", certificado_delete: "#dc2626",
+  perfil_create: "#059669", perfil_update: "#d97706", perfil_delete: "#dc2626",
 };
 
 const ROLE_ICON: Record<string, React.ElementType> = {

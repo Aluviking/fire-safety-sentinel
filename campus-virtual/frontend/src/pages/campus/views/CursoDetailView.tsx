@@ -98,7 +98,7 @@ function EstudiantesTab({ cursoId }: { cursoId: number }) {
       <form onSubmit={add} className="flex gap-2">
         <SearchableSelect
           value={selectedId} onChange={setSelectedId}
-          options={disponibles.map((e) => ({ value: String(e.id), label: e.nombre_completo }))}
+          options={disponibles.map((e) => ({ value: String(e.id), label: e.nombre_completo, keywords: e.identificacion }))}
           placeholder="Seleccione estudiante..."
           className="flex-1"
         />

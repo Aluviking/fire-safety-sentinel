@@ -3,7 +3,12 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, ChevronDown, X } from "lucide-react";
 
-export interface SearchableOption { value: string; label: string }
+export interface SearchableOption {
+  value: string;
+  label: string;
+  /** Texto adicional que se busca pero no se muestra (ej. cédula de un estudiante junto a su nombre). */
+  keywords?: string;
+}
 
 /**
  * Select con lupa de búsqueda + botón de deseleccionar, para listas que
@@ -58,7 +63,7 @@ export function SearchableSelect({
 
   const selected = options.find((o) => o.value === value);
   const filtered = query.trim()
-    ? options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase()))
+    ? options.filter((o) => `${o.label} ${o.keywords ?? ""}`.toLowerCase().includes(query.trim().toLowerCase()))
     : options;
 
   const triggerSize = size === "md" ? "text-sm px-3.5 py-2.5 rounded-xl" : "text-xs px-2.5 py-1.5 rounded-lg";

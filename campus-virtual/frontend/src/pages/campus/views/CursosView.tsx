@@ -139,7 +139,7 @@ function MatriculaModal({ curso, onClose }: { curso: Curso; onClose: () => void 
               <SearchableSelect
                 value={selectedId}
                 onChange={setSelectedId}
-                options={disponibles.map((e) => ({ value: String(e.id), label: e.nombre_completo }))}
+                options={disponibles.map((e) => ({ value: String(e.id), label: e.nombre_completo, keywords: e.identificacion }))}
                 placeholder="Seleccione estudiante..."
                 className="flex-1"
               />
