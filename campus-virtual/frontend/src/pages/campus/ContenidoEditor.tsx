@@ -50,12 +50,12 @@ const TIPO_RESPUESTA_LABEL: Record<TipoRespuesta, string> = {
 
 interface ApiCtx { contentBase: string; questionsBase: string; ownerIdKey: string; ownerId: number }
 
-function AgregarRecursoMenu({ onSelect }: { onSelect: (tipo: string) => void }) {
+function AgregarRecursoMenu({ onSelect, label = "Agregar recurso" }: { onSelect: (tipo: string) => void; label?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
       <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
-        <Plus className="w-3.5 h-3.5" /> Agregar recurso
+        <Plus className="w-3.5 h-3.5" /> {label}
       </button>
       <AnimatePresence>
         {open && (
@@ -679,8 +679,8 @@ function RecursoViewer({
 /* ── Contenido del curso (componente exportado, reutilizado por Cursos
    ligeros y Plantillas — cada uno pasa su propio par de endpoints) ───────── */
 export default function ContenidoEditor({
-  contentBase, questionsBase, ownerIdKey, ownerId,
-}: { contentBase: string; questionsBase: string; ownerIdKey: string; ownerId: number }) {
+  contentBase, questionsBase, ownerIdKey, ownerId, heading = "Contenido del curso", addLabel = "Agregar recurso",
+}: { contentBase: string; questionsBase: string; ownerIdKey: string; ownerId: number; heading?: string; addLabel?: string }) {
   const { currentUser } = useCampusAuth();
   const canEdit = currentUser?.role === "admin" || currentUser?.role === "super_admin";
   const api: ApiCtx = { contentBase, questionsBase, ownerIdKey, ownerId };
@@ -722,8 +722,8 @@ export default function ContenidoEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">Contenido del curso</h3>
-        {canEdit && <AgregarRecursoMenu onSelect={setCreatingTipo} />}
+        <h3 className="text-sm font-semibold text-slate-700">{heading}</h3>
+        {canEdit && <AgregarRecursoMenu onSelect={setCreatingTipo} label={addLabel} />}
       </div>
       {loading ? (
         <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>

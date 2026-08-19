@@ -15,6 +15,11 @@ interface Asignatura {
   num_creditos: number | null;
   programas: Programa[];
   matriculados: number;
+  descripcion: string | null;
+  imagen_path: string | null;
+  publicado: number;
+  dias_disponibles: number | null;
+  certificado_id: number | null;
 }
 
 const inputCls = "w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
@@ -199,7 +204,16 @@ export default function AsignaturasView() {
   };
 
   if (viewing) {
-    return <AsignaturaDetailView asignatura={viewing} onBack={() => { setViewing(null); load(); }} />;
+    return (
+      <AsignaturaDetailView
+        asignatura={viewing}
+        onBack={() => { setViewing(null); load(); }}
+        onUpdated={() => { load(); apiFetch<{ asignaturas: Asignatura[] }>("/asignaturas/list.php").then((d) => {
+          const fresh = d.asignaturas.find((a) => a.id === viewing.id);
+          if (fresh) setViewing(fresh);
+        }); }}
+      />
+    );
   }
 
   return (

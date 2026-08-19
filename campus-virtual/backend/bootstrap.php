@@ -283,6 +283,40 @@ function require_acceso_curso_ligero(array $user, int $cursoLigeroId): void
     require_permiso($user, 'academico.cursos_ligeros');
 }
 
+/** Mismo mecanismo que require_acceso_curso_ligero(), para el contenido de un Programa. */
+function require_acceso_programa(array $user, int $programaId): void
+{
+    if ($user['role'] === 'estudiante') {
+        if (empty($user['identificacion'])) fail('No autorizado.', 403);
+        $stmt = db()->prepare(
+            'SELECT pe.id FROM programa_estudiantes pe
+             JOIN estudiantes e ON e.id = pe.estudiante_id
+             WHERE pe.programa_id = ? AND e.identificacion = ?'
+        );
+        $stmt->execute([$programaId, $user['identificacion']]);
+        if (!$stmt->fetch()) fail('No autorizado.', 403);
+        return;
+    }
+    require_permiso($user, 'academico.programas');
+}
+
+/** Mismo mecanismo que require_acceso_curso_ligero(), para el contenido de una Asignatura. */
+function require_acceso_asignatura(array $user, int $asignaturaId): void
+{
+    if ($user['role'] === 'estudiante') {
+        if (empty($user['identificacion'])) fail('No autorizado.', 403);
+        $stmt = db()->prepare(
+            'SELECT ae.id FROM asignatura_estudiantes ae
+             JOIN estudiantes e ON e.id = ae.estudiante_id
+             WHERE ae.asignatura_id = ? AND e.identificacion = ?'
+        );
+        $stmt->execute([$asignaturaId, $user['identificacion']]);
+        if (!$stmt->fetch()) fail('No autorizado.', 403);
+        return;
+    }
+    require_permiso($user, 'academico.asignaturas');
+}
+
 /* ─── Auditoría ────────────────────────────────────────────────────────── */
 function log_trace(array $user, string $action, ?string $detail = null): void
 {

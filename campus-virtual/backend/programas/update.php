@@ -11,18 +11,35 @@ $id     = (int) ($body['id'] ?? 0);
 $nombre = trim($body['nombre'] ?? '');
 if ($id === 0 || $nombre === '') fail('El nombre del programa es requerido.');
 
+$current = db()->prepare('SELECT * FROM programas WHERE id = ?');
+$current->execute([$id]);
+$row = $current->fetch();
+if (!$row) fail('Programa no encontrado.', 404);
+
 $dup = db()->prepare('SELECT id FROM programas WHERE nombre = ? AND id != ?');
 $dup->execute([$nombre, $id]);
 if ($dup->fetch()) fail('Ya existe otro programa con ese nombre.');
 
+// El formulario básico (Programas) y la pestaña Ajustes (dentro de un
+// programa) mandan sub-conjuntos distintos de campos — solo el campo que
+// realmente vino en el body se actualiza, el resto conserva su valor actual,
+// para que editar lo básico no borre la imagen/publicado/certificado ya
+// configurados desde Ajustes (y viceversa).
+$field = fn(string $key, string $col) => array_key_exists($key, $body) ? $body[$key] : $row[$col];
+
 db()->prepare(
     'UPDATE programas SET codigo = ?, nombre = ?, pensum = ?, abreviacion = ?, num_resolucion = ?,
-        fecha_resolucion = ?, disponible_oferta_laboral = ?, estado = ?, aplica_preinscripcion = ?
+        fecha_resolucion = ?, disponible_oferta_laboral = ?, estado = ?, aplica_preinscripcion = ?,
+        descripcion = ?, publicado = ?, dias_disponibles = ?, certificado_id = ?
      WHERE id = ?'
 )->execute([
-    $body['codigo'] ?? null, $nombre, $body['pensum'] ?? null, $body['abreviacion'] ?? null,
-    $body['numResolucion'] ?? null, $body['fechaResolucion'] ?? null,
-    $body['disponibleOfertaLaboral'] ?? 'Sí', $body['estado'] ?? 'Activo', $body['aplicaPreinscripcion'] ?? 'No',
+    $field('codigo', 'codigo'), $nombre, $field('pensum', 'pensum'), $field('abreviacion', 'abreviacion'),
+    $field('numResolucion', 'num_resolucion'), $field('fechaResolucion', 'fecha_resolucion'),
+    $field('disponibleOfertaLaboral', 'disponible_oferta_laboral'), $field('estado', 'estado'),
+    $field('aplicaPreinscripcion', 'aplica_preinscripcion'),
+    $field('descripcion', 'descripcion'),
+    array_key_exists('publicado', $body) ? (!empty($body['publicado']) ? 1 : 0) : $row['publicado'],
+    $field('diasDisponibles', 'dias_disponibles'), $field('certificadoId', 'certificado_id'),
     $id,
 ]);
 

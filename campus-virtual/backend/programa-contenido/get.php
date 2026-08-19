@@ -2,7 +2,6 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_permiso($user, 'academico.programas');
 
 $id = $_GET['id'] ?? '';
 if ($id === '') fail('id requerido.');
@@ -12,6 +11,8 @@ $stmt->execute([$id]);
 $item = $stmt->fetch();
 if (!$item) fail('Recurso no encontrado.', 404);
 
+require_acceso_programa($user, (int) $item['programa_id']);
+
 if ($item['tipo'] === 'Cuestionario') {
     $stmt = db()->prepare('SELECT * FROM programa_preguntas WHERE contenido_id = ? ORDER BY orden, id');
     $stmt->execute([$id]);
@@ -20,7 +21,14 @@ if ($item['tipo'] === 'Cuestionario') {
     $optStmt = db()->prepare('SELECT * FROM programa_opciones WHERE pregunta_id = ? ORDER BY orden, id');
     foreach ($preguntas as &$p) {
         $optStmt->execute([$p['id']]);
-        $p['opciones'] = $optStmt->fetchAll();
+        $opciones = $optStmt->fetchAll();
+        if ($user['role'] === 'estudiante') {
+            $opciones = array_map(static function (array $o): array {
+                unset($o['es_correcta']);
+                return $o;
+            }, $opciones);
+        }
+        $p['opciones'] = $opciones;
     }
     unset($p);
     $item['preguntas'] = $preguntas;

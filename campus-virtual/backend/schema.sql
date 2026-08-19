@@ -870,6 +870,77 @@ CREATE TABLE IF NOT EXISTS asignatura_opciones (
   FOREIGN KEY (pregunta_id) REFERENCES asignatura_preguntas(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 16 — Programas a paridad total con Cursos ligeros: Anuncios, Clases
+-- virtuales, Ajustes (imagen, publicado, días disponibles, certificado).
+-- `estado` (Activo/Inactivo) ya existía y es un concepto distinto — se deja
+-- igual; `publicado` es nuevo y es lo que controla si el estudiante lo ve.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE programas
+  ADD COLUMN descripcion      TEXT NULL,
+  ADD COLUMN imagen_path      VARCHAR(255) NULL,
+  ADD COLUMN publicado        TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN dias_disponibles INT NULL,
+  ADD COLUMN certificado_id   INT NULL,
+  ADD FOREIGN KEY (certificado_id) REFERENCES certificados_plantillas(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS programa_anuncios (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  programa_id  INT NOT NULL,
+  titulo       VARCHAR(200) NOT NULL,
+  mensaje      TEXT NULL,
+  importancia  VARCHAR(20) NOT NULL DEFAULT 'Normal',
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (programa_id) REFERENCES programas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS programa_clases_virtuales (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  programa_id     INT NOT NULL,
+  aula_recurso_id INT NULL,
+  titulo          VARCHAR(200) NOT NULL,
+  fecha_inicio    DATETIME NOT NULL,
+  fecha_fin       DATETIME NULL,
+  FOREIGN KEY (programa_id) REFERENCES programas(id) ON DELETE CASCADE,
+  FOREIGN KEY (aula_recurso_id) REFERENCES aulas_recursos(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 17 — Mismo patrón de Fase 16, ahora para Asignaturas: Anuncios,
+-- Clases virtuales, Ajustes (imagen, publicado, días disponibles,
+-- certificado) — paridad total con Cursos ligeros / Programas.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE asignaturas
+  ADD COLUMN descripcion      TEXT NULL,
+  ADD COLUMN imagen_path      VARCHAR(255) NULL,
+  ADD COLUMN publicado        TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN dias_disponibles INT NULL,
+  ADD COLUMN certificado_id   INT NULL,
+  ADD FOREIGN KEY (certificado_id) REFERENCES certificados_plantillas(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS asignatura_anuncios (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  asignatura_id INT NOT NULL,
+  titulo        VARCHAR(200) NOT NULL,
+  mensaje       TEXT NULL,
+  importancia   VARCHAR(20) NOT NULL DEFAULT 'Normal',
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS asignatura_clases_virtuales (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  asignatura_id   INT NOT NULL,
+  aula_recurso_id INT NULL,
+  titulo          VARCHAR(200) NOT NULL,
+  fecha_inicio    DATETIME NOT NULL,
+  fecha_fin       DATETIME NULL,
+  FOREIGN KEY (asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE,
+  FOREIGN KEY (aula_recurso_id) REFERENCES aulas_recursos(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS asignatura_estudiantes (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   asignatura_id INT NOT NULL,
