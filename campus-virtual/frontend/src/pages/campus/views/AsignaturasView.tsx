@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Loader2, Pencil, Trash2, X, Search, Download, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, X, Search, Download, ChevronDown, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
+import AsignaturaDetailView from "./AsignaturaDetailView";
 
 interface Programa { id: number; nombre: string }
 interface Asignatura {
@@ -13,6 +14,7 @@ interface Asignatura {
   abreviacion: string | null;
   num_creditos: number | null;
   programas: Programa[];
+  matriculados: number;
 }
 
 const inputCls = "w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
@@ -134,12 +136,14 @@ function AsignaturaForm({
 export default function AsignaturasView() {
   const { currentUser } = useCampusAuth();
   const isSuperAdmin = currentUser?.role === "super_admin";
+  const canManage = currentUser?.role === "admin" || isSuperAdmin;
   const [asignaturas, setAsignaturas] = useState<Asignatura[]>([]);
   const [programas, setProgramas]     = useState<Programa[]>([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState("");
   const [editing, setEditing]         = useState<Asignatura | null>(null);
   const [deleting, setDeleting]       = useState<Asignatura | null>(null);
+  const [viewing, setViewing]         = useState<Asignatura | null>(null);
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -169,8 +173,8 @@ export default function AsignaturasView() {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const exportar = () => {
-    const header = ["Código", "Nombre", "Abreviación", "Créditos", "Programas"];
-    const rows = filtered.map((a) => [a.codigo ?? "", a.nombre, a.abreviacion ?? "", a.num_creditos != null ? String(a.num_creditos) : "", a.programas.map((p) => p.nombre).join("; ")]);
+    const header = ["Código", "Nombre", "Abreviación", "Créditos", "Estudiantes", "Programas"];
+    const rows = filtered.map((a) => [a.codigo ?? "", a.nombre, a.abreviacion ?? "", a.num_creditos != null ? String(a.num_creditos) : "", String(a.matriculados), a.programas.map((p) => p.nombre).join("; ")]);
     const csv = [header, ...rows].map((r) => r.map((v) => csvEscape(v)).join(",")).join("\n");
     const blob = new Blob([String.fromCharCode(0xfeff) + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -193,6 +197,10 @@ export default function AsignaturasView() {
       window.alert(e instanceof Error ? e.message : "Error al eliminar la asignatura.");
     }
   };
+
+  if (viewing) {
+    return <AsignaturaDetailView asignatura={viewing} onBack={() => { setViewing(null); load(); }} />;
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-3">
@@ -237,19 +245,21 @@ export default function AsignaturasView() {
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Asignatura</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Abreviación</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Créditos</th>
+                      <th className="text-center px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Estudiantes</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Programas</th>
-                      {isSuperAdmin && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Acciones</th>}
+                      {canManage && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {paged.length === 0 ? (
-                      <tr><td colSpan={isSuperAdmin ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
+                      <tr><td colSpan={canManage ? 7 : 6} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
                     ) : paged.map((a, idx) => (
                       <tr key={a.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
                         <td className="px-4 py-2 text-slate-500 text-xs font-medium whitespace-nowrap">{a.codigo ?? "—"}</td>
                         <td className="px-4 py-2 text-slate-700 font-medium text-[13px]">{a.nombre}</td>
                         <td className="px-4 py-2 text-slate-500 text-xs">{a.abreviacion ?? "—"}</td>
                         <td className="px-4 py-2 text-slate-500 text-xs">{a.num_creditos ?? "—"}</td>
+                        <td className="px-4 py-2 text-center text-slate-500 text-xs">{a.matriculados}</td>
                         <td className="px-4 py-2">
                           <div className="flex flex-wrap gap-1">
                             {a.programas.length === 0 ? (
@@ -261,15 +271,22 @@ export default function AsignaturasView() {
                             ))}
                           </div>
                         </td>
-                        {isSuperAdmin && (
+                        {canManage && (
                           <td className="px-4 py-2">
                             <div className="flex items-center justify-end gap-2.5">
-                              <button onClick={() => setEditing(a)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
-                                <Pencil className="w-3.5 h-3.5" />
+                              <button onClick={() => setViewing(a)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver asignatura">
+                                <Eye className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => setDeleting(a)} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              {isSuperAdmin && (
+                                <>
+                                  <button onClick={() => setEditing(a)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => setDeleting(a)} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         )}

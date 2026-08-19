@@ -812,6 +812,75 @@ CREATE TABLE IF NOT EXISTS programa_estudiantes (
   FOREIGN KEY (estudiante_id) REFERENCES estudiantes(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 15 — Mismo patrón de Fase 14, ahora para Asignaturas: contenido propio
+-- (no comparte fila con curso_ligero_*/plantilla_*/programa_*) + matrícula
+-- real de estudiantes a la asignatura.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS asignatura_contenido (
+  id                 INT AUTO_INCREMENT PRIMARY KEY,
+  asignatura_id      INT NOT NULL,
+  titulo             VARCHAR(255) NOT NULL,
+  modulo             VARCHAR(150) NULL,
+  tipo               VARCHAR(30)  NOT NULL DEFAULT 'Texto',
+  orden              INT NOT NULL DEFAULT 0,
+  descripcion        TEXT NULL,
+  contenido_texto    TEXT NULL,
+  archivo_path       VARCHAR(255) NULL,
+  url_externa        VARCHAR(500) NULL,
+  como_completarlo   VARCHAR(50)  NULL,
+  restringir_fecha   TINYINT(1)   NOT NULL DEFAULT 0,
+  fecha_desde        DATETIME NULL,
+  fecha_hasta        DATETIME NULL,
+  preguntas_por_pagina             INT        NULL,
+  preguntas_aleatorias             TINYINT(1) NOT NULL DEFAULT 0,
+  mostrar_puntaje                  TINYINT(1) NOT NULL DEFAULT 1,
+  tiempo_maximo_min                INT        NULL,
+  tiempo_minimo_min                INT        NULL,
+  porcentaje_aprobacion            INT        NULL,
+  intentos_disponibles             INT        NULL DEFAULT 1,
+  permitir_editar_respuestas       TINYINT(1) NOT NULL DEFAULT 1,
+  permitir_verificar_antes_enviar  TINYINT(1) NOT NULL DEFAULT 1,
+  ver_detalle_resultados           TINYINT(1) NOT NULL DEFAULT 0,
+  tomar_foto                       TINYINT(1) NOT NULL DEFAULT 0,
+  created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS asignatura_preguntas (
+  id                INT AUTO_INCREMENT PRIMARY KEY,
+  contenido_id      INT NOT NULL,
+  texto             TEXT NOT NULL,
+  tipo_respuesta    VARCHAR(20) NOT NULL DEFAULT 'unica',
+  puntos            INT NOT NULL DEFAULT 10,
+  retroalimentacion TEXT NULL,
+  orden             INT NOT NULL DEFAULT 0,
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (contenido_id) REFERENCES asignatura_contenido(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS asignatura_opciones (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  pregunta_id  INT NOT NULL,
+  texto        TEXT NOT NULL,
+  pareja_texto VARCHAR(255) NULL,
+  es_correcta  TINYINT(1) NOT NULL DEFAULT 0,
+  orden        INT NOT NULL DEFAULT 0,
+  FOREIGN KEY (pregunta_id) REFERENCES asignatura_preguntas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS asignatura_estudiantes (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  asignatura_id INT NOT NULL,
+  estudiante_id INT NOT NULL,
+  estado        VARCHAR(20) NOT NULL DEFAULT 'Activo',
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_asignatura_estudiante (asignatura_id, estudiante_id),
+  FOREIGN KEY (asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE,
+  FOREIGN KEY (estudiante_id) REFERENCES estudiantes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS curso_estudiantes (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   curso_id      INT NOT NULL,

@@ -4,7 +4,11 @@ require __DIR__ . '/../bootstrap.php';
 $user = require_auth();
 require_permiso($user, 'academico.asignaturas');
 
-$asignaturas = db()->query('SELECT * FROM asignaturas ORDER BY nombre')->fetchAll();
+$asignaturas = db()->query(
+    'SELECT a.*, (SELECT COUNT(*) FROM asignatura_estudiantes ae WHERE ae.asignatura_id = a.id) AS matriculados
+     FROM asignaturas a
+     ORDER BY a.nombre'
+)->fetchAll();
 
 $pares = db()->query(
     'SELECT pa.asignatura_id, p.id AS programa_id, p.nombre AS programa_nombre
