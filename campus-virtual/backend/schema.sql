@@ -941,6 +941,95 @@ CREATE TABLE IF NOT EXISTS asignatura_clases_virtuales (
   FOREIGN KEY (aula_recurso_id) REFERENCES aulas_recursos(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 18 — Mismo patrón de Fase 16/17, ahora para Cursos (el mismo que se ve
+-- en "Cursos virtuales" — es la misma tabla `cursos`, dos pantallas
+-- distintas): Contenido, Anuncios, Clases virtuales, Ajustes (imagen,
+-- publicado, días disponibles, certificado). La matrícula de estudiantes
+-- (curso_estudiantes) ya existía — no se toca.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE cursos
+  ADD COLUMN descripcion      TEXT NULL,
+  ADD COLUMN imagen_path      VARCHAR(255) NULL,
+  ADD COLUMN publicado        TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN dias_disponibles INT NULL,
+  ADD COLUMN certificado_id   INT NULL,
+  ADD FOREIGN KEY (certificado_id) REFERENCES certificados_plantillas(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS curso_contenido (
+  id                 INT AUTO_INCREMENT PRIMARY KEY,
+  curso_id           INT NOT NULL,
+  titulo             VARCHAR(255) NOT NULL,
+  modulo             VARCHAR(150) NULL,
+  tipo               VARCHAR(30)  NOT NULL DEFAULT 'Texto',
+  orden              INT NOT NULL DEFAULT 0,
+  descripcion        TEXT NULL,
+  contenido_texto    TEXT NULL,
+  archivo_path       VARCHAR(255) NULL,
+  url_externa        VARCHAR(500) NULL,
+  como_completarlo   VARCHAR(50)  NULL,
+  restringir_fecha   TINYINT(1)   NOT NULL DEFAULT 0,
+  fecha_desde        DATETIME NULL,
+  fecha_hasta        DATETIME NULL,
+  preguntas_por_pagina             INT        NULL,
+  preguntas_aleatorias             TINYINT(1) NOT NULL DEFAULT 0,
+  mostrar_puntaje                  TINYINT(1) NOT NULL DEFAULT 1,
+  tiempo_maximo_min                INT        NULL,
+  tiempo_minimo_min                INT        NULL,
+  porcentaje_aprobacion            INT        NULL,
+  intentos_disponibles             INT        NULL DEFAULT 1,
+  permitir_editar_respuestas       TINYINT(1) NOT NULL DEFAULT 1,
+  permitir_verificar_antes_enviar  TINYINT(1) NOT NULL DEFAULT 1,
+  ver_detalle_resultados           TINYINT(1) NOT NULL DEFAULT 0,
+  tomar_foto                       TINYINT(1) NOT NULL DEFAULT 0,
+  created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (curso_id) REFERENCES cursos(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS curso_preguntas (
+  id                INT AUTO_INCREMENT PRIMARY KEY,
+  contenido_id      INT NOT NULL,
+  texto             TEXT NOT NULL,
+  tipo_respuesta    VARCHAR(20) NOT NULL DEFAULT 'unica',
+  puntos            INT NOT NULL DEFAULT 10,
+  retroalimentacion TEXT NULL,
+  orden             INT NOT NULL DEFAULT 0,
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (contenido_id) REFERENCES curso_contenido(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS curso_opciones (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  pregunta_id  INT NOT NULL,
+  texto        TEXT NOT NULL,
+  pareja_texto VARCHAR(255) NULL,
+  es_correcta  TINYINT(1) NOT NULL DEFAULT 0,
+  orden        INT NOT NULL DEFAULT 0,
+  FOREIGN KEY (pregunta_id) REFERENCES curso_preguntas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS curso_anuncios (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  curso_id     INT NOT NULL,
+  titulo       VARCHAR(200) NOT NULL,
+  mensaje      TEXT NULL,
+  importancia  VARCHAR(20) NOT NULL DEFAULT 'Normal',
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (curso_id) REFERENCES cursos(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS curso_clases_virtuales (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  curso_id        INT NOT NULL,
+  aula_recurso_id INT NULL,
+  titulo          VARCHAR(200) NOT NULL,
+  fecha_inicio    DATETIME NOT NULL,
+  fecha_fin       DATETIME NULL,
+  FOREIGN KEY (curso_id) REFERENCES cursos(id) ON DELETE CASCADE,
+  FOREIGN KEY (aula_recurso_id) REFERENCES aulas_recursos(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS asignatura_estudiantes (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   asignatura_id INT NOT NULL,

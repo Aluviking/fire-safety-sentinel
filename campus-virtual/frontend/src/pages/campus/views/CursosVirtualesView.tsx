@@ -4,25 +4,10 @@ import { Search, Eye, X, Loader2, ChevronDown, ChevronLeft, ChevronRight } from 
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
+import CursoDetailView, { type Curso } from "./CursoDetailView";
 
 interface Programa { id: number; nombre: string }
 interface Asignatura { id: number; nombre: string }
-interface Curso {
-  id: number;
-  codigo_nombre: string | null;
-  programa_id: number | null;
-  asignatura_id: number | null;
-  programa_asignatura_jornada: string | null;
-  docente_identificacion: string | null;
-  docente_nombre: string | null;
-  periodo: string | null;
-  fecha_inicio: string | null;
-  fecha_fin: string | null;
-  aula: string | null;
-  cupo_maximo: number | null;
-  cerrado: string | null;
-  archivado: string | null;
-}
 
 type Estado = "Pendiente" | "En progreso" | "Cerrado" | "Archivado";
 const ESTADOS: Estado[] = ["Pendiente", "En progreso", "Cerrado", "Archivado"];
@@ -69,47 +54,6 @@ function Dropdown({
           </>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-function DetalleModal({ curso, programaNombre, asignaturaNombre, onClose }: {
-  curso: Curso; programaNombre: string; asignaturaNombre: string; onClose: () => void;
-}) {
-  const estado = estadoCurso(curso);
-  const rows: [string, string][] = [
-    ["Programa", programaNombre],
-    ["Asignatura", asignaturaNombre],
-    ["Jornada", curso.programa_asignatura_jornada ?? "—"],
-    ["Docente", curso.docente_nombre ?? "—"],
-    ["Período", curso.periodo ?? "—"],
-    ["Fecha inicio", curso.fecha_inicio ?? "—"],
-    ["Fecha fin", curso.fecha_fin ?? "—"],
-    ["Aula", curso.aula ?? "—"],
-    ["Cupo máximo", curso.cupo_maximo != null ? String(curso.cupo_maximo) : "—"],
-  ];
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <motion.div initial={{ opacity: 0, y: 16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="relative w-full max-w-md bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.25)] border border-slate-200 overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
-        <div className="p-5 space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="font-bold text-slate-800 text-[15px] leading-snug">{curso.codigo_nombre ?? "—"}</h3>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 shrink-0"><X className="w-4 h-4" /></button>
-          </div>
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-medium ${ESTADO_BADGE[estado]}`}>{estado}</span>
-          <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-            {rows.map(([label, value]) => (
-              <div key={label} className="flex items-center justify-between px-3.5 py-2 text-xs">
-                <span className="text-slate-400 font-medium">{label}</span>
-                <span className="text-slate-700 text-right">{value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
     </div>
   );
 }
@@ -197,6 +141,19 @@ export default function CursosVirtualesView() {
       window.alert(e instanceof Error ? e.message : "Error al eliminar el curso.");
     }
   };
+
+  if (viewing) {
+    return (
+      <CursoDetailView
+        curso={viewing}
+        onBack={() => { setViewing(null); load(); }}
+        onUpdated={() => { load(); apiFetch<{ cursos: Curso[] }>("/cursos/list.php").then((d) => {
+          const fresh = d.cursos.find((c) => c.id === viewing.id);
+          if (fresh) setViewing(fresh);
+        }); }}
+      />
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-3">
@@ -337,13 +294,6 @@ export default function CursosVirtualesView() {
           )}
         </div>
       </div>
-
-      {viewing && (
-        <DetalleModal
-          curso={viewing} programaNombre={programaNombre(viewing.programa_id)} asignaturaNombre={asignaturaNombre(viewing.asignatura_id)}
-          onClose={() => setViewing(null)}
-        />
-      )}
 
       <ConfirmModal
         open={!!deleting}

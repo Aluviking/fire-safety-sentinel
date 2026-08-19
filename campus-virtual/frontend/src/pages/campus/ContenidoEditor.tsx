@@ -210,8 +210,8 @@ function RecursoFormModal({
           <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200">
             <span className="text-xs font-semibold text-slate-600">Restringir fecha</span>
             <button type="button" onClick={() => setRestringirFecha((v) => !v)}
-              className={`w-10 h-5.5 rounded-full transition-colors relative ${restringirFecha ? "bg-emerald-500" : "bg-slate-300"}`} style={{ height: 22, width: 40 }}>
-              <span className={`absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white shadow transition-transform ${restringirFecha ? "translate-x-[19px]" : "translate-x-0.5"}`} />
+              className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${restringirFecha ? "bg-emerald-500" : "bg-slate-300"}`}>
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${restringirFecha ? "translate-x-[22px]" : "translate-x-0.5"}`} />
             </button>
           </div>
           {restringirFecha && (

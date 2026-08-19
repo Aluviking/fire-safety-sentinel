@@ -317,6 +317,23 @@ function require_acceso_asignatura(array $user, int $asignaturaId): void
     require_permiso($user, 'academico.asignaturas');
 }
 
+/** Mismo mecanismo que require_acceso_curso_ligero(), para el contenido de un Curso. */
+function require_acceso_curso(array $user, int $cursoId): void
+{
+    if ($user['role'] === 'estudiante') {
+        if (empty($user['identificacion'])) fail('No autorizado.', 403);
+        $stmt = db()->prepare(
+            'SELECT ce.id FROM curso_estudiantes ce
+             JOIN estudiantes e ON e.id = ce.estudiante_id
+             WHERE ce.curso_id = ? AND e.identificacion = ?'
+        );
+        $stmt->execute([$cursoId, $user['identificacion']]);
+        if (!$stmt->fetch()) fail('No autorizado.', 403);
+        return;
+    }
+    require_permiso($user, 'academico.cursos');
+}
+
 /* ─── Auditoría ────────────────────────────────────────────────────────── */
 function log_trace(array $user, string $action, ?string $detail = null): void
 {

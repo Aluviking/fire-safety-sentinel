@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
 import { SearchableSelect } from "../SearchableSelect";
+import CursoDetailView from "./CursoDetailView";
 
 interface Programa { id: number; nombre: string }
 interface Asignatura { id: number; nombre: string }
@@ -23,6 +24,12 @@ interface Curso {
   aula: string | null;
   cupo_maximo: number | null;
   cerrado: string | null;
+  archivado: string | null;
+  descripcion: string | null;
+  imagen_path: string | null;
+  publicado: number;
+  dias_disponibles: number | null;
+  certificado_id: number | null;
   matriculados: number;
 }
 interface EstudianteOption { id: number; identificacion: string; nombre_completo: string }
@@ -57,43 +64,6 @@ function Dropdown({ label, children }: { label: string; children: (close: () => 
           </>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-function DetalleModal({ curso, onClose }: { curso: Curso; onClose: () => void }) {
-  const rows: [string, string][] = [
-    ["Programa / Asignatura / Jornada", curso.programa_asignatura_jornada ?? "—"],
-    ["Docente", curso.docente_nombre ?? "—"],
-    ["Período", curso.periodo ?? "—"],
-    ["Fecha inicio", curso.fecha_inicio ?? "—"],
-    ["Fecha fin", curso.fecha_fin ?? "—"],
-    ["Aula", curso.aula ?? "—"],
-    ["Cupo máximo", curso.cupo_maximo != null ? String(curso.cupo_maximo) : "—"],
-    ["Matriculados", curso.cupo_maximo != null ? `${curso.matriculados} / ${curso.cupo_maximo}` : String(curso.matriculados)],
-    ["Estado", curso.cerrado?.toLowerCase() === "si" ? "Cerrado" : "Abierto"],
-  ];
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-      <motion.div initial={{ opacity: 0, y: 16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="relative w-full max-w-md bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.25)] border border-slate-200 overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
-        <div className="p-5 space-y-3">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="font-bold text-slate-800 text-[15px] leading-snug">{curso.codigo_nombre ?? "—"}</h3>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 shrink-0"><X className="w-4 h-4" /></button>
-          </div>
-          <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-            {rows.map(([label, value]) => (
-              <div key={label} className="flex items-center justify-between gap-3 px-3.5 py-2 text-xs">
-                <span className="text-slate-400 font-medium shrink-0">{label}</span>
-                <span className="text-slate-700 text-right">{value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
     </div>
   );
 }
@@ -432,6 +402,19 @@ export default function CursosView() {
     }
   };
 
+  if (viewing) {
+    return (
+      <CursoDetailView
+        curso={viewing}
+        onBack={() => { setViewing(null); load(); }}
+        onUpdated={() => { load(); apiFetch<{ cursos: Curso[] }>("/cursos/list.php").then((d) => {
+          const fresh = d.cursos.find((c) => c.id === viewing.id);
+          if (fresh) setViewing(fresh);
+        }); }}
+      />
+    );
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -567,7 +550,6 @@ export default function CursosView() {
         </div>
       </div>
 
-      {viewing && <DetalleModal curso={viewing} onClose={() => setViewing(null)} />}
       {matriculando && <MatriculaModal curso={matriculando} onClose={() => { setMatriculando(null); load(); }} />}
 
       <ConfirmModal
