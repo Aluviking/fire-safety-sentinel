@@ -9,7 +9,7 @@ $id   = (int) ($body['id'] ?? 0);
 if ($id === 0) fail('id requerido.');
 
 $stmt = db()->prepare(
-    'SELECT a.nombre AS asignatura FROM plantillas_educacion_virtual p
+    'SELECT p.nombre, a.nombre AS asignatura FROM plantillas_educacion_virtual p
      LEFT JOIN asignaturas a ON a.id = p.asignatura_id WHERE p.id = ?'
 );
 $stmt->execute([$id]);
@@ -18,5 +18,5 @@ if (!$target) fail('Plantilla no encontrada.', 404);
 
 db()->prepare('DELETE FROM plantillas_educacion_virtual WHERE id = ?')->execute([$id]);
 
-log_trace($user, 'plantilla_delete', "Eliminó la plantilla de {$target['asignatura']}");
+log_trace($user, 'plantilla_delete', "Eliminó la plantilla " . ($target['nombre'] ?: $target['asignatura']));
 respond(['ok' => true]);

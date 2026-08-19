@@ -13,10 +13,12 @@ if ($id === 0 || $nombre === '') fail('El nombre del curso es requerido.');
 
 db()->prepare(
     'UPDATE cursos_ligeros SET nombre = ?, categoria = ?, docente_identificacion = ?, docente_nombre = ?,
-        estado = ?, usuarios_inscritos = ? WHERE id = ?'
+        estado = ?, usuarios_inscritos = ?, descripcion = ?, dias_disponibles = ?, certificado_id = ?
+     WHERE id = ?'
 )->execute([
     $nombre, $body['categoria'] ?? null, $body['docenteIdentificacion'] ?? null, $body['docenteNombre'] ?? null,
     $body['estado'] ?? 'No publicado', $body['usuariosInscritos'] ?? 0,
+    $body['descripcion'] ?? null, $body['diasDisponibles'] ?? null, $body['certificadoId'] ?? null,
     $id,
 ]);
 

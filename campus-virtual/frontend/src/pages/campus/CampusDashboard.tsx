@@ -31,6 +31,7 @@ import GestionFinancieraView from "./views/GestionFinancieraView";
 import HistorialView from "./views/HistorialView";
 import SalasVirtualesView from "./views/SalasVirtualesView";
 import CursosLigerosView from "./views/CursosLigerosView";
+import CursosVirtualesView from "./views/CursosVirtualesView";
 import PlantillasView from "./views/PlantillasView";
 import CertificadosView from "./views/CertificadosView";
 
@@ -761,7 +762,7 @@ export default function CampusDashboard() {
         ) : activeNav.sub === "Educación virtual v2 › Cursos ligeros" ? (
           <CursosLigerosView />
         ) : activeNav.sub === "Educación virtual v2 › Cursos virtuales" ? (
-          <CursosView />
+          <CursosVirtualesView />
         ) : activeNav.sub === "Educación virtual v2 › Plantillas" ? (
           <PlantillasView />
         ) : activeNav.sub === "Educación virtual v2 › Certificados" ? (

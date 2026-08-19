@@ -1,19 +1,25 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, X, Eye } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
+import CursoLigeroDetailView from "./CursoLigeroDetailView";
 
 interface Docente { identificacion: string; nombre_completo: string }
 interface CursoLigero {
   id: number;
   nombre: string;
   categoria: string | null;
+  descripcion: string | null;
+  imagen_path: string | null;
   docente_identificacion: string | null;
   docente_nombre: string | null;
   estado: string;
   usuarios_inscritos: number;
+  dias_disponibles: number | null;
+  certificado_id: number | null;
+  certificado_nombre: string | null;
 }
 
 const inputCls = "w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
@@ -35,7 +41,6 @@ function CursoLigeroForm({
   const [categoria, setCategoria] = useState("");
   const [docenteId, setDocenteId] = useState("");
   const [estado, setEstado] = useState("No publicado");
-  const [usuarios, setUsuarios] = useState("0");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -45,10 +50,9 @@ function CursoLigeroForm({
     setCategoria(editing?.categoria ?? "");
     setDocenteId(editing?.docente_identificacion ?? "");
     setEstado(editing?.estado ?? "No publicado");
-    setUsuarios(String(editing?.usuarios_inscritos ?? 0));
   }, [editing]);
 
-  const reset = () => { setNombre(""); setCategoria(""); setDocenteId(""); setEstado("No publicado"); setUsuarios("0"); setError(""); };
+  const reset = () => { setNombre(""); setCategoria(""); setDocenteId(""); setEstado("No publicado"); setError(""); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +64,6 @@ function CursoLigeroForm({
       const payload = {
         nombre: nombre.trim(), categoria: categoria || null, estado,
         docenteIdentificacion: docente?.identificacion ?? null, docenteNombre: docente?.nombre_completo ?? null,
-        usuariosInscritos: Number(usuarios) || 0,
       };
       if (editing) {
         await apiFetch("/cursos-ligeros/update.php", { method: "POST", json: { id: editing.id, ...payload } });
@@ -102,13 +105,10 @@ function CursoLigeroForm({
           {docentes.map((d) => <option key={d.identificacion} value={d.identificacion}>{d.nombre_completo}</option>)}
         </select>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <select value={estado} onChange={(e) => setEstado(e.target.value)} className={inputCls}>
-          <option value="No publicado">No publicado</option>
-          <option value="Publicado">Publicado</option>
-        </select>
-        <input value={usuarios} onChange={(e) => setUsuarios(e.target.value)} placeholder="Usuarios inscritos" type="number" className={inputCls} />
-      </div>
+      <select value={estado} onChange={(e) => setEstado(e.target.value)} className={inputCls}>
+        <option value="No publicado">No publicado</option>
+        <option value="Publicado">Publicado</option>
+      </select>
       {error && <p className="text-[11px] text-red-500">{error}</p>}
       <div className="flex gap-2">
         <button type="submit" disabled={submitting}
@@ -132,6 +132,8 @@ export default function CursosLigerosView() {
   const [error, setError]       = useState("");
   const [editing, setEditing]   = useState<CursoLigero | null>(null);
   const [deleting, setDeleting] = useState<CursoLigero | null>(null);
+  const [viewing, setViewing]   = useState<CursoLigero | null>(null);
+  const canManage = currentUser?.role === "admin" || isSuperAdmin;
 
   const load = () => {
     setLoading(true);
@@ -156,6 +158,19 @@ export default function CursosLigerosView() {
       window.alert(e instanceof Error ? e.message : "Error al eliminar el curso ligero.");
     }
   };
+
+  if (viewing) {
+    return (
+      <CursoLigeroDetailView
+        curso={viewing}
+        onBack={() => setViewing(null)}
+        onUpdated={() => { load(); apiFetch<{ cursosLigeros: CursoLigero[] }>("/cursos-ligeros/list.php").then((d) => {
+          const fresh = d.cursosLigeros.find((c) => c.id === viewing.id);
+          if (fresh) setViewing(fresh);
+        }); }}
+      />
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-3">
@@ -188,12 +203,12 @@ export default function CursosLigerosView() {
                     <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Docente</th>
                     <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Usuarios</th>
                     <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Estado</th>
-                    {isSuperAdmin && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Acciones</th>}
+                    {canManage && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Acciones</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {cursos.length === 0 ? (
-                    <tr><td colSpan={isSuperAdmin ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">Aún no hay cursos ligeros creados.</td></tr>
+                    <tr><td colSpan={canManage ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">Aún no hay cursos ligeros creados.</td></tr>
                   ) : cursos.map((c, idx) => (
                     <tr key={c.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
                       <td className="px-4 py-2 text-slate-700 font-medium text-[13px]">{c.nombre}</td>
@@ -211,15 +226,22 @@ export default function CursosLigerosView() {
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-xs font-medium">No publicado</span>
                         )}
                       </td>
-                      {isSuperAdmin && (
+                      {canManage && (
                         <td className="px-4 py-2">
                           <div className="flex items-center justify-end gap-2.5">
-                            <button onClick={() => setEditing(c)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
-                              <Pencil className="w-3.5 h-3.5" />
+                            <button onClick={() => setViewing(c)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver curso">
+                              <Eye className="w-3.5 h-3.5" />
                             </button>
-                            <button onClick={() => setDeleting(c)} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {isSuperAdmin && (
+                              <>
+                                <button onClick={() => setEditing(c)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => setDeleting(c)} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       )}

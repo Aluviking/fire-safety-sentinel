@@ -500,3 +500,193 @@ CREATE TABLE IF NOT EXISTS certificados_plantillas (
   predeterminado TINYINT(1)   NOT NULL DEFAULT 0,
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 8 — Detalle de Curso ligero (pestañas Ajustes/Contenido/Anuncios/
+-- Clases virtuales/Usuarios, igual a como se veía en Q10). Como
+-- `cursos_ligeros` ya existe en producción, esto es un ALTER (no se puede
+-- meter en el CREATE TABLE de arriba) — correr manualmente igual que el
+-- resto del esquema de este proyecto.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE cursos_ligeros
+  ADD COLUMN descripcion      TEXT         NULL,
+  ADD COLUMN imagen_path      VARCHAR(255) NULL,
+  ADD COLUMN dias_disponibles INT          NULL,
+  ADD COLUMN certificado_id   INT          NULL,
+  ADD FOREIGN KEY (certificado_id) REFERENCES certificados_plantillas(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS curso_ligero_contenido (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  curso_ligero_id INT NOT NULL,
+  titulo          VARCHAR(200) NOT NULL,
+  tipo            VARCHAR(30)  NOT NULL DEFAULT 'Módulo',
+  orden           INT NOT NULL DEFAULT 0,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (curso_ligero_id) REFERENCES cursos_ligeros(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS curso_ligero_anuncios (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  curso_ligero_id INT NOT NULL,
+  titulo          VARCHAR(200) NOT NULL,
+  mensaje         TEXT NULL,
+  importancia     VARCHAR(20) NOT NULL DEFAULT 'Normal',
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (curso_ligero_id) REFERENCES cursos_ligeros(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- progreso/tiempo_total_minutos/promedio_final/ultimo_acceso son
+-- informativos — no hay plataforma de consumo real para el estudiante
+-- todavía (sin eso no hay forma de medir progreso real), el Admin/Super
+-- Admin los edita a mano si quiere reflejar un dato real.
+CREATE TABLE IF NOT EXISTS curso_ligero_inscripciones (
+  id                        INT AUTO_INCREMENT PRIMARY KEY,
+  curso_ligero_id           INT NOT NULL,
+  estudiante_identificacion VARCHAR(30) NOT NULL,
+  progreso                  INT NOT NULL DEFAULT 0,
+  tiempo_total_minutos      INT NOT NULL DEFAULT 0,
+  promedio_final            DECIMAL(4,1) NULL,
+  ultimo_acceso             DATE NULL,
+  estado_acceso             VARCHAR(20) NOT NULL DEFAULT 'Activo',
+  created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_inscripcion (curso_ligero_id, estudiante_identificacion),
+  FOREIGN KEY (curso_ligero_id) REFERENCES cursos_ligeros(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS curso_ligero_clases_virtuales (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  curso_ligero_id INT NOT NULL,
+  aula_recurso_id INT NULL,
+  titulo          VARCHAR(200) NOT NULL,
+  fecha_inicio    DATETIME NOT NULL,
+  fecha_fin       DATETIME NULL,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (curso_ligero_id) REFERENCES cursos_ligeros(id) ON DELETE CASCADE,
+  FOREIGN KEY (aula_recurso_id) REFERENCES aulas_recursos(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 9 — Contenido real por recurso (Texto, Archivo, Video, Audio, Tarea,
+-- Cuestionario, Iframe) e motor de cuestionario (preguntas + opciones), igual
+-- a como se veía en Q10. Foro e Importar recursos quedan pendientes (piden
+-- su propio diseño: hilos de discusión y biblioteca de recursos).
+-- `curso_ligero_contenido` ya existe en producción, así que esto es un ALTER.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE curso_ligero_contenido
+  ADD COLUMN descripcion       TEXT         NULL,
+  ADD COLUMN contenido_texto   TEXT         NULL,
+  ADD COLUMN archivo_path      VARCHAR(255) NULL,
+  ADD COLUMN url_externa       VARCHAR(500) NULL,
+  ADD COLUMN como_completarlo  VARCHAR(50)  NULL,
+  ADD COLUMN restringir_fecha  TINYINT(1)   NOT NULL DEFAULT 0,
+  ADD COLUMN fecha_desde       DATETIME     NULL,
+  ADD COLUMN fecha_hasta       DATETIME     NULL;
+
+CREATE TABLE IF NOT EXISTS curso_ligero_preguntas (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  contenido_id    INT NOT NULL,
+  texto           TEXT NOT NULL,
+  tipo_respuesta  VARCHAR(10) NOT NULL DEFAULT 'unica', -- 'unica' | 'multiple'
+  puntos          INT NOT NULL DEFAULT 10,
+  retroalimentacion TEXT NULL,
+  orden           INT NOT NULL DEFAULT 0,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (contenido_id) REFERENCES curso_ligero_contenido(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS curso_ligero_opciones (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  pregunta_id   INT NOT NULL,
+  texto         TEXT NOT NULL,
+  es_correcta   TINYINT(1) NOT NULL DEFAULT 0,
+  orden         INT NOT NULL DEFAULT 0,
+  FOREIGN KEY (pregunta_id) REFERENCES curso_ligero_preguntas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 11 — Plantillas de educación virtual como sistema real (lista +
+-- detalle Contenido/Ajustes, igual a Cursos ligeros), más 2 tipos de pregunta
+-- nuevos vistos en Q10 (Asociación, Descriptiva) y la configuración real de
+-- cuestionario (tiempos, intentos, aleatorio, etc). Plantillas usa sus
+-- propias tablas de contenido/preguntas/opciones (no comparte fila con
+-- curso_ligero_*) — cuando se construya "Importar recursos" en Cursos
+-- ligeros, ese import copiará filas de aquí hacia allá, no las referenciará.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE plantillas_educacion_virtual
+  ADD COLUMN nombre VARCHAR(255) NULL AFTER id,
+  ADD COLUMN imagen_path VARCHAR(255) NULL,
+  ADD COLUMN publicado_por_defecto TINYINT(1) NOT NULL DEFAULT 0;
+
+-- 'descriptiva' (11 letras) no cabía en VARCHAR(10).
+ALTER TABLE curso_ligero_preguntas MODIFY tipo_respuesta VARCHAR(20) NOT NULL DEFAULT 'unica';
+-- Asociación: cada opción es un par (texto = ítem izquierdo, pareja_texto =
+-- definición derecha) — no tiene "correcta/incorrecta", el par ES la respuesta.
+ALTER TABLE curso_ligero_opciones ADD COLUMN pareja_texto VARCHAR(255) NULL;
+
+ALTER TABLE curso_ligero_contenido
+  ADD COLUMN preguntas_por_pagina             INT        NULL,
+  ADD COLUMN preguntas_aleatorias             TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN mostrar_puntaje                  TINYINT(1) NOT NULL DEFAULT 1,
+  ADD COLUMN tiempo_maximo_min                INT        NULL,
+  ADD COLUMN tiempo_minimo_min                INT        NULL,
+  ADD COLUMN porcentaje_aprobacion            INT        NULL,
+  ADD COLUMN intentos_disponibles             INT        NULL DEFAULT 1,
+  ADD COLUMN permitir_editar_respuestas       TINYINT(1) NOT NULL DEFAULT 1,
+  ADD COLUMN permitir_verificar_antes_enviar  TINYINT(1) NOT NULL DEFAULT 1,
+  ADD COLUMN ver_detalle_resultados           TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN tomar_foto                       TINYINT(1) NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS plantilla_contenido (
+  id                 INT AUTO_INCREMENT PRIMARY KEY,
+  plantilla_id       INT NOT NULL,
+  titulo             VARCHAR(255) NOT NULL,
+  modulo             VARCHAR(150) NULL,
+  tipo               VARCHAR(30)  NOT NULL DEFAULT 'Texto',
+  orden              INT NOT NULL DEFAULT 0,
+  descripcion        TEXT NULL,
+  contenido_texto    TEXT NULL,
+  archivo_path       VARCHAR(255) NULL,
+  url_externa        VARCHAR(500) NULL,
+  como_completarlo   VARCHAR(50)  NULL,
+  restringir_fecha   TINYINT(1)   NOT NULL DEFAULT 0,
+  fecha_desde        DATETIME NULL,
+  fecha_hasta        DATETIME NULL,
+  preguntas_por_pagina             INT        NULL,
+  preguntas_aleatorias             TINYINT(1) NOT NULL DEFAULT 0,
+  mostrar_puntaje                  TINYINT(1) NOT NULL DEFAULT 1,
+  tiempo_maximo_min                INT        NULL,
+  tiempo_minimo_min                INT        NULL,
+  porcentaje_aprobacion            INT        NULL,
+  intentos_disponibles             INT        NULL DEFAULT 1,
+  permitir_editar_respuestas       TINYINT(1) NOT NULL DEFAULT 1,
+  permitir_verificar_antes_enviar  TINYINT(1) NOT NULL DEFAULT 1,
+  ver_detalle_resultados           TINYINT(1) NOT NULL DEFAULT 0,
+  tomar_foto                       TINYINT(1) NOT NULL DEFAULT 0,
+  created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (plantilla_id) REFERENCES plantillas_educacion_virtual(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS plantilla_preguntas (
+  id                INT AUTO_INCREMENT PRIMARY KEY,
+  contenido_id      INT NOT NULL,
+  texto             TEXT NOT NULL,
+  tipo_respuesta    VARCHAR(20) NOT NULL DEFAULT 'unica',
+  puntos            INT NOT NULL DEFAULT 10,
+  retroalimentacion TEXT NULL,
+  orden             INT NOT NULL DEFAULT 0,
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (contenido_id) REFERENCES plantilla_contenido(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS plantilla_opciones (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  pregunta_id  INT NOT NULL,
+  texto        TEXT NOT NULL,
+  pareja_texto VARCHAR(255) NULL,
+  es_correcta  TINYINT(1) NOT NULL DEFAULT 0,
+  orden        INT NOT NULL DEFAULT 0,
+  FOREIGN KEY (pregunta_id) REFERENCES plantilla_preguntas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
