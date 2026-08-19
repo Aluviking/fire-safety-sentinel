@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2 } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2, Users } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { useCampusAuth } from "@/context/CampusAuthContext";
 
 interface Evaluacion {
   id: number;
@@ -63,7 +64,192 @@ function Pagination({ total, page, pageSize, onChange }: { total: number; page: 
   );
 }
 
+const selectCls = "w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 cursor-pointer focus:outline-none focus:border-[#C41717]/40 focus:bg-white focus:ring-2 focus:ring-[#C41717]/8 transition-all appearance-none";
+const chevronBg = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2394A3B8'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E\")";
+const selectStyle = { backgroundImage: chevronBg, backgroundRepeat: "no-repeat" as const, backgroundPosition: "right 0.9rem center", backgroundSize: "1rem" };
+
+function FilterSelect({ label, value, onChange, options, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder: string;
+}) {
+  return (
+    <div className="flex-1 min-w-[200px]">
+      <label className="block text-slate-600 text-xs font-semibold mb-1.5">{label}</label>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={selectCls} style={selectStyle}>
+        <option value="">{placeholder}</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  );
+}
+
+/* ── Celda editable (clic para editar, Enter/blur para guardar) ──────────── */
+function EditableCell({
+  value, canEdit, onSave, align = "left", placeholder = "—",
+}: { value: string; canEdit: boolean; onSave: (v: string) => void; align?: "left" | "center"; placeholder?: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
+
+  if (!canEdit) {
+    return <span className={align === "center" ? "block text-center" : ""}>{value || placeholder}</span>;
+  }
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className={`w-full rounded-md px-1.5 py-0.5 hover:bg-amber-50 hover:ring-1 hover:ring-amber-200 transition-colors text-left ${align === "center" ? "text-center" : ""}`}
+        title="Clic para editar"
+      >
+        {value || <span className="text-slate-300">{placeholder}</span>}
+      </button>
+    );
+  }
+  const commit = () => {
+    setEditing(false);
+    if (draft !== value) onSave(draft);
+  };
+  return (
+    <input
+      autoFocus
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setDraft(value); setEditing(false); } }}
+      className={`w-full bg-white border border-[#C41717]/40 rounded-md px-1.5 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C41717]/20 ${align === "center" ? "text-center" : ""}`}
+    />
+  );
+}
+
+interface EstudianteLite { identificacion: string; nombre_completo: string }
+
+/* ── Roster de un curso: estudiantes x parámetro, editable por Admin/Super Admin ── */
+function CursoRosterPanel({
+  curso, evaluaciones, estudiantesMap, canEdit, onUpdated,
+}: {
+  curso: string; evaluaciones: Evaluacion[]; estudiantesMap: Map<string, string>;
+  canEdit: boolean; onUpdated: (updated: Evaluacion) => void;
+}) {
+  const rows = useMemo(() => evaluaciones.filter((e) => e.codigo_curso === curso), [evaluaciones, curso]);
+
+  const parametros = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.parametro).filter((p): p is string => !!p))),
+    [rows]
+  );
+
+  const porEstudiante = useMemo(() => {
+    const map = new Map<string, Evaluacion[]>();
+    for (const r of rows) {
+      const id = r.identificacion_estudiante ?? "";
+      if (!map.has(id)) map.set(id, []);
+      map.get(id)!.push(r);
+    }
+    return map;
+  }, [rows]);
+
+  const save = async (id: number, field: "nota" | "inasistencias" | "observaciones", value: string) => {
+    try {
+      const updated = await apiFetch<{ ok: true }>("/evaluaciones/update.php", { method: "POST", json: { id, [field]: value } });
+      if (updated.ok) onUpdated({ ...rows.find((r) => r.id === id)!, [field]: value });
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Error al guardar el cambio.");
+    }
+  };
+
+  // Inasistencias y observaciones son iguales en todas las filas de un mismo
+  // estudiante+curso en los datos reales (verificado: 0 inconsistencias en
+  // 1025 grupos) — al editar, se aplica a todas sus filas de este curso para
+  // que se mantengan consistentes.
+  const saveShared = async (studentRows: Evaluacion[], field: "inasistencias" | "observaciones", value: string) => {
+    await Promise.all(studentRows.map((r) => save(r.id, field, value)));
+  };
+
+  if (rows.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center text-slate-400 text-sm">
+        Sin evaluaciones registradas para este curso.
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="h-[3px] bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/30" />
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
+        <Users className="w-4 h-4 text-[#C41717]" />
+        <h2 className="text-sm font-semibold text-slate-800 truncate">{curso}</h2>
+        <span className="ml-auto text-xs text-slate-400">{porEstudiante.size} {porEstudiante.size === 1 ? "estudiante" : "estudiantes"}</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">N°</th>
+              <th className="text-left px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Estudiante</th>
+              {parametros.map((p) => (
+                <th key={p} className="text-center px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">{p}</th>
+              ))}
+              <th className="text-center px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Prom.</th>
+              <th className="text-center px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Inas.</th>
+              <th className="text-left px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Observaciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {Array.from(porEstudiante.entries()).map(([identificacion, studentRows], idx) => {
+              const nombre = estudiantesMap.get(identificacion) ?? identificacion;
+              const withPct = studentRows.filter((r) => r.nota != null && r.porcentaje != null);
+              const sumPct = withPct.reduce((s, r) => s + Number(r.porcentaje), 0);
+              const prom = withPct.length === 0 ? null
+                : sumPct > 0
+                  ? withPct.reduce((s, r) => s + Number(r.nota) * Number(r.porcentaje), 0) / sumPct
+                  : withPct.reduce((s, r) => s + Number(r.nota), 0) / withPct.length;
+              const inas = studentRows[0]?.inasistencias ?? 0;
+              const obs = studentRows.find((r) => r.observaciones)?.observaciones ?? "";
+
+              return (
+                <tr key={identificacion} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
+                  <td className="px-3 py-2 text-slate-400 text-xs">{idx + 1}</td>
+                  <td className="px-3 py-2 text-slate-800 font-medium text-xs whitespace-nowrap">
+                    {nombre}
+                    <div className="text-slate-400 font-mono text-[11px]">{identificacion}</div>
+                  </td>
+                  {parametros.map((p) => {
+                    const cell = studentRows.find((r) => r.parametro === p);
+                    return (
+                      <td key={p} className="px-3 py-2 w-24">
+                        {cell ? (
+                          <EditableCell
+                            value={cell.nota ?? ""} canEdit={canEdit} align="center"
+                            onSave={(v) => save(cell.id, "nota", v)}
+                          />
+                        ) : <span className="block text-center text-slate-300">—</span>}
+                      </td>
+                    );
+                  })}
+                  <td className="px-3 py-2 text-center text-slate-700 font-semibold text-xs">{prom != null ? prom.toFixed(1) : "—"}</td>
+                  <td className="px-3 py-2 w-16">
+                    <EditableCell
+                      value={String(inas ?? "")} canEdit={canEdit} align="center"
+                      onSave={(v) => saveShared(studentRows, "inasistencias", v)}
+                    />
+                  </td>
+                  <td className="px-3 py-2 min-w-[160px]">
+                    <EditableCell value={obs ?? ""} canEdit={canEdit} onSave={(v) => saveShared(studentRows, "observaciones", v)} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function EvaluacionesView() {
+  const { currentUser } = useCampusAuth();
+  const canEdit = currentUser?.role === "admin" || currentUser?.role === "super_admin";
+  const [estudiantesMap, setEstudiantesMap] = useState<Map<string, string>>(new Map());
   const [tab, setTab] = useState<Tab>("Evaluaciones detalladas");
   const [evaluaciones, setEvaluaciones] = useState<Evaluacion[]>([]);
   const [notasFinales, setNotasFinales] = useState<NotaFinal[]>([]);
@@ -72,34 +258,64 @@ export default function EvaluacionesView() {
   const [searchInput, setSearchInput]   = useState("");
   const [searchActive, setSearchActive] = useState("");
   const [page, setPage] = useState(1);
+  const [filterAsignatura, setFilterAsignatura] = useState("");
+  const [filterCurso, setFilterCurso]           = useState("");
 
   useEffect(() => {
     Promise.all([
       apiFetch<{ evaluaciones: Evaluacion[] }>("/evaluaciones/list.php"),
       apiFetch<{ notasFinales: NotaFinal[] }>("/notas-finales/list.php"),
+      apiFetch<{ estudiantes: EstudianteLite[] }>("/estudiantes/list.php"),
     ])
-      .then(([e, n]) => { setEvaluaciones(e.evaluaciones); setNotasFinales(n.notasFinales); })
+      .then(([e, n, est]) => {
+        setEvaluaciones(e.evaluaciones);
+        setNotasFinales(n.notasFinales);
+        setEstudiantesMap(new Map(est.estudiantes.map((s) => [s.identificacion, s.nombre_completo])));
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar evaluaciones."))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleEvaluacionUpdated = (updated: Evaluacion) => {
+    setEvaluaciones((prev) => prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
+  };
 
   const handleSearch = () => { setSearchActive(searchInput); setPage(1); };
   const clearSearch   = () => { setSearchInput(""); setSearchActive(""); setPage(1); };
   const changeTab = (t: Tab) => { setTab(t); setPage(1); };
 
+  // Asignatura y Curso salen de los valores reales que ya trae `evaluaciones`
+  // (no de las tablas Asignaturas/Cursos — esos códigos son mundos distintos
+  // en los datos importados de Q10, no cruzan entre sí). Curso se acota al
+  // elegir Asignatura, igual patrón que Período→Sede→Programa al matricular.
+  const asignaturaOpts = useMemo(
+    () => Array.from(new Set(evaluaciones.map((e) => e.asignatura).filter((a): a is string => !!a))).sort(),
+    [evaluaciones]
+  );
+  const cursoOpts = useMemo(() => {
+    const base = filterAsignatura ? evaluaciones.filter((e) => e.asignatura === filterAsignatura) : evaluaciones;
+    return Array.from(new Set(base.map((e) => e.codigo_curso).filter((c): c is string => !!c))).sort();
+  }, [evaluaciones, filterAsignatura]);
+
+  const handleAsignaturaChange = (v: string) => { setFilterAsignatura(v); setFilterCurso(""); setPage(1); };
+  const handleCursoChange = (v: string) => { setFilterCurso(v); setPage(1); };
+
   const filteredEvaluaciones = useMemo(() => {
     const q = searchActive.trim().toLowerCase();
     return evaluaciones.filter((e) =>
-      !q || (e.identificacion_estudiante ?? "").includes(q) || (e.codigo_curso ?? "").toLowerCase().includes(q)
+      (!q || (e.identificacion_estudiante ?? "").includes(q) || (e.codigo_curso ?? "").toLowerCase().includes(q)) &&
+      (!filterAsignatura || e.asignatura === filterAsignatura) &&
+      (!filterCurso || e.codigo_curso === filterCurso)
     );
-  }, [evaluaciones, searchActive]);
+  }, [evaluaciones, searchActive, filterAsignatura, filterCurso]);
 
   const filteredNotas = useMemo(() => {
     const q = searchActive.trim().toLowerCase();
     return notasFinales.filter((n) =>
-      !q || (n.identificacion_estudiante ?? "").includes(q) || (n.asignatura ?? "").toLowerCase().includes(q)
+      (!q || (n.identificacion_estudiante ?? "").includes(q) || (n.asignatura ?? "").toLowerCase().includes(q)) &&
+      (!filterAsignatura || n.asignatura === filterAsignatura)
     );
-  }, [notasFinales, searchActive]);
+  }, [notasFinales, searchActive, filterAsignatura]);
 
   const activeData  = tab === "Evaluaciones detalladas" ? filteredEvaluaciones : filteredNotas;
   const totalPages  = Math.ceil(activeData.length / PAGE_SIZE);
@@ -113,6 +329,28 @@ export default function EvaluacionesView() {
         <p className="text-slate-500 text-xs mt-0.5">Notas por parámetro de evaluación y consolidado final por asignatura</p>
       </div>
 
+      <div className="flex flex-col sm:flex-row gap-3">
+        <FilterSelect
+          label="Asignatura" value={filterAsignatura} onChange={handleAsignaturaChange}
+          options={asignaturaOpts} placeholder="Seleccione asignatura"
+        />
+        <FilterSelect
+          label="Curso" value={filterCurso} onChange={handleCursoChange}
+          options={cursoOpts} placeholder="Seleccione curso"
+        />
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12 text-slate-400 gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</div>
+      ) : filterCurso ? (
+        <CursoRosterPanel
+          curso={filterCurso}
+          evaluaciones={evaluaciones}
+          estudiantesMap={estudiantesMap}
+          canEdit={canEdit}
+          onUpdated={handleEvaluacionUpdated}
+        />
+      ) : (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="h-[3px] bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/30" />
         <div className="flex items-center gap-1 px-3 sm:px-4 pt-3 border-b border-slate-100">
@@ -147,9 +385,7 @@ export default function EvaluacionesView() {
 
           <div className="h-px bg-slate-100" />
 
-          {loading ? (
-            <div className="flex items-center justify-center py-12 text-slate-400 gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</div>
-          ) : error ? (
+          {error ? (
             <p className="text-red-500 text-sm text-center py-8">{error}</p>
           ) : tab === "Evaluaciones detalladas" ? (
             <>
@@ -240,6 +476,7 @@ export default function EvaluacionesView() {
           )}
         </div>
       </div>
+      )}
     </motion.div>
   );
 }

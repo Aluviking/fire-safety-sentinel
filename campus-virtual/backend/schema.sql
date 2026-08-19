@@ -446,3 +446,18 @@ CREATE TABLE IF NOT EXISTS audit_trace (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_audit_trace_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 6 — Educación virtual v2: Aulas virtuales como catálogo de salas
+-- (nombre + capacidad máxima), igual a como se administraban en Q10. No
+-- confundir con la tabla `aulas_virtuales` ya existente (esa es el registro
+-- real de asistencia a sesiones, un concepto distinto, se deja intacta).
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS aulas_recursos (
+  id                INT AUTO_INCREMENT PRIMARY KEY,
+  nombre            VARCHAR(150) NOT NULL,
+  capacidad_maxima  INT          NULL,
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_aula_recurso_nombre (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -29,6 +29,7 @@ import ConsolidadoNotasView from "./views/ConsolidadoNotasView";
 import CarteraGeneralView from "./views/CarteraGeneralView";
 import GestionFinancieraView from "./views/GestionFinancieraView";
 import HistorialView from "./views/HistorialView";
+import SalasVirtualesView from "./views/SalasVirtualesView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
 const GFOLogoSmall = ({ className }: { className?: string }) => (
@@ -72,6 +73,10 @@ const NAV_ITEMS: NavItem[] = [
     subs: [
       { label: "Evaluaciones", icon: ClipboardList },
       { label: "Educación virtual", icon: BookOpen },
+      {
+        label: "Educación virtual v2", icon: BookOpen,
+        subs: ["Cursos virtuales", "Aulas virtuales"],
+      },
       {
         label: "Estructuración", icon: LayoutDashboard,
         subs: [
@@ -750,6 +755,10 @@ export default function CampusDashboard() {
           <AsignaturasView />
         ) : activeNav.sub === "Estructuración › Crear curso" ? (
           <CursosView />
+        ) : activeNav.sub === "Educación virtual v2 › Cursos virtuales" ? (
+          <CursosView />
+        ) : activeNav.sub === "Educación virtual v2 › Aulas virtuales" ? (
+          <SalasVirtualesView />
         ) : activeNav.sub === "Consolidado de notas" ? (
           <ConsolidadoNotasView />
         ) : activeNav.sub === "Cartera general" ? (

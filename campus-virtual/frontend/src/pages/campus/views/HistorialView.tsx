@@ -25,6 +25,8 @@ const ACTION_LABEL: Record<string, string> = {
   asignatura_update: "Editó asignatura", asignatura_delete: "Eliminó asignatura",
   curso_update: "Editó curso", curso_delete: "Eliminó curso",
   user_update: "Editó usuario", password_reset: "Restableció contraseña",
+  evaluacion_update: "Editó evaluación",
+  aula_recurso_update: "Editó aula virtual", aula_recurso_delete: "Eliminó aula virtual",
 };
 
 const ACTION_ICON: Record<string, React.ElementType> = {
@@ -36,6 +38,8 @@ const ACTION_ICON: Record<string, React.ElementType> = {
   asignatura_update: BookOpen, asignatura_delete: BookOpen,
   curso_update: BookOpen, curso_delete: BookOpen,
   user_update: UserPlus, password_reset: KeyRound,
+  evaluacion_update: Pencil,
+  aula_recurso_update: Pencil, aula_recurso_delete: UserMinus,
 };
 
 const ACTION_ACCENT: Record<string, string> = {
@@ -47,6 +51,8 @@ const ACTION_ACCENT: Record<string, string> = {
   asignatura_update: "#0d9488", asignatura_delete: "#dc2626",
   curso_update: "#0d9488", curso_delete: "#dc2626",
   user_update: "#9333ea", password_reset: "#be123c",
+  evaluacion_update: "#d97706",
+  aula_recurso_update: "#d97706", aula_recurso_delete: "#dc2626",
 };
 
 const ROLE_ICON: Record<string, React.ElementType> = {
