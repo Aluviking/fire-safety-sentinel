@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Loader2, X, Star, Upload } from "lucide-react";
-import { apiFetch, apiImage } from "@/lib/api";
+import { Plus, Loader2, X, Star, Upload, FileText, Download, Eye } from "lucide-react";
+import { apiFetch, apiImage, apiDownload } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
 
@@ -10,22 +10,64 @@ interface Certificado {
   nombre: string;
   predeterminado: number;
   tiene_imagen: number;
+  extension: string | null;
 }
 
-/* ── Miniatura: carga la imagen protegida vía apiImage y libera el blob al desmontar ── */
-function CertThumb({ id }: { id: number }) {
+const IMAGE_EXT = ["jpg", "jpeg", "png", "webp"];
+
+/* ── Miniatura: imagen se muestra directo; PDF/Word muestran un ícono con
+   acción de ver (PDF, en pestaña nueva) o descargar (Word, no se puede ver
+   embebido en el navegador) ── */
+function CertThumb({ cert }: { cert: Certificado }) {
   const [url, setUrl] = useState<string | null>(null);
+  const isImage = IMAGE_EXT.includes(cert.extension ?? "");
+
   useEffect(() => {
+    if (!isImage) return;
     let objectUrl: string | null = null;
     let cancelled = false;
-    apiImage(`/certificados/image.php?id=${id}`)
+    apiImage(`/certificados/image.php?id=${cert.id}`)
       .then((u) => { if (!cancelled) { objectUrl = u; setUrl(u); } else URL.revokeObjectURL(u); })
       .catch(() => {});
     return () => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [id]);
+  }, [cert.id, isImage]);
 
-  if (!url) return <div className="w-full h-full bg-slate-100 animate-pulse" />;
-  return <img src={url} alt="" className="w-full h-full object-cover" />;
+  const handleView = async () => {
+    try {
+      const objectUrl = await apiImage(`/certificados/image.php?id=${cert.id}`);
+      window.open(objectUrl, "_blank");
+    } catch {
+      window.alert("No se pudo abrir el archivo.");
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      await apiDownload(`/certificados/image.php?id=${cert.id}`, `${cert.nombre}.${cert.extension}`);
+    } catch {
+      window.alert("No se pudo descargar el archivo.");
+    }
+  };
+
+  if (isImage) {
+    if (!url) return <div className="w-full h-full bg-slate-100 animate-pulse" />;
+    return <img src={url} alt="" className="w-full h-full object-cover" />;
+  }
+
+  const isPdf = cert.extension === "pdf";
+  return (
+    <button
+      type="button"
+      onClick={isPdf ? handleView : handleDownload}
+      className="w-full h-full flex flex-col items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 transition-colors"
+    >
+      <FileText className="w-8 h-8 text-slate-400" />
+      <span className="flex items-center gap-1 text-[10px] font-semibold uppercase text-slate-400">
+        {isPdf ? <Eye className="w-3 h-3" /> : <Download className="w-3 h-3" />}
+        {cert.extension} · {isPdf ? "Ver" : "Descargar"}
+      </span>
+    </button>
+  );
 }
 
 /* ── Modal de creación (nombre + archivo) ─────────────────────────────────── */
@@ -42,7 +84,7 @@ function CrearCertificadoModal({ open, onClose, onCreated }: { open: boolean; on
     e.preventDefault();
     setError("");
     if (!nombre.trim()) { setError("El nombre es obligatorio."); return; }
-    if (!file) { setError("Selecciona una imagen del certificado."); return; }
+    if (!file) { setError("Selecciona un archivo para el certificado."); return; }
     setSubmitting(true);
     try {
       const form = new FormData();
@@ -73,11 +115,15 @@ function CrearCertificadoModal({ open, onClose, onCreated }: { open: boolean; on
               <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del certificado"
                 className="w-full text-sm bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 mb-2.5
                            focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10" />
-              <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="hidden" />
+              <input
+                ref={fileRef} type="file"
+                accept="image/png,image/jpeg,image/webp,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="hidden"
+              />
               <button type="button" onClick={() => fileRef.current?.click()}
                 className="w-full flex items-center justify-center gap-2 px-4 py-6 rounded-xl border-2 border-dashed
                            border-slate-300 text-slate-500 hover:border-[#C41717]/40 hover:text-[#C41717] transition-colors text-sm">
-                <Upload className="w-4 h-4" /> {file ? file.name : "Seleccionar imagen (JPG, PNG, WEBP)"}
+                <Upload className="w-4 h-4" /> {file ? file.name : "Seleccionar imagen, PDF o Word"}
               </button>
               {error && <p className="text-[12px] text-red-500 mt-2">{error}</p>}
               <div className="flex items-center gap-2.5 mt-4">
@@ -186,8 +232,8 @@ export default function CertificadosView() {
                 </button>
               )}
               <div className="w-full aspect-[4/3] bg-slate-50">
-                {c.tiene_imagen ? <CertThumb id={c.id} /> : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-300 text-xs">Sin imagen</div>
+                {c.tiene_imagen ? <CertThumb cert={c} /> : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-300 text-xs">Sin archivo</div>
                 )}
               </div>
               <p className="px-3 py-2.5 text-xs font-medium text-slate-700 truncate">{c.nombre}</p>

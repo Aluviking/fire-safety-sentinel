@@ -57,3 +57,21 @@ export async function apiImage(path: string): Promise<string> {
   const blob = await res.blob();
   return URL.createObjectURL(blob);
 }
+
+/** Descarga un archivo protegido (requiere Authorization) y dispara la descarga en el navegador. */
+export async function apiDownload(path: string, filename: string): Promise<void> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error("No se pudo descargar el archivo.");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
