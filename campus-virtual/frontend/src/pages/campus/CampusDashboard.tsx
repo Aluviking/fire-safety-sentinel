@@ -830,15 +830,18 @@ export default function CampusDashboard() {
 
       {/* ── TOPBAR ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-[#C41717] border-b border-[#A81212] shadow-sm">
-        <div className="flex items-center gap-3 px-4 sm:px-6 h-14">
+        <div className="flex items-center h-14">
 
-          {/* Logo */}
-          <button onClick={() => setActiveNav(null)} className="shrink-0">
-            <GFOLogoSmall className="rounded-xl" imgClassName="h-10 w-auto object-contain" />
+          {/* Logo — franja blanca a todo lo alto del navbar, pegada al borde izquierdo (no una
+              tarjeta flotando sobre el rojo), para que el logo contraste de verdad. */}
+          <button onClick={() => setActiveNav(null)} className="h-full flex items-center bg-white px-4 sm:px-6 shrink-0">
+            <img src={gfoLogo} alt="GFO Academy" className="h-9 w-auto object-contain" />
           </button>
 
+          <div className="flex items-center gap-3 px-4 sm:px-6 flex-1 min-w-0">
+
           {/* Búsqueda de módulos — real: filtra sobre lo que el usuario puede ver y navega al elegir */}
-          <div ref={searchRef} className="hidden md:flex flex-1 max-w-xs relative ml-1">
+          <div ref={searchRef} className="hidden md:flex flex-1 max-w-xs relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none z-10" />
             <input
               type="search"
@@ -940,6 +943,8 @@ export default function CampusDashboard() {
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
+
+          </div>
         </div>
 
         {/* Menú móvil */}
@@ -1011,7 +1016,10 @@ export default function CampusDashboard() {
       </header>
 
       {/* ── BREADCRUMB ──────────────────────────────────────────────────────── */}
-      <div className="px-4 sm:px-6 py-2.5 bg-white border-b border-slate-100 flex items-center gap-1.5">
+      {/* Cada tramo (menos el actual) es clicable y reabre el menú de esa
+          categoría — así se puede saltar a otra pantalla del mismo módulo sin
+          tener que volver hasta Inicio primero. */}
+      <div className="px-4 sm:px-6 py-2.5 bg-white border-b border-slate-100 flex items-center gap-1.5 flex-wrap">
         <button
           onClick={() => setActiveNav(null)}
           className="text-[#C41717] hover:text-[#A81212] text-xs font-medium transition-colors flex items-center gap-1"
@@ -1019,18 +1027,37 @@ export default function CampusDashboard() {
           <LayoutDashboard className="w-3 h-3" />
           Inicio
         </button>
-        {activeNav && (
-          <>
-            <ChevronRight className="w-3 h-3 text-slate-300" />
-            <span className="text-slate-500 text-xs">{activeNav.nav}</span>
-            {activeNav.sub && (
-              <>
-                <ChevronRight className="w-3 h-3 text-slate-300" />
-                <span className="text-slate-700 text-xs font-medium">{activeNav.sub}</span>
-              </>
-            )}
-          </>
-        )}
+        {activeNav && (() => {
+          const subParts = activeNav.sub ? activeNav.sub.split(" › ") : [];
+          const reabrirMenu = () => { toggleMenu(activeNav.nav); setMobileMenuOpen(true); };
+          return (
+            <>
+              <ChevronRight className="w-3 h-3 text-slate-300 shrink-0" />
+              {subParts.length > 0 ? (
+                <button onClick={reabrirMenu} className="text-slate-500 hover:text-[#C41717] text-xs transition-colors">
+                  {activeNav.nav}
+                </button>
+              ) : (
+                <span className="text-slate-700 text-xs font-medium">{activeNav.nav}</span>
+              )}
+              {subParts.map((part, i) => {
+                const isLast = i === subParts.length - 1;
+                return (
+                  <span key={`${part}-${i}`} className="flex items-center gap-1.5">
+                    <ChevronRight className="w-3 h-3 text-slate-300 shrink-0" />
+                    {isLast ? (
+                      <span className="text-slate-700 text-xs font-medium">{part}</span>
+                    ) : (
+                      <button onClick={reabrirMenu} className="text-slate-500 hover:text-[#C41717] text-xs transition-colors">
+                        {part}
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
+            </>
+          );
+        })()}
       </div>
 
       {/* ── CONTENIDO PRINCIPAL ─────────────────────────────────────────────── */}
