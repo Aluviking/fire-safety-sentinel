@@ -24,7 +24,6 @@ import ProgramasView from "./views/ProgramasView";
 import AsignaturasView from "./views/AsignaturasView";
 import CursosView from "./views/CursosView";
 import EvaluacionesView from "./views/EvaluacionesView";
-import EducacionVirtualView from "./views/EducacionVirtualView";
 import ConsolidadoNotasView from "./views/ConsolidadoNotasView";
 import CarteraGeneralView from "./views/CarteraGeneralView";
 import GestionFinancieraView from "./views/GestionFinancieraView";
@@ -77,9 +76,8 @@ const NAV_ITEMS: NavItem[] = [
     icon: BookOpen,
     subs: [
       { label: "Evaluaciones", icon: ClipboardList },
-      { label: "Educación virtual", icon: BookOpen },
       {
-        label: "Educación virtual v2", icon: BookOpen,
+        label: "Educación virtual", icon: BookOpen,
         subs: ["Cursos ligeros", "Cursos virtuales", "Plantillas", "Certificados", "Aulas virtuales"],
       },
       {
@@ -132,7 +130,6 @@ const MODULO_POR_ETIQUETA: Record<string, string> = {
   "Docentes": "institucional.docentes",
   "Administrativos": "institucional.administrativos",
   "Evaluaciones": "academico.evaluaciones",
-  "Educación virtual": "academico.educacion_virtual",
   "Cursos ligeros": "academico.cursos_ligeros",
   "Cursos virtuales": "academico.cursos_virtuales",
   "Plantillas": "academico.plantillas",
@@ -188,7 +185,7 @@ const QUICK_ACCESS = [
   { icon: UserCheck,     label: "Docentes",       color: "#065F46", nav: "Institucional", sub: "Docentes"        },
   { icon: Briefcase,     label: "Administrativos", color: "#92400E", nav: "Institucional", sub: "Administrativos" },
   { icon: ClipboardList, label: "Evaluaciones",   color: "#6B21A8", nav: "Académico",     sub: "Evaluaciones"    },
-  { icon: BookOpen,      label: "Ed. Virtual",    color: "#9F1239", nav: "Académico",     sub: "Educación virtual" },
+  { icon: BookOpen,      label: "Ed. Virtual",    color: "#9F1239", nav: "Académico",     sub: "Educación virtual › Cursos ligeros" },
   { icon: DollarSign,    label: "Tesorería",      color: "#1E3A5F", nav: "Tesorería",     sub: "Otros Ingresos"  },
   { icon: FileText,      label: "Informes",       color: "#374151", nav: "Informes",      sub: "Consolidado de notas" },
   { icon: UserCog,       label: "Usuarios",       color: "#14532D", nav: "Usuarios",      sub: ""                },
@@ -830,8 +827,6 @@ export default function CampusDashboard() {
           <PersonalInfoView tipo="administrativo" />
         ) : activeNav.sub === "Evaluaciones" ? (
           <EvaluacionesView />
-        ) : activeNav.sub === "Educación virtual" ? (
-          <EducacionVirtualView />
         ) : activeNav.sub === "Créditos" ? (
           <CreditosView />
         ) : activeNav.sub === "Pagos" ? (
@@ -846,15 +841,15 @@ export default function CampusDashboard() {
           <AsignaturasView />
         ) : activeNav.sub === "Estructuración › Crear curso" ? (
           <CursosView />
-        ) : activeNav.sub === "Educación virtual v2 › Cursos ligeros" ? (
+        ) : activeNav.sub === "Educación virtual › Cursos ligeros" ? (
           <CursosLigerosView />
-        ) : activeNav.sub === "Educación virtual v2 › Cursos virtuales" ? (
+        ) : activeNav.sub === "Educación virtual › Cursos virtuales" ? (
           <CursosVirtualesView />
-        ) : activeNav.sub === "Educación virtual v2 › Plantillas" ? (
+        ) : activeNav.sub === "Educación virtual › Plantillas" ? (
           <PlantillasView />
-        ) : activeNav.sub === "Educación virtual v2 › Certificados" ? (
+        ) : activeNav.sub === "Educación virtual › Certificados" ? (
           <CertificadosView />
-        ) : activeNav.sub === "Educación virtual v2 › Aulas virtuales" ? (
+        ) : activeNav.sub === "Educación virtual › Aulas virtuales" ? (
           <SalasVirtualesView />
         ) : activeNav.sub === "Consolidado de notas" ? (
           <ConsolidadoNotasView />

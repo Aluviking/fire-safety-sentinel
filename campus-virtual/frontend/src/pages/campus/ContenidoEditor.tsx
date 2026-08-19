@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, Fragment } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Plus, X, Trash2, Loader2, Upload, ChevronRight, FileText, File as FileIcon,
@@ -52,29 +53,51 @@ interface ApiCtx { contentBase: string; questionsBase: string; ownerIdKey: strin
 
 function AgregarRecursoMenu({ onSelect, label = "Agregar recurso" }: { onSelect: (tipo: string) => void; label?: string }) {
   const [open, setOpen] = useState(false);
+  const [rect, setRect] = useState<{ top: number; right: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const updateRect = () => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setRect({ top: r.bottom + 6, right: window.innerWidth - r.right });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    updateRect();
+    const onReposition = () => updateRect();
+    window.addEventListener("scroll", onReposition, true);
+    window.addEventListener("resize", onReposition);
+    return () => {
+      window.removeEventListener("scroll", onReposition, true);
+      window.removeEventListener("resize", onReposition);
+    };
+  }, [open]);
+
   return (
     <div className="relative">
-      <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
+      <button ref={triggerRef} onClick={() => setOpen((v) => !v)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
         <Plus className="w-3.5 h-3.5" /> {label}
       </button>
-      <AnimatePresence>
-        {open && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-              className="absolute right-0 top-full mt-1.5 w-64 bg-white rounded-xl border border-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.12)] z-20 py-1.5">
-              {TIPOS_MENU.map((t) => (
-                <button key={t.tipo} disabled={"disabled" in t && t.disabled}
-                  onClick={() => { onSelect(t.tipo); setOpen(false); }}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-left text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">
-                  <t.icon className="w-3.5 h-3.5 text-slate-400 shrink-0" /> {t.label}
-                  {"disabled" in t && t.disabled && <span className="ml-auto text-[9px] text-slate-300 shrink-0">Próximamente</span>}
-                </button>
-              ))}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {open && rect && createPortal(
+        <AnimatePresence>
+          <div className="fixed inset-0 z-[200]" onClick={() => setOpen(false)} />
+          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+            style={{ position: "fixed", top: rect.top, right: rect.right }}
+            className="w-64 bg-white rounded-xl border border-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.16)] z-[201] py-1.5">
+            {TIPOS_MENU.map((t) => (
+              <button key={t.tipo} disabled={"disabled" in t && t.disabled}
+                onClick={() => { onSelect(t.tipo); setOpen(false); }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-left text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent">
+                <t.icon className="w-3.5 h-3.5 text-slate-400 shrink-0" /> {t.label}
+                {"disabled" in t && t.disabled && <span className="ml-auto text-[9px] text-slate-300 shrink-0">Próximamente</span>}
+              </button>
+            ))}
+          </motion.div>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

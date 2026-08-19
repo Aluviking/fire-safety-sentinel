@@ -144,9 +144,13 @@ function ProgramaForm({ editing, onDone, onCreated }: { editing: Programa | null
 }
 
 export default function ProgramasView() {
-  const { currentUser } = useCampusAuth();
+  const { currentUser, canVer } = useCampusAuth();
   const isSuperAdmin = currentUser?.role === "super_admin";
   const canManage = currentUser?.role === "admin" || isSuperAdmin;
+  // Coordinador/Administrativo tienen "ver" en academico.programas por su rol
+  // (rol_modulos_por_defecto en el backend) — deben poder entrar a la ficha
+  // aunque no puedan crear/editar/eliminar (eso sigue exclusivo de canManage).
+  const canViewDetail = canManage || canVer("academico.programas");
   const [programas, setProgramas] = useState<Programa[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState("");
@@ -279,12 +283,12 @@ export default function ProgramasView() {
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Abreviación</th>
                       <th className="text-center px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Estudiantes</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Estado</th>
-                      {canManage && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Acciones</th>}
+                      {canViewDetail && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {paged.length === 0 ? (
-                      <tr><td colSpan={canManage ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
+                      <tr><td colSpan={canViewDetail ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
                     ) : paged.map((p, idx) => (
                       <tr key={p.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
                         <td className="px-4 py-2 text-slate-500 text-xs font-medium">{p.codigo ?? "—"}</td>
@@ -298,7 +302,7 @@ export default function ProgramasView() {
                             {p.estado ?? "—"}
                           </span>
                         </td>
-                        {canManage && (
+                        {canViewDetail && (
                           <td className="px-4 py-2">
                             <div className="flex items-center justify-end gap-2.5">
                               <button onClick={() => setViewing(p)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver programa">

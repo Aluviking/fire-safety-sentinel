@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Megaphone, BookOpen, Video, Users as UsersIcon, Settings,
-  Plus, X, Trash2, Loader2, Upload, ChevronRight,
+  Plus, X, Trash2, Loader2, Upload, ChevronRight, Check,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
@@ -351,6 +351,7 @@ function AjustesTab({ curso, canEdit, onUpdated }: { curso: CursoLigero; canEdit
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -379,6 +380,8 @@ function AjustesTab({ curso, canEdit, onUpdated }: { curso: CursoLigero; canEdit
         },
       });
       onUpdated();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Error al guardar.");
     } finally {
@@ -455,10 +458,17 @@ function AjustesTab({ curso, canEdit, onUpdated }: { curso: CursoLigero; canEdit
         />
       </div>
       {canEdit ? (
-        <button onClick={save} disabled={saving}
-          className="px-5 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold disabled:opacity-60 transition-colors">
-          {saving ? "Guardando..." : "Guardar cambios"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={save} disabled={saving}
+            className="px-5 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold disabled:opacity-60 transition-colors">
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+          {saved && (
+            <span className="flex items-center gap-1.5 text-emerald-600 text-xs font-semibold">
+              <Check className="w-3.5 h-3.5" /> Guardado
+            </span>
+          )}
+        </div>
       ) : (
         <p className="text-xs text-slate-400">Solo el Super Admin puede editar los ajustes del curso.</p>
       )}
@@ -495,7 +505,10 @@ export default function CursoLigeroDetailView({ curso, onBack, onUpdated }: { cu
           </div>
           <div className="flex-1 p-5 min-w-0">
             {tab === "contenido" && (
-              <ContenidoEditor contentBase="/curso-ligero-contenido" questionsBase="/curso-ligero-preguntas" ownerIdKey="cursoLigeroId" ownerId={curso.id} />
+              <ContenidoEditor
+                contentBase="/curso-ligero-contenido" questionsBase="/curso-ligero-preguntas" ownerIdKey="cursoLigeroId" ownerId={curso.id}
+                addLabel="Agregar curso"
+              />
             )}
             {tab === "anuncios" && <AnunciosTab cursoId={curso.id} />}
             {tab === "clases" && <ClasesTab cursoId={curso.id} />}

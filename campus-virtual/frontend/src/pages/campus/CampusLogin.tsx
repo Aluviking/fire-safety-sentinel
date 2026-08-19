@@ -94,12 +94,9 @@ export default function CampusLogin() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!recaptchaToken) {
-      setError("Confirma que no eres un robot.");
-      return;
-    }
     setLoading(true);
-    const res = await login(username.trim(), password, recaptchaToken);
+    // reCAPTCHA desactivado temporalmente a pedido explícito del cliente.
+    const res = await login(username.trim(), password, recaptchaToken ?? "");
     if (res.ok) {
       navigate("/dashboard");
     } else {
@@ -297,8 +294,10 @@ export default function CampusLogin() {
                     </button>
                   </div>
 
-                  {/* Verificación de seguridad */}
-                  <Recaptcha ref={recaptchaRef} onChange={setRecaptchaToken} />
+                  {/* Verificación de seguridad — desactivada temporalmente a pedido
+                      explícito del cliente, para poder probar directo sin el widget.
+                      Reactivar descomentando esta línea cuando se pida. */}
+                  {/* <Recaptcha ref={recaptchaRef} onChange={setRecaptchaToken} /> */}
 
                   {/* Error */}
                   {error && (
@@ -316,7 +315,7 @@ export default function CampusLogin() {
                   {/* Botón ingresar */}
                   <button
                     type="submit"
-                    disabled={loading || !recaptchaToken}
+                    disabled={loading}
                     className="w-full flex items-center justify-center gap-2 mt-1 py-3.5
                                rounded-xl font-bold text-sm tracking-[0.06em] text-white
                                bg-[#C41717] hover:bg-[#B01313]

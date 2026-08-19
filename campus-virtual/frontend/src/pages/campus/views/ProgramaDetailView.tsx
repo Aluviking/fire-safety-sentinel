@@ -2,9 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, BookOpen, Layers, Users as UsersIcon, Plus, Trash2, Loader2,
-  Megaphone, Video, Settings, Upload, X,
+  Megaphone, Video, Settings, Upload, X, Eye, Pencil, Check,
 } from "lucide-react";
-import { Eye, Pencil } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import ContenidoEditor from "../ContenidoEditor";
@@ -378,6 +377,7 @@ function AjustesTab({ programa, canEdit, onUpdated }: { programa: Programa; canE
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -404,6 +404,8 @@ function AjustesTab({ programa, canEdit, onUpdated }: { programa: Programa; canE
         },
       });
       onUpdated();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Error al guardar.");
     } finally {
@@ -472,10 +474,17 @@ function AjustesTab({ programa, canEdit, onUpdated }: { programa: Programa; canE
         />
       </div>
       {canEdit ? (
-        <button onClick={save} disabled={saving}
-          className="px-5 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold disabled:opacity-60 transition-colors">
-          {saving ? "Guardando..." : "Guardar cambios"}
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={save} disabled={saving}
+            className="px-5 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold disabled:opacity-60 transition-colors">
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+          {saved && (
+            <span className="flex items-center gap-1.5 text-emerald-600 text-xs font-semibold">
+              <Check className="w-3.5 h-3.5" /> Guardado
+            </span>
+          )}
+        </div>
       ) : (
         <p className="text-xs text-slate-400">Solo el Super Admin puede editar los ajustes del programa.</p>
       )}

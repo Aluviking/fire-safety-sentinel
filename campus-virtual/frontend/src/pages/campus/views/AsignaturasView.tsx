@@ -139,9 +139,10 @@ function AsignaturaForm({
 }
 
 export default function AsignaturasView() {
-  const { currentUser } = useCampusAuth();
+  const { currentUser, canVer } = useCampusAuth();
   const isSuperAdmin = currentUser?.role === "super_admin";
   const canManage = currentUser?.role === "admin" || isSuperAdmin;
+  const canViewDetail = canManage || canVer("academico.asignaturas");
   const [asignaturas, setAsignaturas] = useState<Asignatura[]>([]);
   const [programas, setProgramas]     = useState<Programa[]>([]);
   const [loading, setLoading]         = useState(true);
@@ -261,12 +262,12 @@ export default function AsignaturasView() {
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Créditos</th>
                       <th className="text-center px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Estudiantes</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Programas</th>
-                      {canManage && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Acciones</th>}
+                      {canViewDetail && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {paged.length === 0 ? (
-                      <tr><td colSpan={canManage ? 7 : 6} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
+                      <tr><td colSpan={canViewDetail ? 7 : 6} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
                     ) : paged.map((a, idx) => (
                       <tr key={a.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
                         <td className="px-4 py-2 text-slate-500 text-xs font-medium whitespace-nowrap">{a.codigo ?? "—"}</td>
@@ -285,7 +286,7 @@ export default function AsignaturasView() {
                             ))}
                           </div>
                         </td>
-                        {canManage && (
+                        {canViewDetail && (
                           <td className="px-4 py-2">
                             <div className="flex items-center justify-end gap-2.5">
                               <button onClick={() => setViewing(a)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver asignatura">

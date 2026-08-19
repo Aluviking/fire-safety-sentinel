@@ -156,7 +156,7 @@ function CursoLigeroForm({
 }
 
 export default function CursosLigerosView() {
-  const { currentUser } = useCampusAuth();
+  const { currentUser, canVer } = useCampusAuth();
   const isSuperAdmin = currentUser?.role === "super_admin";
   const [cursos, setCursos]     = useState<CursoLigero[]>([]);
   const [docentes, setDocentes] = useState<Docente[]>([]);
@@ -166,6 +166,7 @@ export default function CursosLigerosView() {
   const [deleting, setDeleting] = useState<CursoLigero | null>(null);
   const [viewing, setViewing]   = useState<CursoLigero | null>(null);
   const canManage = currentUser?.role === "admin" || isSuperAdmin;
+  const canViewDetail = canManage || canVer("academico.cursos_ligeros");
 
   const [search, setSearch] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(true);
@@ -336,12 +337,12 @@ export default function CursosLigerosView() {
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Docente</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Usuarios</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Estado</th>
-                      {canManage && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Acciones</th>}
+                      {canViewDetail && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {paged.length === 0 ? (
-                      <tr><td colSpan={canManage ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">Aún no hay cursos ligeros creados.</td></tr>
+                      <tr><td colSpan={canViewDetail ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">Aún no hay cursos ligeros creados.</td></tr>
                     ) : paged.map((c, idx) => (
                       <tr key={c.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
                         <td className="px-4 py-2 text-slate-700 font-medium text-[13px]">{c.nombre}</td>
@@ -359,7 +360,7 @@ export default function CursosLigerosView() {
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-xs font-medium">No publicado</span>
                           )}
                         </td>
-                        {canManage && (
+                        {canViewDetail && (
                           <td className="px-4 py-2">
                             <div className="flex items-center justify-end gap-2.5">
                               <button onClick={() => setViewing(c)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver curso">
