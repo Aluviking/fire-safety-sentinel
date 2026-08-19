@@ -316,7 +316,7 @@ export default function UsuariosView() {
                         <KeyRound className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    {u.id !== currentUser?.id && !locked && (
+                    {isSuperAdmin && u.id !== currentUser?.id && !locked && (
                       <button
                         onClick={() => handleDelete(u.id, u.nombre)}
                         className="shrink-0 text-slate-400 hover:text-red-500 transition-colors"

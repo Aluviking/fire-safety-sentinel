@@ -11,14 +11,27 @@ $id     = (int) ($body['id'] ?? 0);
 $nombre = trim($body['nombre'] ?? '');
 if ($id === 0 || $nombre === '') fail('El nombre del curso es requerido.');
 
+$current = db()->prepare('SELECT * FROM cursos_ligeros WHERE id = ?');
+$current->execute([$id]);
+$row = $current->fetch();
+if (!$row) fail('Curso ligero no encontrado.', 404);
+
+// El modal rápido de la lista y la pestaña Ajustes (dentro de un curso
+// ligero) mandan sub-conjuntos distintos de campos — solo el campo que
+// realmente vino en el body se actualiza, el resto conserva su valor
+// actual, mismo patrón ya aplicado en programas/asignaturas/cursos.
+$field = fn(string $key, string $col) => array_key_exists($key, $body) ? $body[$key] : $row[$col];
+
 db()->prepare(
     'UPDATE cursos_ligeros SET nombre = ?, categoria = ?, docente_identificacion = ?, docente_nombre = ?,
         estado = ?, usuarios_inscritos = ?, descripcion = ?, dias_disponibles = ?, certificado_id = ?
      WHERE id = ?'
 )->execute([
-    $nombre, $body['categoria'] ?? null, $body['docenteIdentificacion'] ?? null, $body['docenteNombre'] ?? null,
-    $body['estado'] ?? 'No publicado', $body['usuariosInscritos'] ?? 0,
-    $body['descripcion'] ?? null, $body['diasDisponibles'] ?? null, $body['certificadoId'] ?? null,
+    $nombre, $field('categoria', 'categoria'), $field('docenteIdentificacion', 'docente_identificacion'),
+    $field('docenteNombre', 'docente_nombre'), $field('estado', 'estado'),
+    $field('usuariosInscritos', 'usuarios_inscritos'),
+    $field('descripcion', 'descripcion'), $field('diasDisponibles', 'dias_disponibles'),
+    $field('certificadoId', 'certificado_id'),
     $id,
 ]);
 

@@ -121,14 +121,15 @@ const NAV_ITEMS: NavItem[] = [
 
 // Traduce cada etiqueta real del menú a su clave de módulo en el backend
 // (ver modulos_catalogo() en bootstrap.php — deben coincidir exacto). Lo que
-// no aparece aquí (Otros Ingresos/Egresos/Codeudores/Adaptaciones/
-// Estructuración de Tesorería/"Parámetros de constancias y certificados") no
-// tiene vista real construida — bajo un perfil restrictivo queda oculto;
-// una cuenta sin perfil (permisos.all) lo sigue viendo igual que hoy.
+// no aparece aquí (Otros Ingresos/Egresos/Adaptaciones/Estructuración de
+// Tesorería/"Parámetros de constancias y certificados") no tiene vista real
+// construida — bajo un perfil restrictivo queda oculto; una cuenta sin
+// perfil (permisos.all) lo sigue viendo igual que hoy.
 const MODULO_POR_ETIQUETA: Record<string, string> = {
   "Estudiantes": "institucional.estudiantes",
   "Docentes": "institucional.docentes",
   "Administrativos": "institucional.administrativos",
+  "Codeudores": "institucional.codeudores",
   "Evaluaciones": "academico.evaluaciones",
   "Cursos ligeros": "academico.cursos_ligeros",
   "Cursos virtuales": "academico.cursos_virtuales",

@@ -1,7 +1,8 @@
 <?php
 require __DIR__ . '/../bootstrap.php';
 
-require_auth();
+$user = require_auth();
+require_permiso($user, 'academico.plantillas');
 
 $id = $_GET['id'] ?? '';
 if ($id === '') fail('id requerido.');

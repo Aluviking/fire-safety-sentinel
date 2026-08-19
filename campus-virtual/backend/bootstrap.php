@@ -126,6 +126,7 @@ function modulos_catalogo(): array
             'institucional.estudiantes'     => 'Estudiantes',
             'institucional.docentes'        => 'Docentes',
             'institucional.administrativos' => 'Administrativos',
+            'institucional.codeudores'      => 'Codeudores',
         ],
         'Académico' => [
             'academico.evaluaciones'       => 'Evaluaciones',

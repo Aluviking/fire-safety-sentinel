@@ -1,15 +1,17 @@
 <?php
 require __DIR__ . '/../bootstrap.php';
 
-require_auth();
+$user = require_auth();
 
 $id = $_GET['id'] ?? '';
 if ($id === '') fail('id requerido.');
 
-$stmt = db()->prepare('SELECT titulo, archivo_path FROM asignatura_contenido WHERE id = ?');
+$stmt = db()->prepare('SELECT titulo, archivo_path, asignatura_id FROM asignatura_contenido WHERE id = ?');
 $stmt->execute([$id]);
 $row = $stmt->fetch();
 if (!$row || empty($row['archivo_path'])) fail('Sin archivo.', 404);
+
+require_acceso_asignatura($user, (int) $row['asignatura_id']);
 
 $path = rtrim((string) config('uploads_dir'), '/') . '/' . $row['archivo_path'];
 if (!file_exists($path)) fail('Archivo no encontrado en el servidor.', 404);

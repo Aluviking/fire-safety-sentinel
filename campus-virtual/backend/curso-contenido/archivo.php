@@ -1,15 +1,17 @@
 <?php
 require __DIR__ . '/../bootstrap.php';
 
-require_auth();
+$user = require_auth();
 
 $id = $_GET['id'] ?? '';
 if ($id === '') fail('id requerido.');
 
-$stmt = db()->prepare('SELECT titulo, archivo_path FROM curso_contenido WHERE id = ?');
+$stmt = db()->prepare('SELECT titulo, archivo_path, curso_id FROM curso_contenido WHERE id = ?');
 $stmt->execute([$id]);
 $row = $stmt->fetch();
 if (!$row || empty($row['archivo_path'])) fail('Sin archivo.', 404);
+
+require_acceso_curso($user, (int) $row['curso_id']);
 
 $path = rtrim((string) config('uploads_dir'), '/') . '/' . $row['archivo_path'];
 if (!file_exists($path)) fail('Archivo no encontrado en el servidor.', 404);
