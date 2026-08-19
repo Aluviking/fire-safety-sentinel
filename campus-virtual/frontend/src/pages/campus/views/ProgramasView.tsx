@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Loader2, Pencil, Trash2, X, Search, Download, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, X, Search, Download, ChevronDown, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
+import ProgramaDetailView from "./ProgramaDetailView";
 
 interface Programa {
   id: number;
@@ -13,6 +14,7 @@ interface Programa {
   abreviacion: string | null;
   estado: string | null;
   disponible_oferta_laboral: string | null;
+  matriculados: number;
 }
 
 const inputCls = "w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
@@ -139,11 +141,13 @@ function ProgramaForm({ editing, onDone, onCreated }: { editing: Programa | null
 export default function ProgramasView() {
   const { currentUser } = useCampusAuth();
   const isSuperAdmin = currentUser?.role === "super_admin";
+  const canManage = currentUser?.role === "admin" || isSuperAdmin;
   const [programas, setProgramas] = useState<Programa[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState("");
   const [editing, setEditing]     = useState<Programa | null>(null);
   const [deleting, setDeleting]   = useState<Programa | null>(null);
+  const [viewing, setViewing]     = useState<Programa | null>(null);
 
   const [search, setSearch] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("");
@@ -177,8 +181,8 @@ export default function ProgramasView() {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const exportar = () => {
-    const header = ["Código", "Nombre", "Abreviación", "Estado"];
-    const rows = filtered.map((p) => [p.codigo ?? "", p.nombre, p.abreviacion ?? "", p.estado ?? ""]);
+    const header = ["Código", "Nombre", "Abreviación", "Estudiantes", "Estado"];
+    const rows = filtered.map((p) => [p.codigo ?? "", p.nombre, p.abreviacion ?? "", String(p.matriculados), p.estado ?? ""]);
     const csv = [header, ...rows].map((r) => r.map((v) => csvEscape(v)).join(",")).join("\n");
     const blob = new Blob([String.fromCharCode(0xfeff) + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -201,6 +205,10 @@ export default function ProgramasView() {
       window.alert(e instanceof Error ? e.message : "Error al eliminar el programa.");
     }
   };
+
+  if (viewing) {
+    return <ProgramaDetailView programa={viewing} onBack={() => { setViewing(null); load(); }} />;
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-3">
@@ -255,18 +263,20 @@ export default function ProgramasView() {
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Código</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Nombre</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Abreviación</th>
+                      <th className="text-center px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Estudiantes</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Estado</th>
-                      {isSuperAdmin && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Acciones</th>}
+                      {canManage && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {paged.length === 0 ? (
-                      <tr><td colSpan={isSuperAdmin ? 5 : 4} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
+                      <tr><td colSpan={canManage ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
                     ) : paged.map((p, idx) => (
                       <tr key={p.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
                         <td className="px-4 py-2 text-slate-500 text-xs font-medium">{p.codigo ?? "—"}</td>
                         <td className="px-4 py-2 text-slate-700 font-medium text-[13px]">{p.nombre}</td>
                         <td className="px-4 py-2 text-slate-500 text-xs">{p.abreviacion ?? "—"}</td>
+                        <td className="px-4 py-2 text-center text-slate-500 text-xs">{p.matriculados}</td>
                         <td className="px-4 py-2">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-medium ${
                             p.estado === "Inactivo" ? "bg-slate-100 border-slate-200 text-slate-500" : "bg-emerald-50 border-emerald-200 text-emerald-700"
@@ -274,15 +284,22 @@ export default function ProgramasView() {
                             {p.estado ?? "—"}
                           </span>
                         </td>
-                        {isSuperAdmin && (
+                        {canManage && (
                           <td className="px-4 py-2">
                             <div className="flex items-center justify-end gap-2.5">
-                              <button onClick={() => setEditing(p)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
-                                <Pencil className="w-3.5 h-3.5" />
+                              <button onClick={() => setViewing(p)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver programa">
+                                <Eye className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => setDeleting(p)} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              {isSuperAdmin && (
+                                <>
+                                  <button onClick={() => setEditing(p)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => setDeleting(p)} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         )}
