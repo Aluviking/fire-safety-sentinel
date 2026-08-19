@@ -27,9 +27,9 @@ if (in_array($role, ['admin', 'super_admin'], true) && $user['role'] !== 'super_
 }
 
 // La identificación es lo que conecta esta cuenta con la ficha real del
-// estudiante en Institucional > Estudiantes (matrículas, cursos, notas).
-if ($role === 'estudiante' && $identificacion === '') {
-    fail('La identificación es requerida para crear un usuario con rol Estudiante.');
+// estudiante/docente (matrículas, cursos, notas, cursos asignados).
+if (($role === 'estudiante' || $role === 'docente') && $identificacion === '') {
+    fail('La identificación es requerida para crear un usuario con rol Estudiante o Docente.');
 }
 
 $stmt = db()->prepare('SELECT id FROM users WHERE email = ? OR username = ?');
@@ -51,6 +51,8 @@ db()->prepare(
 
 if ($role === 'estudiante' && $identificacion !== '') {
     vincular_estudiante($identificacion, $nombre);
+} elseif ($role === 'docente' && $identificacion !== '') {
+    vincular_docente($identificacion, $nombre);
 }
 
 respond(['ok' => true, 'user' => [

@@ -44,8 +44,8 @@ function CreateUserForm({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       setError("Revisa los datos: usuario mín. 4 caracteres, contraseña mín. 6.");
       return;
     }
-    if (role === "estudiante" && !identificacion.trim()) {
-      setError("La identificación es requerida para un usuario con rol Estudiante — con eso se conecta a su ficha real.");
+    if ((role === "estudiante" || role === "docente") && !identificacion.trim()) {
+      setError("La identificación es requerida para este rol — con eso se conecta a su ficha real.");
       return;
     }
     setSubmitting(true);
@@ -101,9 +101,9 @@ function CreateUserForm({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           <option key={r.value} value={r.value}>{r.label}</option>
         ))}
       </select>
-      {role === "estudiante" && (
+      {(role === "estudiante" || role === "docente") && (
         <input
-          value={identificacion} onChange={(e) => setIdentificacion(e.target.value)} placeholder="Identificación del estudiante"
+          value={identificacion} onChange={(e) => setIdentificacion(e.target.value)} placeholder={`Identificación del ${role === "estudiante" ? "estudiante" : "docente"}`}
           className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5
                      focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
         />
@@ -172,8 +172,8 @@ export default function UsuariosView() {
       setEditError("Revisa los datos: correo válido y usuario mín. 4 caracteres.");
       return;
     }
-    if (role === "estudiante" && !editIdentificacion.trim()) {
-      setEditError("La identificación es requerida para un usuario con rol Estudiante.");
+    if ((role === "estudiante" || role === "docente") && !editIdentificacion.trim()) {
+      setEditError("La identificación es requerida para este rol.");
       return;
     }
     setEditSubmitting(true);
@@ -244,8 +244,8 @@ export default function UsuariosView() {
                         <input value={editNombre} onChange={(e) => setEditNombre(e.target.value)} placeholder="Nombre completo" className={INPUT_CLASS} />
                         <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Correo" type="email" className={INPUT_CLASS} />
                         <input value={editUsername} onChange={(e) => setEditUsername(e.target.value)} placeholder="Usuario" className={INPUT_CLASS} />
-                        {u.role === "estudiante" && (
-                          <input value={editIdentificacion} onChange={(e) => setEditIdentificacion(e.target.value)} placeholder="Identificación del estudiante" className={INPUT_CLASS} />
+                        {(u.role === "estudiante" || u.role === "docente") && (
+                          <input value={editIdentificacion} onChange={(e) => setEditIdentificacion(e.target.value)} placeholder={`Identificación del ${u.role === "estudiante" ? "estudiante" : "docente"}`} className={INPUT_CLASS} />
                         )}
                         {editError && <p className="text-[11px] text-red-500">{editError}</p>}
                       </div>

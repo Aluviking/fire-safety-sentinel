@@ -540,6 +540,15 @@ export default function CampusDashboard() {
     if (!loading && !user) navigate("/", { replace: true });
   }, [loading, user, navigate]);
 
+  // Estudiante y Docente tienen su propio panel, distinto a este (que es el
+  // panel administrativo) — se redirige automático, sin mostrar "Acceso
+  // restringido" para un rol que sí tiene a dónde ir.
+  useEffect(() => {
+    if (loading || !user) return;
+    if (user.role === "estudiante") navigate("/estudiante", { replace: true });
+    else if (user.role === "docente") navigate("/docente", { replace: true });
+  }, [loading, user, navigate]);
+
   const logout = () => { authLogout(); navigate("/", { replace: true }); };
 
   const handleNavigate = (nav: string, sub: string) => {
@@ -571,7 +580,7 @@ export default function CampusDashboard() {
 
   const toggleMenu = (label: string) => setOpenMenu((prev) => (prev === label ? null : label));
 
-  if (loading || !user) return null;
+  if (loading || !user || user.role === "estudiante" || user.role === "docente") return null;
 
   const isAdmin = user.role === "admin" || user.role === "super_admin";
   const isSuperAdmin = user.role === "super_admin";

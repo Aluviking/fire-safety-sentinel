@@ -20,8 +20,8 @@ $targetStmt->execute([$userId]);
 $target = $targetStmt->fetch();
 if (!$target) fail('Usuario no encontrado.', 404);
 
-if ($target['role'] === 'estudiante' && $identificacion === '') {
-    fail('La identificación es requerida para un usuario con rol Estudiante.');
+if (($target['role'] === 'estudiante' || $target['role'] === 'docente') && $identificacion === '') {
+    fail('La identificación es requerida para un usuario con rol Estudiante o Docente.');
 }
 
 $dupStmt = db()->prepare('SELECT id FROM users WHERE (email = ? OR username = ?) AND id != ?');
@@ -39,6 +39,8 @@ db()->prepare('UPDATE users SET nombre = ?, email = ?, username = ?, identificac
 
 if ($target['role'] === 'estudiante' && $identificacion !== '') {
     vincular_estudiante($identificacion, $nombre);
+} elseif ($target['role'] === 'docente' && $identificacion !== '') {
+    vincular_docente($identificacion, $nombre);
 }
 
 log_trace($user, 'user_update', "Editó datos de $nombre");

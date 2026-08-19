@@ -92,7 +92,7 @@ function current_user(): ?array
     $token = bearer_token();
     if (!$token) return null;
     $stmt = db()->prepare(
-        'SELECT u.id, u.nombre, u.email, u.username, u.role, u.avatar_path, u.perfil_id
+        'SELECT u.id, u.nombre, u.email, u.username, u.role, u.avatar_path, u.perfil_id, u.identificacion
          FROM sessions s JOIN users u ON u.id = s.user_id
          WHERE s.token = ? AND s.expires_at > NOW()'
     );
@@ -251,6 +251,36 @@ function vincular_estudiante(string $identificacion, string $nombre): void
 
     db()->prepare('INSERT INTO estudiantes (identificacion, nombre_completo) VALUES (?, ?)')
         ->execute([$identificacion, $nombre]);
+}
+
+/** Mismo mecanismo que vincular_estudiante(), pero para cuentas con rol docente. */
+function vincular_docente(string $identificacion, string $nombre): void
+{
+    $stmt = db()->prepare('SELECT id FROM docentes WHERE identificacion = ?');
+    $stmt->execute([$identificacion]);
+    if ($stmt->fetch()) return;
+
+    db()->prepare('INSERT INTO docentes (identificacion, nombre_completo) VALUES (?, ?)')
+        ->execute([$identificacion, $nombre]);
+}
+
+/**
+ * Puerta de un endpoint de contenido de un curso ligero: admin/super_admin y
+ * los roles con permiso sobre el módulo entran como siempre; un estudiante
+ * solo entra si está realmente matriculado en ESE curso ligero puntual — así
+ * puede ver el contenido de sus propios cursos sin poder leer los de nadie
+ * más ni los de cursos donde no está inscrito.
+ */
+function require_acceso_curso_ligero(array $user, int $cursoLigeroId): void
+{
+    if ($user['role'] === 'estudiante') {
+        if (empty($user['identificacion'])) fail('No autorizado.', 403);
+        $stmt = db()->prepare('SELECT id FROM curso_ligero_inscripciones WHERE curso_ligero_id = ? AND estudiante_identificacion = ?');
+        $stmt->execute([$cursoLigeroId, $user['identificacion']]);
+        if (!$stmt->fetch()) fail('No autorizado.', 403);
+        return;
+    }
+    require_permiso($user, 'academico.cursos_ligeros');
 }
 
 /* ─── Auditoría ────────────────────────────────────────────────────────── */
