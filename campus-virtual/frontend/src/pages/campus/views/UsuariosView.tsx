@@ -5,6 +5,7 @@ import { UserPlus, Trash2, Users as UsersIcon, Pencil, KeyRound, Check, X as XIc
 import { useCampusAuth, type Role } from "@/context/CampusAuthContext";
 import { apiFetch } from "@/lib/api";
 import { ResetPasswordModal } from "../ResetPasswordModal";
+import { SearchableSelect } from "../SearchableSelect";
 
 interface Perfil { id: number; nombre: string }
 
@@ -28,11 +29,12 @@ function CreateUserForm({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole]         = useState<Role>("estudiante");
+  const [identificacion, setIdentificacion] = useState("");
   const [error, setError]       = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const reset = () => {
-    setNombre(""); setEmail(""); setUsername(""); setPassword(""); setRole("estudiante"); setError("");
+    setNombre(""); setEmail(""); setUsername(""); setPassword(""); setRole("estudiante"); setIdentificacion(""); setError("");
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -42,8 +44,12 @@ function CreateUserForm({ isSuperAdmin }: { isSuperAdmin: boolean }) {
       setError("Revisa los datos: usuario mín. 4 caracteres, contraseña mín. 6.");
       return;
     }
+    if (role === "estudiante" && !identificacion.trim()) {
+      setError("La identificación es requerida para un usuario con rol Estudiante — con eso se conecta a su ficha real.");
+      return;
+    }
     setSubmitting(true);
-    const res = await createUser({ nombre, email, username, password, role });
+    const res = await createUser({ nombre, email, username, password, role, identificacion: identificacion.trim() || undefined });
     setSubmitting(false);
     if (!res.ok) { setError(res.error ?? "Error."); return; }
     reset();
@@ -95,6 +101,13 @@ function CreateUserForm({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           <option key={r.value} value={r.value}>{r.label}</option>
         ))}
       </select>
+      {role === "estudiante" && (
+        <input
+          value={identificacion} onChange={(e) => setIdentificacion(e.target.value)} placeholder="Identificación del estudiante"
+          className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5
+                     focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
+        />
+      )}
       {error && <p className="text-[11px] text-red-500">{error}</p>}
       <div className="flex gap-2">
         <button
@@ -132,6 +145,7 @@ export default function UsuariosView() {
   const [editNombre, setEditNombre] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editUsername, setEditUsername] = useState("");
+  const [editIdentificacion, setEditIdentificacion] = useState("");
   const [editError, setEditError] = useState("");
   const [editSubmitting, setEditSubmitting] = useState(false);
 
@@ -141,24 +155,32 @@ export default function UsuariosView() {
     if (!res.ok) window.alert(res.error ?? "Error al eliminar el usuario.");
   };
 
-  const startEdit = (u: { id: string; nombre: string; email: string; username: string }) => {
+  const startEdit = (u: { id: string; nombre: string; email: string; username: string; identificacion?: string | null }) => {
     setEditingId(u.id);
     setEditNombre(u.nombre);
     setEditEmail(u.email);
     setEditUsername(u.username);
+    setEditIdentificacion(u.identificacion ?? "");
     setEditError("");
   };
 
   const cancelEdit = () => setEditingId(null);
 
-  const submitEdit = async (e: React.FormEvent, userId: string) => {
+  const submitEdit = async (e: React.FormEvent, userId: string, role: Role) => {
     e.preventDefault();
     if (!editNombre.trim() || !editEmail.includes("@") || editUsername.length < 4) {
       setEditError("Revisa los datos: correo válido y usuario mín. 4 caracteres.");
       return;
     }
+    if (role === "estudiante" && !editIdentificacion.trim()) {
+      setEditError("La identificación es requerida para un usuario con rol Estudiante.");
+      return;
+    }
     setEditSubmitting(true);
-    const res = await updateUser(userId, { nombre: editNombre.trim(), email: editEmail.trim(), username: editUsername.trim() });
+    const res = await updateUser(userId, {
+      nombre: editNombre.trim(), email: editEmail.trim(), username: editUsername.trim(),
+      identificacion: editIdentificacion.trim() || undefined,
+    });
     setEditSubmitting(false);
     if (!res.ok) { setEditError(res.error ?? "Error."); return; }
     setEditingId(null);
@@ -213,7 +235,7 @@ export default function UsuariosView() {
               return (
                 <div key={u.id} className="py-3.5">
                   {isEditing ? (
-                    <form onSubmit={(e) => submitEdit(e, u.id)} className="flex items-start gap-3.5">
+                    <form onSubmit={(e) => submitEdit(e, u.id, u.role)} className="flex items-start gap-3.5">
                       <div className="w-10 h-10 rounded-full bg-[#C41717]/15 border border-[#C41717]/30
                                       flex items-center justify-center shrink-0">
                         <span className="text-[#C41717] text-sm font-bold">{u.nombre.charAt(0)}</span>
@@ -222,6 +244,9 @@ export default function UsuariosView() {
                         <input value={editNombre} onChange={(e) => setEditNombre(e.target.value)} placeholder="Nombre completo" className={INPUT_CLASS} />
                         <input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Correo" type="email" className={INPUT_CLASS} />
                         <input value={editUsername} onChange={(e) => setEditUsername(e.target.value)} placeholder="Usuario" className={INPUT_CLASS} />
+                        {u.role === "estudiante" && (
+                          <input value={editIdentificacion} onChange={(e) => setEditIdentificacion(e.target.value)} placeholder="Identificación del estudiante" className={INPUT_CLASS} />
+                        )}
                         {editError && <p className="text-[11px] text-red-500">{editError}</p>}
                       </div>
                       <div className="flex flex-col gap-1.5 shrink-0">
@@ -265,17 +290,13 @@ export default function UsuariosView() {
                       ))}
                     </select>
                     {isSuperAdmin && u.role !== "super_admin" && (
-                      <select
-                        value={u.perfilId ?? ""}
-                        onChange={(e) => assignPerfil(u.id, e.target.value ? Number(e.target.value) : null)}
-                        title="Perfil de permisos"
-                        className="text-xs bg-white border border-slate-300 rounded-lg px-2 py-1.5
-                                   text-slate-700 cursor-pointer focus:outline-none shrink-0 max-w-[140px]
-                                   focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
-                      >
-                        <option value="">Sin perfil (permisos automáticos del rol)</option>
-                        {perfiles.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                      </select>
+                      <SearchableSelect
+                        value={u.perfilId != null ? String(u.perfilId) : ""}
+                        onChange={(v) => assignPerfil(u.id, v ? Number(v) : null)}
+                        options={perfiles.map((p) => ({ value: String(p.id), label: p.nombre }))}
+                        placeholder="Sin perfil (permisos automáticos del rol)"
+                        className="shrink-0 w-48"
+                      />
                     )}
                     {isSuperAdmin && (
                       <button

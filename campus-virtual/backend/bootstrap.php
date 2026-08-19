@@ -237,6 +237,22 @@ function require_permiso(array $user, string $modulo, string $accion = 'ver'): v
     if (!$ok) fail('No autorizado.', 403);
 }
 
+/**
+ * Si no existe ya una ficha en `estudiantes` con esa identificación, la crea
+ * con los datos mínimos — así una cuenta de acceso (rol estudiante) queda
+ * vinculada automáticamente al registro real usado en matrículas, cursos,
+ * notas y evaluaciones, sin duplicar captura de datos.
+ */
+function vincular_estudiante(string $identificacion, string $nombre): void
+{
+    $stmt = db()->prepare('SELECT id FROM estudiantes WHERE identificacion = ?');
+    $stmt->execute([$identificacion]);
+    if ($stmt->fetch()) return;
+
+    db()->prepare('INSERT INTO estudiantes (identificacion, nombre_completo) VALUES (?, ?)')
+        ->execute([$identificacion, $nombre]);
+}
+
 /* ─── Auditoría ────────────────────────────────────────────────────────── */
 function log_trace(array $user, string $action, ?string $detail = null): void
 {

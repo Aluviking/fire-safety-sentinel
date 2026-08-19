@@ -4,6 +4,7 @@ import { Search, Plus, Eye, Pencil, X, Loader2, ChevronDown, ChevronLeft, Chevro
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
+import { SearchableSelect } from "../SearchableSelect";
 import PlantillaDetailView from "./PlantillaDetailView";
 
 interface Asignatura { id: number; nombre: string }
@@ -95,10 +96,11 @@ function PlantillaForm({
       </div>
       <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre (ej. BOMBEROS - MODULO 1)" className={inputCls} />
       <div className="grid grid-cols-2 gap-2">
-        <select value={asignaturaId} onChange={(e) => setAsignaturaId(e.target.value)} className={inputCls}>
-          <option value="">Asignatura (opcional)...</option>
-          {asignaturas.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-        </select>
+        <SearchableSelect
+          value={asignaturaId} onChange={setAsignaturaId}
+          options={asignaturas.map((a) => ({ value: String(a.id), label: a.nombre }))}
+          placeholder="Asignatura (opcional)..."
+        />
         <input value={fecha} onChange={(e) => setFecha(e.target.value)} type="date" className={inputCls} />
       </div>
       <select value={estado} onChange={(e) => setEstado(e.target.value)} className={inputCls}>

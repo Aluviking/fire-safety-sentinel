@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2, Users } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
+import { SearchableSelect } from "../SearchableSelect";
 
 interface Evaluacion {
   id: number;
@@ -64,20 +65,18 @@ function Pagination({ total, page, pageSize, onChange }: { total: number; page: 
   );
 }
 
-const selectCls = "w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-800 cursor-pointer focus:outline-none focus:border-[#C41717]/40 focus:bg-white focus:ring-2 focus:ring-[#C41717]/8 transition-all appearance-none";
-const chevronBg = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2394A3B8'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'/%3E%3C/svg%3E\")";
-const selectStyle = { backgroundImage: chevronBg, backgroundRepeat: "no-repeat" as const, backgroundPosition: "right 0.9rem center", backgroundSize: "1rem" };
-
 function FilterSelect({ label, value, onChange, options, placeholder }: {
   label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder: string;
 }) {
   return (
     <div className="flex-1 min-w-[200px]">
       <label className="block text-slate-600 text-xs font-semibold mb-1.5">{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className={selectCls} style={selectStyle}>
-        <option value="">{placeholder}</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
+      <SearchableSelect
+        value={value} onChange={onChange}
+        options={options.map((o) => ({ value: o, label: o }))}
+        placeholder={placeholder}
+        size="md"
+      />
     </div>
   );
 }

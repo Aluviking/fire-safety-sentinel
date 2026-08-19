@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import gfoLogo from "@/assets/gfo-academy-logo.jpeg";
 import {
@@ -227,8 +227,8 @@ function NavDropdown({
         onClick={onToggle}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
                     ${isOpen
-                      ? "bg-[#C41717]/10 text-[#C41717]"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"}`}
+                      ? "bg-white text-[#C41717]"
+                      : "text-white/90 hover:text-white hover:bg-white/15"}`}
       >
         {item.label}
         <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? "rotate-180 text-[#C41717]" : ""}`} />
@@ -520,7 +520,19 @@ export default function CampusDashboard() {
   const { currentUser: user, permisos, canVer, loading, logout: authLogout } = useCampusAuth();
   const [openMenu, setOpenMenu]       = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeNav, setActiveNav]     = useState<{ nav: string; sub: string } | null>(null);
+  // La sección activa vive en la URL (?nav=...&sub=...), no en useState — así
+  // una recarga (incluso Ctrl+Shift+R) restaura exactamente dónde estabas en
+  // vez de volver siempre al inicio del dashboard.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeNav = searchParams.get("nav")
+    ? { nav: searchParams.get("nav") as string, sub: searchParams.get("sub") ?? "" }
+    : null;
+  const setActiveNav = (next: { nav: string; sub: string } | null) => {
+    if (!next) { setSearchParams({}, { replace: true }); return; }
+    const params: Record<string, string> = { nav: next.nav };
+    if (next.sub) params.sub = next.sub;
+    setSearchParams(params, { replace: true });
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const [modal, setModal]             = useState<string | null>(null);
 
@@ -613,7 +625,7 @@ export default function CampusDashboard() {
     <div className="h-screen overflow-hidden bg-[#F1F5F9] flex flex-col">
 
       {/* ── TOPBAR ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+      <header className="sticky top-0 z-40 bg-[#C41717] border-b border-[#A81212] shadow-sm">
         <div className="flex items-center gap-3 px-4 sm:px-6 h-14">
 
           {/* Logo */}
@@ -621,7 +633,7 @@ export default function CampusDashboard() {
             <GFOLogoSmall />
           </button>
 
-          <div className="hidden sm:block h-6 w-px bg-slate-200 mx-1" />
+          <div className="hidden sm:block h-6 w-px bg-white/25 mx-1" />
 
           {/* Búsqueda */}
           <div className="hidden md:flex flex-1 max-w-xs relative">
@@ -631,9 +643,9 @@ export default function CampusDashboard() {
               placeholder="Buscar módulo..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg
+              className="w-full bg-white border border-white/40 rounded-lg
                          pl-9 pr-4 py-2 text-slate-800 text-sm placeholder:text-slate-400
-                         focus:outline-none focus:border-[#C41717]/40 focus:bg-white transition-all"
+                         focus:outline-none focus:border-white focus:ring-2 focus:ring-white/40 transition-all"
             />
           </div>
 
@@ -654,8 +666,8 @@ export default function CampusDashboard() {
                   onClick={() => handleNavigate(item.label, "")}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
                               ${activeNav?.nav === item.label
-                                ? "bg-[#C41717]/10 text-[#C41717]"
-                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"}`}
+                                ? "bg-white text-[#C41717]"
+                                : "text-white/90 hover:text-white hover:bg-white/15"}`}
                 >
                   {item.label}
                 </button>
@@ -665,27 +677,27 @@ export default function CampusDashboard() {
 
           {/* Acciones derecha */}
           <div className="flex items-center gap-1.5 ml-auto">
-            <button className="relative p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all">
+            <button className="relative p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-all">
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#C41717]" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-white" />
             </button>
-            <button className="p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all">
+            <button className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-all">
               <HelpCircle className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-2 ml-1 pl-2 border-l border-slate-200">
-              <div className="w-7 h-7 rounded-full bg-[#C41717]/15 border border-[#C41717]/30
+            <div className="flex items-center gap-2 ml-1 pl-2 border-l border-white/25">
+              <div className="w-7 h-7 rounded-full bg-white/15 border border-white/40
                               flex items-center justify-center shrink-0">
-                <span className="text-[#C41717] text-xs font-bold leading-none">{user.nombre.charAt(0)}</span>
+                <span className="text-white text-xs font-bold leading-none">{user.nombre.charAt(0)}</span>
               </div>
               <div className="hidden sm:flex flex-col">
-                <span className="text-slate-700 text-xs font-semibold leading-tight">{user.nombre.split(" ")[0]}</span>
-                <span className="text-slate-400 text-[10px] leading-tight">{ROLE_LABEL[user.role] ?? user.role}</span>
+                <span className="text-white text-xs font-semibold leading-tight">{user.nombre.split(" ")[0]}</span>
+                <span className="text-white/70 text-[10px] leading-tight">{ROLE_LABEL[user.role] ?? user.role}</span>
               </div>
               <button
                 onClick={logout}
                 title="Cerrar sesión"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all ml-1"
+                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-all ml-1"
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
@@ -693,7 +705,7 @@ export default function CampusDashboard() {
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
+              className="lg:hidden p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-all"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -708,7 +720,7 @@ export default function CampusDashboard() {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="lg:hidden border-t border-slate-200 overflow-hidden"
+              className="lg:hidden bg-white border-t border-slate-200 overflow-hidden"
             >
               <div className="px-4 py-3 space-y-1">
                 {visibleNavItems.map((item) => (

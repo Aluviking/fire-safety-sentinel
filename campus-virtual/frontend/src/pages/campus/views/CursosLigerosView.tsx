@@ -4,6 +4,7 @@ import { Plus, Loader2, Pencil, Trash2, X, Eye, Search, Download, ChevronDown, C
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
+import { SearchableSelect } from "../SearchableSelect";
 import CursoLigeroDetailView from "./CursoLigeroDetailView";
 
 interface Docente { identificacion: string; nombre_completo: string }
@@ -130,10 +131,11 @@ function CursoLigeroForm({
       <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del curso" className={inputCls} />
       <div className="grid grid-cols-2 gap-2">
         <input value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Categoría (ej. Salud y bienestar)" className={inputCls} />
-        <select value={docenteId} onChange={(e) => setDocenteId(e.target.value)} className={inputCls}>
-          <option value="">Docente (opcional)...</option>
-          {docentes.map((d) => <option key={d.identificacion} value={d.identificacion}>{d.nombre_completo}</option>)}
-        </select>
+        <SearchableSelect
+          value={docenteId} onChange={setDocenteId}
+          options={docentes.map((d) => ({ value: d.identificacion, label: d.nombre_completo }))}
+          placeholder="Docente (opcional)..."
+        />
       </div>
       <select value={estado} onChange={(e) => setEstado(e.target.value)} className={inputCls}>
         <option value="No publicado">No publicado</option>

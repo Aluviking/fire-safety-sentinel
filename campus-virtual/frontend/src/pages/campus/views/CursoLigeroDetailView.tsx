@@ -7,6 +7,7 @@ import {
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import ContenidoEditor from "../ContenidoEditor";
+import { SearchableSelect } from "../SearchableSelect";
 
 interface CursoLigero {
   id: number;
@@ -172,10 +173,11 @@ function ClasesTab({ cursoId }: { cursoId: number }) {
       {creating && (
         <form onSubmit={add} className="space-y-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
           <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título de la clase" className={inputCls} />
-          <select value={aulaId} onChange={(e) => setAulaId(e.target.value)} className={inputCls}>
-            <option value="">Aula virtual (opcional)...</option>
-            {aulas.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-          </select>
+          <SearchableSelect
+            value={aulaId} onChange={setAulaId}
+            options={aulas.map((a) => ({ value: String(a.id), label: a.nombre }))}
+            placeholder="Aula virtual (opcional)..."
+          />
           <div className="grid grid-cols-2 gap-2">
             <input value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} type="datetime-local" className={inputCls} />
             <input value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} type="datetime-local" className={inputCls} />
@@ -271,10 +273,12 @@ function UsuariosTab({ cursoId }: { cursoId: number }) {
       </p>
       {adding && (
         <form onSubmit={add} className="flex gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
-          <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className={`${inputCls} flex-1`}>
-            <option value="">Seleccione estudiante...</option>
-            {disponibles.map((e) => <option key={e.identificacion} value={e.identificacion}>{e.nombre_completo}</option>)}
-          </select>
+          <SearchableSelect
+            value={selectedId} onChange={setSelectedId}
+            options={disponibles.map((e) => ({ value: e.identificacion, label: e.nombre_completo }))}
+            placeholder="Seleccione estudiante..."
+            className="flex-1"
+          />
           <button type="submit" className="px-4 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold">Inscribir</button>
         </form>
       )}
@@ -444,10 +448,11 @@ function AjustesTab({ curso, canEdit, onUpdated }: { curso: CursoLigero; canEdit
       </div>
       <div>
         <label className="block text-sm font-semibold text-slate-700 mb-1">Diseño del certificado</label>
-        <select value={certificadoId} onChange={(e) => setCertificadoId(e.target.value)} disabled={!canEdit} className={`${inputCls} disabled:bg-slate-50 disabled:text-slate-400`}>
-          <option value="">Sin certificado asignado</option>
-          {certificados.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-        </select>
+        <SearchableSelect
+          value={certificadoId} onChange={setCertificadoId} disabled={!canEdit}
+          options={certificados.map((c) => ({ value: String(c.id), label: c.nombre }))}
+          placeholder="Sin certificado asignado"
+        />
       </div>
       {canEdit ? (
         <button onClick={save} disabled={saving}

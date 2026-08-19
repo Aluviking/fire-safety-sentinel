@@ -12,6 +12,7 @@ export interface CampusUser {
   avatar?: string | null;
   perfilId?: number | null;
   perfilNombre?: string | null;
+  identificacion?: string | null;
 }
 
 export interface Permisos {
@@ -26,9 +27,9 @@ interface CampusAuthContextType {
   users: CampusUser[];
   login: (emailOrUsername: string, password: string, recaptchaToken: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
-  createUser: (data: { nombre: string; email: string; username: string; password: string; role: Role }) => Promise<{ ok: boolean; error?: string }>;
+  createUser: (data: { nombre: string; email: string; username: string; password: string; role: Role; identificacion?: string }) => Promise<{ ok: boolean; error?: string }>;
   deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
-  updateUser: (userId: string, data: { nombre: string; email: string; username: string }) => Promise<{ ok: boolean; error?: string }>;
+  updateUser: (userId: string, data: { nombre: string; email: string; username: string; identificacion?: string }) => Promise<{ ok: boolean; error?: string }>;
   resetPassword: (userId: string, newPassword: string) => Promise<{ ok: boolean; error?: string }>;
   changeRole: (userId: string, role: Role) => Promise<{ ok: boolean; error?: string }>;
   assignPerfil: (userId: string, perfilId: number | null) => Promise<{ ok: boolean; error?: string }>;
@@ -45,6 +46,7 @@ function mapUserRow(row: any): CampusUser {
     id: row.id, nombre: row.nombre, email: row.email, username: row.username,
     role: row.role, avatar: row.avatar_path ?? null,
     perfilId: row.perfil_id ?? null, perfilNombre: row.perfil_nombre ?? null,
+    identificacion: row.identificacion ?? null,
   };
 }
 

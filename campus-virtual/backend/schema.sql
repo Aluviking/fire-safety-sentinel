@@ -728,3 +728,27 @@ CREATE TABLE IF NOT EXISTS perfil_permisos (
 ALTER TABLE users
   ADD COLUMN perfil_id INT NULL,
   ADD FOREIGN KEY (perfil_id) REFERENCES perfiles(id) ON DELETE SET NULL;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 13 — Matrícula real de estudiantes en Cursos (Estructuración). Mismo
+-- patrón que curso_ligero_inscripciones, pero contra estudiante_id (FK real)
+-- en vez de identificación en texto, porque "Cursos" es un módulo de datos
+-- reales (igual que matriculas) y no un módulo de contenido importado.
+-- ══════════════════════════════════════════════════════════════════════════
+
+-- Conecta una cuenta de acceso (rol Estudiante) con su ficha real en
+-- `estudiantes` usando la identificación — el mismo dato que ya conecta todo
+-- lo demás (matrículas, notas, evaluaciones). Nula para el resto de roles.
+ALTER TABLE users
+  ADD COLUMN identificacion VARCHAR(30) NULL UNIQUE;
+
+CREATE TABLE IF NOT EXISTS curso_estudiantes (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  curso_id      INT NOT NULL,
+  estudiante_id INT NOT NULL,
+  estado        VARCHAR(20) NOT NULL DEFAULT 'Activo',
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_curso_estudiante (curso_id, estudiante_id),
+  FOREIGN KEY (curso_id) REFERENCES cursos(id) ON DELETE CASCADE,
+  FOREIGN KEY (estudiante_id) REFERENCES estudiantes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

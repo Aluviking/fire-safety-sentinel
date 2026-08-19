@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight, User, Mail, Phone, FileText } from "lucide-react";
 import { TIPOS_ID, SEXOS, PERIODOS, SEDES, PROGRAMAS_POR_SEDE } from "@/data/academicCatalog";
 import { apiFetch } from "@/lib/api";
+import { SearchableSelect } from "./SearchableSelect";
 
 /* ── Clases reutilizables ─────────────────────────────────────────────────── */
 const inputBase =
@@ -248,11 +249,15 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, e
                     options={SEDES} disabled={!form.periodo}
                     placeholder={form.periodo ? "Seleccione" : "Primero seleccione período"}
                   />
-                  <FSelect
-                    label="Programa" value={form.programa} onChange={set("programa")}
-                    options={programaOpts} disabled={!form.sedeJornada}
-                    placeholder={!form.sedeJornada ? "Primero seleccione sede" : "Seleccione"}
-                  />
+                  <div className="flex flex-col">
+                    <Label>Programa</Label>
+                    <SearchableSelect
+                      value={form.programa} onChange={set("programa")} disabled={!form.sedeJornada}
+                      options={programaOpts.map((p) => ({ value: p, label: p }))}
+                      placeholder={!form.sedeJornada ? "Primero seleccione sede" : "Seleccione"}
+                      size="md"
+                    />
+                  </div>
                 </Section>
               )}
 
