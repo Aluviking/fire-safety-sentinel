@@ -2,7 +2,7 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
+require_permiso($user, 'institucional.estudiantes');
 
 $estudiantes = db()->query('SELECT * FROM estudiantes ORDER BY nombre_completo')->fetchAll();
 

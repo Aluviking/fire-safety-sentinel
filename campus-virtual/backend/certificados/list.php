@@ -2,7 +2,7 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
+require_permiso($user, 'academico.certificados');
 
 $rows = db()->query(
     "SELECT id, nombre, predeterminado, (imagen_path IS NOT NULL) AS tiene_imagen,

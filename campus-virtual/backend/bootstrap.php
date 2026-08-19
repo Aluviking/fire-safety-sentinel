@@ -92,7 +92,7 @@ function current_user(): ?array
     $token = bearer_token();
     if (!$token) return null;
     $stmt = db()->prepare(
-        'SELECT u.id, u.nombre, u.email, u.username, u.role, u.avatar_path
+        'SELECT u.id, u.nombre, u.email, u.username, u.role, u.avatar_path, u.perfil_id
          FROM sessions s JOIN users u ON u.id = s.user_id
          WHERE s.token = ? AND s.expires_at > NOW()'
     );
@@ -111,6 +111,130 @@ function require_auth(): array
 function require_role(array $user, array $roles): void
 {
     if (!in_array($user['role'], $roles, true)) fail('No autorizado.', 403);
+}
+
+/* ─── Perfiles de permisos ─────────────────────────────────────────────────
+   Catálogo fijo de módulos reales de la app (no una tabla aparte — los
+   módulos los define el código, no el usuario). Cada uno tiene ver/editar.
+   Super Admin nunca pasa por esto — siempre ve todo. Un usuario sin
+   perfil_id asignado también ve todo (compatibilidad con cuentas ya
+   existentes) — asignar un perfil es lo que activa la restricción. */
+function modulos_catalogo(): array
+{
+    return [
+        'Institucional' => [
+            'institucional.estudiantes'     => 'Estudiantes',
+            'institucional.docentes'        => 'Docentes',
+            'institucional.administrativos' => 'Administrativos',
+        ],
+        'Académico' => [
+            'academico.evaluaciones'       => 'Evaluaciones',
+            'academico.educacion_virtual'  => 'Educación virtual',
+            'academico.cursos_ligeros'     => 'Cursos ligeros',
+            'academico.cursos_virtuales'   => 'Cursos virtuales',
+            'academico.plantillas'         => 'Plantillas',
+            'academico.certificados'       => 'Certificados',
+            'academico.aulas_virtuales'    => 'Aulas virtuales',
+            'academico.programas'          => 'Programas',
+            'academico.asignaturas'        => 'Asignaturas',
+            'academico.cursos'             => 'Cursos',
+        ],
+        'Tesorería' => [
+            'tesoreria.creditos'      => 'Créditos',
+            'tesoreria.pagos'         => 'Pagos',
+            'tesoreria.notas_credito' => 'Administrar notas crédito',
+        ],
+        'Informes' => [
+            'informes.consolidado_notas'  => 'Consolidado de notas',
+            'informes.cartera_general'    => 'Cartera general',
+            'informes.gestion_financiera' => 'Gestión financiera',
+        ],
+        'Usuarios' => [
+            'usuarios' => 'Usuarios',
+        ],
+    ];
+}
+
+function modulos_flat(): array
+{
+    $flat = [];
+    foreach (modulos_catalogo() as $categoria => $items) {
+        foreach ($items as $key => $label) $flat[$key] = ['categoria' => $categoria, 'label' => $label];
+    }
+    return $flat;
+}
+
+/**
+ * Permisos por defecto según el ROL (sin necesidad de asignar un perfil
+ * aparte) — replica los perfiles reales que ya existían en Q10:
+ * "Coordinador Academico" (Institucional + Académico + Informes, sin
+ * Tesorería) y "Gerente Administrativa" (Institucional + Tesorería +
+ * Informes, sin Académico). Solo lectura por defecto (editar sigue siendo
+ * exclusivo de admin/super_admin); un perfil explícito (perfil_id) puede
+ * ajustar esto módulo por módulo si algún día hace falta más detalle.
+ */
+function rol_modulos_por_defecto(string $role): ?array
+{
+    $ver = fn(array $keys) => array_fill_keys($keys, ['ver' => true, 'editar' => false]);
+
+    if ($role === 'equipo') {
+        return $ver([
+            'institucional.estudiantes', 'institucional.docentes', 'institucional.administrativos',
+            'academico.evaluaciones', 'academico.educacion_virtual', 'academico.cursos_ligeros',
+            'academico.cursos_virtuales', 'academico.plantillas', 'academico.certificados',
+            'academico.aulas_virtuales', 'academico.programas', 'academico.asignaturas', 'academico.cursos',
+            'informes.consolidado_notas', 'informes.cartera_general', 'informes.gestion_financiera',
+        ]);
+    }
+    if ($role === 'administrativo') {
+        return $ver([
+            'institucional.estudiantes', 'institucional.docentes', 'institucional.administrativos',
+            'tesoreria.creditos', 'tesoreria.pagos', 'tesoreria.notas_credito',
+            'informes.consolidado_notas', 'informes.cartera_general', 'informes.gestion_financiera',
+        ]);
+    }
+    return null;
+}
+
+function user_permisos(array $user): array
+{
+    if ($user['role'] === 'super_admin') return ['all' => true, 'modulos' => []];
+    if ($user['role'] === 'admin' && empty($user['perfil_id'])) return ['all' => true, 'modulos' => []];
+
+    if (!empty($user['perfil_id'])) {
+        $stmt = db()->prepare('SELECT modulo, puede_ver, puede_editar FROM perfil_permisos WHERE perfil_id = ?');
+        $stmt->execute([$user['perfil_id']]);
+        $modulos = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $modulos[$row['modulo']] = ['ver' => (bool) $row['puede_ver'], 'editar' => (bool) $row['puede_editar']];
+        }
+        return ['all' => false, 'modulos' => $modulos];
+    }
+
+    $porDefecto = rol_modulos_por_defecto($user['role']);
+    if ($porDefecto !== null) return ['all' => false, 'modulos' => $porDefecto];
+
+    // docente/estudiante: sin perfil y sin permisos por defecto — el
+    // frontend ya les bloquea la entrada al panel administrativo.
+    return ['all' => false, 'modulos' => []];
+}
+
+/**
+ * Puerta de un endpoint por módulo real (ej. 'academico.evaluaciones') en
+ * vez de por rol fijo. admin/super_admin sin perfil asignado siguen viendo
+ * todo (compatibilidad con lo que ya existía). Un usuario 'equipo' o
+ * 'administrativo' obtiene sus módulos automáticamente por rol (ver
+ * rol_modulos_por_defecto) sin ningún paso manual de asignación; un
+ * perfil_id explícito puede afinar eso módulo por módulo si hace falta.
+ */
+function require_permiso(array $user, string $modulo, string $accion = 'ver'): void
+{
+    if ($user['role'] === 'super_admin') return;
+    if ($user['role'] === 'admin' && empty($user['perfil_id'])) return;
+
+    $permisos = user_permisos($user);
+    $ok = $permisos['all'] || (($permisos['modulos'][$modulo][$accion] ?? false) === true);
+    if (!$ok) fail('No autorizado.', 403);
 }
 
 /* ─── Auditoría ────────────────────────────────────────────────────────── */

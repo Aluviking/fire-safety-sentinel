@@ -2,7 +2,7 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
+require_permiso($user, 'academico.aulas_virtuales');
 
 // Una fila real por asistente en `aulas_virtuales` — se agrupa por sesión
 // (misma fecha_inicio_sesion + curso + asignatura + docente) para mostrar

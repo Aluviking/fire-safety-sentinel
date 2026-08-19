@@ -2,7 +2,7 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
+require_permiso($user, 'academico.cursos_ligeros');
 
 $id = $_GET['id'] ?? '';
 if ($id === '') fail('id requerido.');

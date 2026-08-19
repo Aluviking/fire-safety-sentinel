@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { UserPlus, Trash2, Users as UsersIcon, Pencil, KeyRound, Check, X as XIcon } from "lucide-react";
 import { useCampusAuth, type Role } from "@/context/CampusAuthContext";
+import { apiFetch } from "@/lib/api";
 import { ResetPasswordModal } from "../ResetPasswordModal";
+
+interface Perfil { id: number; nombre: string }
 
 const INPUT_CLASS = "w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
 
@@ -114,9 +117,15 @@ function CreateUserForm({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
 /* ══ Vista principal ═════════════════════════════════════════════════════════ */
 export default function UsuariosView() {
-  const { currentUser, users, changeRole, deleteUser, updateUser, resetPassword, logout } = useCampusAuth();
+  const { currentUser, users, changeRole, deleteUser, updateUser, resetPassword, assignPerfil, logout } = useCampusAuth();
   const navigate = useNavigate();
   const isSuperAdmin = currentUser?.role === "super_admin";
+  const [perfiles, setPerfiles] = useState<Perfil[]>([]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    apiFetch<{ perfiles: Perfil[] }>("/perfiles/list.php").then((d) => setPerfiles(d.perfiles)).catch(() => {});
+  }, [isSuperAdmin]);
 
   const [resettingUser, setResettingUser] = useState<{ id: string; nombre: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -255,6 +264,19 @@ export default function UsuariosView() {
                         <option key={r.value} value={r.value}>{r.label}</option>
                       ))}
                     </select>
+                    {isSuperAdmin && u.role !== "super_admin" && (
+                      <select
+                        value={u.perfilId ?? ""}
+                        onChange={(e) => assignPerfil(u.id, e.target.value ? Number(e.target.value) : null)}
+                        title="Perfil de permisos"
+                        className="text-xs bg-white border border-slate-300 rounded-lg px-2 py-1.5
+                                   text-slate-700 cursor-pointer focus:outline-none shrink-0 max-w-[140px]
+                                   focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
+                      >
+                        <option value="">Sin perfil (permisos automáticos del rol)</option>
+                        {perfiles.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                      </select>
+                    )}
                     {isSuperAdmin && (
                       <button
                         onClick={() => startEdit(u)}

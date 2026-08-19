@@ -3,4 +3,5 @@ require __DIR__ . '/../bootstrap.php';
 
 $user = current_user();
 if (!$user) fail('No autenticado.', 401);
-respond(['ok' => true, 'user' => $user]);
+$permisos = user_permisos($user);
+respond(['ok' => true, 'user' => $user, 'permisos' => $permisos]);

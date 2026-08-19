@@ -690,3 +690,41 @@ CREATE TABLE IF NOT EXISTS plantilla_opciones (
   orden        INT NOT NULL DEFAULT 0,
   FOREIGN KEY (pregunta_id) REFERENCES plantilla_preguntas(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase 12 — Perfiles de permisos por módulo (ej. "Coordinador Academico" ve
+-- solo lo académico, "Gerente Administrativa" ve solo lo financiero — igual
+-- al sistema real de perfiles que ya usa la institución).
+-- `users.perfil_id` es OPCIONAL — el caso normal es que el rol del usuario
+-- (equipo=Coordinador, administrativo=Gerente) ya trae sus permisos por
+-- defecto automáticamente, sin asignar nada aparte (ver
+-- rol_modulos_por_defecto() en bootstrap.php). Un perfil_id explícito solo
+-- se usa para afinar un caso puntual distinto al del rol. admin/super_admin
+-- sin perfil_id siguen viendo todo, igual que hoy.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS perfiles (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  nombre      VARCHAR(150) NOT NULL,
+  descripcion VARCHAR(255) NULL,
+  estado      VARCHAR(20)  NOT NULL DEFAULT 'Activo',
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_perfil_nombre (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- `modulo` usa las mismas claves que MODULOS en el frontend/backend
+-- (ej. 'academico.evaluaciones', 'tesoreria.creditos') — no una tabla de
+-- catálogo aparte, porque los módulos son fijos en el código de la app.
+CREATE TABLE IF NOT EXISTS perfil_permisos (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  perfil_id    INT NOT NULL,
+  modulo       VARCHAR(60) NOT NULL,
+  puede_ver    TINYINT(1) NOT NULL DEFAULT 0,
+  puede_editar TINYINT(1) NOT NULL DEFAULT 0,
+  UNIQUE KEY uniq_perfil_modulo (perfil_id, modulo),
+  FOREIGN KEY (perfil_id) REFERENCES perfiles(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE users
+  ADD COLUMN perfil_id INT NULL,
+  ADD FOREIGN KEY (perfil_id) REFERENCES perfiles(id) ON DELETE SET NULL;

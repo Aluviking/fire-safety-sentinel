@@ -1,36 +1,73 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Plus, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Loader2, Pencil, Trash2, X, Search, Download, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
 
 interface Programa {
   id: number;
+  codigo: string | null;
   nombre: string;
   pensum: string | null;
+  abreviacion: string | null;
   estado: string | null;
   disponible_oferta_laboral: string | null;
 }
 
 const inputCls = "w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
+const PAGE_SIZE = 12;
+
+function csvEscape(v: string) {
+  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+function Dropdown({ label, children }: { label: string; children: (close: () => void) => React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 text-xs bg-white border border-slate-300 rounded-lg px-3 py-2
+                   text-slate-600 hover:border-[#C41717]/40 transition-colors">
+        <span className="truncate">{label}</span>
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+              className="absolute left-0 top-full mt-1.5 min-w-full w-max max-w-xs max-h-64 overflow-y-auto bg-white rounded-xl
+                         border border-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.12)] z-20 py-1.5">
+              {children(() => setOpen(false))}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 function ProgramaForm({ editing, onDone, onCreated }: { editing: Programa | null; onDone: () => void; onCreated: () => void }) {
   const [open, setOpen] = useState(!!editing);
+  const [codigo, setCodigo] = useState(editing?.codigo ?? "");
   const [nombre, setNombre] = useState(editing?.nombre ?? "");
   const [pensum, setPensum] = useState(editing?.pensum ?? "");
+  const [abreviacion, setAbreviacion] = useState(editing?.abreviacion ?? "");
   const [estado, setEstado] = useState(editing?.estado ?? "Activo");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     setOpen(!!editing);
+    setCodigo(editing?.codigo ?? "");
     setNombre(editing?.nombre ?? "");
     setPensum(editing?.pensum ?? "");
+    setAbreviacion(editing?.abreviacion ?? "");
     setEstado(editing?.estado ?? "Activo");
   }, [editing]);
 
-  const reset = () => { setNombre(""); setPensum(""); setEstado("Activo"); setError(""); };
+  const reset = () => { setCodigo(""); setNombre(""); setPensum(""); setAbreviacion(""); setEstado("Activo"); setError(""); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,10 +75,11 @@ function ProgramaForm({ editing, onDone, onCreated }: { editing: Programa | null
     if (!nombre.trim()) { setError("El nombre es obligatorio."); return; }
     setSubmitting(true);
     try {
+      const payload = { codigo: codigo.trim() || null, nombre: nombre.trim(), pensum: pensum || null, abreviacion: abreviacion.trim() || null, estado };
       if (editing) {
-        await apiFetch("/programas/update.php", { method: "POST", json: { id: editing.id, nombre: nombre.trim(), pensum: pensum || null, estado } });
+        await apiFetch("/programas/update.php", { method: "POST", json: { id: editing.id, ...payload } });
       } else {
-        await apiFetch("/programas/create.php", { method: "POST", json: { nombre: nombre.trim(), pensum: pensum || null } });
+        await apiFetch("/programas/create.php", { method: "POST", json: payload });
       }
       reset();
       setOpen(false);
@@ -70,8 +108,14 @@ function ProgramaForm({ editing, onDone, onCreated }: { editing: Programa | null
         <p className="text-[11px] font-semibold text-slate-500">{editing ? "Editando programa" : "Nuevo programa"}</p>
         {editing && <button type="button" onClick={() => { reset(); setOpen(false); onDone(); }} className="text-slate-400 hover:text-slate-600"><X className="w-3.5 h-3.5" /></button>}
       </div>
-      <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del programa" className={inputCls} />
-      <input value={pensum} onChange={(e) => setPensum(e.target.value)} placeholder="Pensum (opcional)" className={inputCls} />
+      <div className="grid grid-cols-3 gap-2">
+        <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Código (ej. BCI)" className={inputCls} />
+        <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del programa" className={`${inputCls} col-span-2`} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <input value={pensum} onChange={(e) => setPensum(e.target.value)} placeholder="Pensum (opcional)" className={inputCls} />
+        <input value={abreviacion} onChange={(e) => setAbreviacion(e.target.value)} placeholder="Abreviación (opcional)" className={inputCls} />
+      </div>
       {editing && (
         <select value={estado} onChange={(e) => setEstado(e.target.value)} className={inputCls}>
           <option value="Activo">Activo</option>
@@ -101,6 +145,10 @@ export default function ProgramasView() {
   const [editing, setEditing]     = useState<Programa | null>(null);
   const [deleting, setDeleting]   = useState<Programa | null>(null);
 
+  const [search, setSearch] = useState("");
+  const [estadoFilter, setEstadoFilter] = useState("");
+  const [page, setPage] = useState(1);
+
   const load = () => {
     setLoading(true);
     apiFetch<{ programas: Programa[] }>("/programas/list.php")
@@ -110,6 +158,38 @@ export default function ProgramasView() {
   };
 
   useEffect(load, []);
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return programas.filter((p) => {
+      if (estadoFilter && p.estado !== estadoFilter) return false;
+      if (term) {
+        const haystack = `${p.codigo ?? ""} ${p.nombre} ${p.abreviacion ?? ""}`.toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
+      return true;
+    });
+  }, [programas, search, estadoFilter]);
+
+  useEffect(() => setPage(1), [search, estadoFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const exportar = () => {
+    const header = ["Código", "Nombre", "Abreviación", "Estado"];
+    const rows = filtered.map((p) => [p.codigo ?? "", p.nombre, p.abreviacion ?? "", p.estado ?? ""]);
+    const csv = [header, ...rows].map((r) => r.map((v) => csvEscape(v)).join(",")).join("\n");
+    const blob = new Blob([String.fromCharCode(0xfeff) + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "programas.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const confirmDelete = async () => {
     if (!deleting) return;
@@ -130,7 +210,7 @@ export default function ProgramasView() {
           <p className="text-slate-500 text-xs mt-0.5">Programas académicos de GFO Academy</p>
         </div>
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C41717]/8 border border-[#C41717]/20 text-[#C41717] text-xs font-semibold">
-          {programas.length} registros
+          {filtered.length} de {programas.length} registros
         </span>
       </div>
 
@@ -138,38 +218,99 @@ export default function ProgramasView() {
         <div className="h-[3px] bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/30" />
         <div className="p-3 sm:p-4 space-y-3">
           <ProgramaForm editing={editing} onDone={() => setEditing(null)} onCreated={load} />
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar programas..."
+                className="w-full text-sm bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-2 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10" />
+            </div>
+            <button onClick={exportar}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 border border-slate-300 rounded-lg hover:border-[#C41717]/40 hover:text-[#C41717] transition-colors">
+              <Download className="w-3.5 h-3.5" /> Exportar
+            </button>
+            <div className="w-40">
+              <Dropdown label={estadoFilter || "Estado: Todos"}>
+                {(close) => (
+                  <>
+                    <button onClick={() => { setEstadoFilter(""); close(); }} className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50">Todos</button>
+                    <button onClick={() => { setEstadoFilter("Activo"); close(); }} className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50">Activo</button>
+                    <button onClick={() => { setEstadoFilter("Inactivo"); close(); }} className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50">Inactivo</button>
+                  </>
+                )}
+              </Dropdown>
+            </div>
+          </div>
+
           {loading ? (
             <div className="flex items-center justify-center py-12 text-slate-400 gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</div>
           ) : error ? (
             <p className="text-red-500 text-sm text-center py-8">{error}</p>
           ) : (
-            <div className="divide-y divide-slate-100">
-              {programas.length === 0 ? (
-                <p className="text-slate-400 text-sm text-center py-8">Aún no hay programas.</p>
-              ) : programas.map((p) => (
-                <div key={p.id} className="py-3 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{p.nombre}</p>
-                    {p.pensum && <p className="text-xs text-slate-500 truncate">{p.pensum}</p>}
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
-                      {p.estado ?? "—"}
-                    </span>
-                    {isSuperAdmin && (
-                      <div className="flex items-center gap-2.5">
-                        <button onClick={() => setEditing(p)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => setDeleting(p)} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
+            <>
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Código</th>
+                      <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Nombre</th>
+                      <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Abreviación</th>
+                      <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Estado</th>
+                      {isSuperAdmin && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Acciones</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {paged.length === 0 ? (
+                      <tr><td colSpan={isSuperAdmin ? 5 : 4} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
+                    ) : paged.map((p, idx) => (
+                      <tr key={p.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
+                        <td className="px-4 py-2 text-slate-500 text-xs font-medium">{p.codigo ?? "—"}</td>
+                        <td className="px-4 py-2 text-slate-700 font-medium text-[13px]">{p.nombre}</td>
+                        <td className="px-4 py-2 text-slate-500 text-xs">{p.abreviacion ?? "—"}</td>
+                        <td className="px-4 py-2">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-xs font-medium ${
+                            p.estado === "Inactivo" ? "bg-slate-100 border-slate-200 text-slate-500" : "bg-emerald-50 border-emerald-200 text-emerald-700"
+                          }`}>
+                            {p.estado ?? "—"}
+                          </span>
+                        </td>
+                        {isSuperAdmin && (
+                          <td className="px-4 py-2">
+                            <div className="flex items-center justify-end gap-2.5">
+                              <button onClick={() => setEditing(p)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => setDeleting(p)} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-1.5 pt-1">
+                  <button onClick={() => setPage((v) => Math.max(1, v - 1))} disabled={page === 1}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-[#C41717] hover:border-[#C41717]/30 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-colors">
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                    <button key={n} onClick={() => setPage(n)}
+                      className={`w-7 h-7 rounded-lg text-xs font-semibold transition-colors ${n === page ? "bg-[#C41717] text-white" : "text-slate-500 hover:bg-slate-100"}`}>
+                      {n}
+                    </button>
+                  ))}
+                  <button onClick={() => setPage((v) => Math.min(totalPages, v + 1))} disabled={page === totalPages}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-[#C41717] hover:border-[#C41717]/30 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-colors">
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>

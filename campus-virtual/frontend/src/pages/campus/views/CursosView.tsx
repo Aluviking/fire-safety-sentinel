@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Plus, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Loader2, Pencil, Trash2, X, Eye, Search, Download, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
@@ -25,6 +25,73 @@ interface Curso {
 }
 
 const inputCls = "w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
+const PAGE_SIZE = 12;
+
+function csvEscape(v: string) {
+  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+function Dropdown({ label, children }: { label: string; children: (close: () => void) => React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 text-xs bg-white border border-slate-300 rounded-lg px-3 py-2
+                   text-slate-600 hover:border-[#C41717]/40 transition-colors">
+        <span className="truncate">{label}</span>
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+              className="absolute left-0 top-full mt-1.5 min-w-full w-max max-w-xs max-h-64 overflow-y-auto bg-white rounded-xl
+                         border border-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.12)] z-20 py-1.5">
+              {children(() => setOpen(false))}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function DetalleModal({ curso, onClose }: { curso: Curso; onClose: () => void }) {
+  const rows: [string, string][] = [
+    ["Programa / Asignatura / Jornada", curso.programa_asignatura_jornada ?? "—"],
+    ["Docente", curso.docente_nombre ?? "—"],
+    ["Período", curso.periodo ?? "—"],
+    ["Fecha inicio", curso.fecha_inicio ?? "—"],
+    ["Fecha fin", curso.fecha_fin ?? "—"],
+    ["Aula", curso.aula ?? "—"],
+    ["Cupo máximo", curso.cupo_maximo != null ? String(curso.cupo_maximo) : "—"],
+    ["Estado", curso.cerrado?.toLowerCase() === "si" ? "Cerrado" : "Abierto"],
+  ];
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <motion.div initial={{ opacity: 0, y: 16, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.25)] border border-slate-200 overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
+        <div className="p-5 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="font-bold text-slate-800 text-[15px] leading-snug">{curso.codigo_nombre ?? "—"}</h3>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 shrink-0"><X className="w-4 h-4" /></button>
+          </div>
+          <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+            {rows.map(([label, value]) => (
+              <div key={label} className="flex items-center justify-between gap-3 px-3.5 py-2 text-xs">
+                <span className="text-slate-400 font-medium shrink-0">{label}</span>
+                <span className="text-slate-700 text-right">{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 function CursoForm({
   editing, programas, asignaturas, docentes, onDone, onCreated,
@@ -167,6 +234,7 @@ function CursoForm({
 export default function CursosView() {
   const { currentUser } = useCampusAuth();
   const isSuperAdmin = currentUser?.role === "super_admin";
+  const canManage = currentUser?.role === "admin" || isSuperAdmin;
   const [cursos, setCursos]           = useState<Curso[]>([]);
   const [programas, setProgramas]     = useState<Programa[]>([]);
   const [asignaturas, setAsignaturas] = useState<Asignatura[]>([]);
@@ -175,6 +243,11 @@ export default function CursosView() {
   const [error, setError]             = useState("");
   const [editing, setEditing]         = useState<Curso | null>(null);
   const [deleting, setDeleting]       = useState<Curso | null>(null);
+  const [viewing, setViewing]         = useState<Curso | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [estadoFilter, setEstadoFilter] = useState("");
+  const [page, setPage] = useState(1);
 
   const load = () => {
     setLoading(true);
@@ -192,6 +265,42 @@ export default function CursosView() {
   };
 
   useEffect(load, []);
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return cursos.filter((c) => {
+      const estado = c.cerrado?.toLowerCase() === "si" ? "Cerrado" : "Abierto";
+      if (estadoFilter && estado !== estadoFilter) return false;
+      if (term) {
+        const haystack = `${c.codigo_nombre ?? ""} ${c.programa_asignatura_jornada ?? ""} ${c.docente_nombre ?? ""}`.toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
+      return true;
+    });
+  }, [cursos, search, estadoFilter]);
+
+  useEffect(() => setPage(1), [search, estadoFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const exportar = () => {
+    const header = ["Curso", "Programa/Asignatura/Jornada", "Docente", "Período", "Estado"];
+    const rows = filtered.map((c) => [
+      c.codigo_nombre ?? "", c.programa_asignatura_jornada ?? "", c.docente_nombre ?? "", c.periodo ?? "",
+      c.cerrado?.toLowerCase() === "si" ? "Cerrado" : "Abierto",
+    ]);
+    const csv = [header, ...rows].map((r) => r.map((v) => csvEscape(v)).join(",")).join("\n");
+    const blob = new Blob([String.fromCharCode(0xfeff) + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "cursos.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const confirmDelete = async () => {
     if (!deleting) return;
@@ -212,68 +321,121 @@ export default function CursosView() {
           <p className="text-slate-500 text-xs mt-0.5">Cursos activos por programa, asignatura y jornada</p>
         </div>
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C41717]/8 border border-[#C41717]/20 text-[#C41717] text-xs font-semibold">
-          {cursos.length} registros
+          {filtered.length} de {cursos.length} registros
         </span>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="h-[3px] bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/30" />
         <div className="p-3 sm:p-4 space-y-3">
-          <CursoForm editing={editing} programas={programas} asignaturas={asignaturas} docentes={docentes} onDone={() => setEditing(null)} onCreated={load} />
+          {canManage && <CursoForm editing={editing} programas={programas} asignaturas={asignaturas} docentes={docentes} onDone={() => setEditing(null)} onCreated={load} />}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cursos..."
+                className="w-full text-sm bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-2 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10" />
+            </div>
+            <button onClick={exportar}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 border border-slate-300 rounded-lg hover:border-[#C41717]/40 hover:text-[#C41717] transition-colors">
+              <Download className="w-3.5 h-3.5" /> Exportar
+            </button>
+            <div className="w-40">
+              <Dropdown label={estadoFilter || "Estado: Todos"}>
+                {(close) => (
+                  <>
+                    <button onClick={() => { setEstadoFilter(""); close(); }} className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50">Todos</button>
+                    <button onClick={() => { setEstadoFilter("Abierto"); close(); }} className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50">Abierto</button>
+                    <button onClick={() => { setEstadoFilter("Cerrado"); close(); }} className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50">Cerrado</button>
+                  </>
+                )}
+              </Dropdown>
+            </div>
+          </div>
 
           {loading ? (
             <div className="flex items-center justify-center py-12 text-slate-400 gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</div>
           ) : error ? (
             <p className="text-red-500 text-sm text-center py-8">{error}</p>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Curso</th>
-                    <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Programa / Asignatura</th>
-                    <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Docente</th>
-                    <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Período</th>
-                    <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Estado</th>
-                    {isSuperAdmin && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Acciones</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {cursos.length === 0 ? (
-                    <tr><td colSpan={isSuperAdmin ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
-                  ) : cursos.map((c, idx) => (
-                    <tr key={c.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
-                      <td className="px-4 py-2 text-slate-700 font-medium text-[13px]">{c.codigo_nombre ?? "—"}</td>
-                      <td className="px-4 py-2 text-slate-500 text-xs">{c.programa_asignatura_jornada ?? "—"}</td>
-                      <td className="px-4 py-2 text-slate-500 text-xs">{c.docente_nombre ?? "—"}</td>
-                      <td className="px-4 py-2 text-slate-500 text-xs">{c.periodo ?? "—"}</td>
-                      <td className="px-4 py-2">
-                        {c.cerrado?.toLowerCase() === "si" ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-xs font-medium">Cerrado</span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">Abierto</span>
-                        )}
-                      </td>
-                      {isSuperAdmin && (
-                        <td className="px-4 py-2">
-                          <div className="flex items-center justify-end gap-2.5">
-                            <button onClick={() => setEditing(c)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={() => setDeleting(c)} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
+            <>
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Curso</th>
+                      <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Programa / Asignatura</th>
+                      <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Docente</th>
+                      <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Período</th>
+                      <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Estado</th>
+                      {canManage && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Acciones</th>}
                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {paged.length === 0 ? (
+                      <tr><td colSpan={canManage ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
+                    ) : paged.map((c, idx) => (
+                      <tr key={c.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
+                        <td className="px-4 py-2 text-slate-700 font-medium text-[13px]">{c.codigo_nombre ?? "—"}</td>
+                        <td className="px-4 py-2 text-slate-500 text-xs">{c.programa_asignatura_jornada ?? "—"}</td>
+                        <td className="px-4 py-2 text-slate-500 text-xs">{c.docente_nombre ?? "—"}</td>
+                        <td className="px-4 py-2 text-slate-500 text-xs">{c.periodo ?? "—"}</td>
+                        <td className="px-4 py-2">
+                          {c.cerrado?.toLowerCase() === "si" ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-xs font-medium">Cerrado</span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">Abierto</span>
+                          )}
+                        </td>
+                        {canManage && (
+                          <td className="px-4 py-2">
+                            <div className="flex items-center justify-end gap-2.5">
+                              <button onClick={() => setViewing(c)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver curso">
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              {isSuperAdmin && (
+                                <>
+                                  <button onClick={() => setEditing(c)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => setDeleting(c)} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-1.5 pt-1">
+                  <button onClick={() => setPage((v) => Math.max(1, v - 1))} disabled={page === 1}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-[#C41717] hover:border-[#C41717]/30 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-colors">
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                    <button key={n} onClick={() => setPage(n)}
+                      className={`w-7 h-7 rounded-lg text-xs font-semibold transition-colors ${n === page ? "bg-[#C41717] text-white" : "text-slate-500 hover:bg-slate-100"}`}>
+                      {n}
+                    </button>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                  <button onClick={() => setPage((v) => Math.min(totalPages, v + 1))} disabled={page === totalPages}
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-[#C41717] hover:border-[#C41717]/30 disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:border-slate-200 transition-colors">
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
+
+      {viewing && <DetalleModal curso={viewing} onClose={() => setViewing(null)} />}
 
       <ConfirmModal
         open={!!deleting}

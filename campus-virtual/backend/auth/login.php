@@ -24,5 +24,6 @@ $expires = date('Y-m-d H:i:s', time() + 60 * 60 * 24 * 7); // 7 días
 db()->prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?,?,?)')
     ->execute([$token, $user['id'], $expires]);
 
+$permisos = user_permisos($user);
 unset($user['password_hash']);
-respond(['ok' => true, 'token' => $token, 'user' => $user]);
+respond(['ok' => true, 'token' => $token, 'user' => $user, 'permisos' => $permisos]);

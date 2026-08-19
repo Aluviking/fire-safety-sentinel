@@ -2,7 +2,7 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
+require_permiso($user, 'academico.cursos_ligeros');
 
 // usuarios_inscritos se calcula en vivo desde las inscripciones reales
 // (curso_ligero_inscripciones) — la columna guardada en la tabla queda

@@ -2,7 +2,7 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
+require_permiso($user, 'tesoreria.pagos');
 
 $creditos    = db()->query('SELECT * FROM pagos_creditos ORDER BY fecha_pago DESC, id DESC')->fetchAll();
 $pendientes  = db()->query('SELECT * FROM pagos_pendientes ORDER BY id DESC')->fetchAll();

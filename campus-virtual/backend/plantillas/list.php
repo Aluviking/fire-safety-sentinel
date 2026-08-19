@@ -2,7 +2,7 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
+require_permiso($user, 'academico.plantillas');
 
 $rows = db()->query(
     'SELECT p.id, p.nombre, p.asignatura_id, a.nombre AS asignatura, p.fecha, p.estado,

@@ -7,7 +7,7 @@ import {
   Users, BookOpen, GraduationCap, DollarSign, FileText,
   Calendar, Award, ClipboardList, UserCheck, Building,
   ChevronRight, LayoutDashboard, AlertCircle, Briefcase,
-  Shield, TrendingUp, Clock, UserCog, ScrollText,
+  Shield, TrendingUp, Clock, UserCog, ScrollText, ShieldCheck,
 } from "lucide-react";
 import { useCampusAuth, type CampusUser } from "@/context/CampusAuthContext";
 import RegistrarEstudianteModal from "./RegistrarEstudianteModal";
@@ -34,6 +34,7 @@ import CursosLigerosView from "./views/CursosLigerosView";
 import CursosVirtualesView from "./views/CursosVirtualesView";
 import PlantillasView from "./views/PlantillasView";
 import CertificadosView from "./views/CertificadosView";
+import PerfilesView from "./views/PerfilesView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
 const GFOLogoSmall = ({ className }: { className?: string }) => (
@@ -116,8 +117,61 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { label: "Usuarios", icon: UserCog },
+  { label: "Perfiles", icon: ShieldCheck },
   { label: "Historial", icon: ScrollText },
 ];
+
+// Traduce cada etiqueta real del menú a su clave de módulo en el backend
+// (ver modulos_catalogo() en bootstrap.php — deben coincidir exacto). Lo que
+// no aparece aquí (Otros Ingresos/Egresos/Codeudores/Adaptaciones/
+// Estructuración de Tesorería/"Parámetros de constancias y certificados") no
+// tiene vista real construida — bajo un perfil restrictivo queda oculto;
+// una cuenta sin perfil (permisos.all) lo sigue viendo igual que hoy.
+const MODULO_POR_ETIQUETA: Record<string, string> = {
+  "Estudiantes": "institucional.estudiantes",
+  "Docentes": "institucional.docentes",
+  "Administrativos": "institucional.administrativos",
+  "Evaluaciones": "academico.evaluaciones",
+  "Educación virtual": "academico.educacion_virtual",
+  "Cursos ligeros": "academico.cursos_ligeros",
+  "Cursos virtuales": "academico.cursos_virtuales",
+  "Plantillas": "academico.plantillas",
+  "Certificados": "academico.certificados",
+  "Aulas virtuales": "academico.aulas_virtuales",
+  "Crear programa": "academico.programas",
+  "Asignaturas": "academico.asignaturas",
+  "Crear curso": "academico.cursos",
+  "Créditos": "tesoreria.creditos",
+  "Pagos": "tesoreria.pagos",
+  "Administrar notas crédito": "tesoreria.notas_credito",
+  "Consolidado de notas": "informes.consolidado_notas",
+  "Cartera general": "informes.cartera_general",
+  "Gestión financiera": "informes.gestion_financiera",
+  "Usuarios": "usuarios",
+};
+
+function filterNavItems(items: NavItem[], canVer: (modulo: string) => boolean, verTodo: boolean): NavItem[] {
+  const keep = (label: string) => {
+    const modulo = MODULO_POR_ETIQUETA[label];
+    return modulo ? canVer(modulo) : verTodo;
+  };
+  return items
+    .map((item) => {
+      if (!item.subs) return item;
+      const filteredSubs = item.subs
+        .map((sub) => {
+          if (MODULO_POR_ETIQUETA[sub.label]) return keep(sub.label) ? sub : null;
+          if (sub.subs) {
+            const filteredStrings = sub.subs.filter((s) => keep(s));
+            return filteredStrings.length > 0 ? { ...sub, subs: filteredStrings } : null;
+          }
+          return keep(sub.label) ? sub : null;
+        })
+        .filter((s): s is SubItem => s !== null);
+      return filteredSubs.length > 0 ? { ...item, subs: filteredSubs } : null;
+    })
+    .filter((item): item is NavItem => item !== null);
+}
 
 const ROLE_LABEL: Record<string, string> = {
   super_admin: "Super Administrador",
@@ -463,7 +517,7 @@ function DashboardHome({ user, onNavigate }: { user: CampusUser; onNavigate: (na
 /* ══ MAIN COMPONENT ═════════════════════════════════════════════════════════ */
 export default function CampusDashboard() {
   const navigate = useNavigate();
-  const { currentUser: user, loading, logout: authLogout } = useCampusAuth();
+  const { currentUser: user, permisos, canVer, loading, logout: authLogout } = useCampusAuth();
   const [openMenu, setOpenMenu]       = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeNav, setActiveNav]     = useState<{ nav: string; sub: string } | null>(null);
@@ -509,10 +563,20 @@ export default function CampusDashboard() {
 
   const isAdmin = user.role === "admin" || user.role === "super_admin";
   const isSuperAdmin = user.role === "super_admin";
-  const visibleNavItems = NAV_ITEMS.filter((item) => item.label !== "Historial" || isSuperAdmin);
+  // "equipo" (Coordinador) y "administrativo" (Gerente) entran automático
+  // por su rol, con los permisos por defecto de rol_modulos_por_defecto() en
+  // el backend — no requieren ningún paso aparte de "asignar perfil". Un
+  // perfil_id explícito (opcional) solo sirve para afinar un caso puntual.
+  const hasAutoRole = user.role === "equipo" || user.role === "administrativo";
+  const hasPerfil = user.perfilId != null;
+  const canEnter = isAdmin || hasAutoRole || hasPerfil;
+  const visibleNavItems = filterNavItems(NAV_ITEMS, canVer, permisos.all)
+    .filter((item) => item.label !== "Historial" || isSuperAdmin)
+    .filter((item) => item.label !== "Perfiles" || isSuperAdmin)
+    .filter((item) => item.label !== "Usuarios" || canVer("usuarios"));
 
   /* Acceso restringido */
-  if (!isAdmin) {
+  if (!canEnter) {
     return (
       <div className="min-h-screen bg-[#F1F5F9] flex items-center justify-center px-6">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 max-w-sm w-full text-center">
@@ -733,6 +797,8 @@ export default function CampusDashboard() {
           <DashboardHome user={user} onNavigate={handleNavigate} />
         ) : activeNav.nav === "Usuarios" ? (
           <UsuariosView />
+        ) : activeNav.nav === "Perfiles" && isSuperAdmin ? (
+          <PerfilesView />
         ) : activeNav.nav === "Historial" && isSuperAdmin ? (
           <HistorialView />
         ) : activeNav.sub === "Estudiantes › Información básica" ? (
