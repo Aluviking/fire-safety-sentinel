@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Loader2, Pencil, Trash2, X, Building2 } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, X, Building2, FileClock } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
+import AulaSesionesView from "./AulaSesionesView";
 
 interface AulaRecurso {
   id: number;
@@ -91,6 +92,7 @@ export default function SalasVirtualesView() {
   const [error, setError]     = useState("");
   const [editing, setEditing] = useState<AulaRecurso | null>(null);
   const [deleting, setDeleting] = useState<AulaRecurso | null>(null);
+  const [viewingSesiones, setViewingSesiones] = useState<AulaRecurso | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -112,6 +114,10 @@ export default function SalasVirtualesView() {
       window.alert(e instanceof Error ? e.message : "Error al eliminar el aula.");
     }
   };
+
+  if (viewingSesiones) {
+    return <AulaSesionesView aulaNombre={viewingSesiones.nombre} onBack={() => setViewingSesiones(null)} />;
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-3">
@@ -152,6 +158,9 @@ export default function SalasVirtualesView() {
                     <span className="text-xs text-slate-500">
                       Capacidad: <span className="font-semibold text-slate-700">{a.capacidad_maxima ?? "—"}</span>
                     </span>
+                    <button onClick={() => setViewingSesiones(a)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Clases finalizadas">
+                      <FileClock className="w-3.5 h-3.5" />
+                    </button>
                     {isSuperAdmin && (
                       <div className="flex items-center gap-2.5">
                         <button onClick={() => setEditing(a)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
