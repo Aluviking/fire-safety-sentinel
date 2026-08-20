@@ -179,7 +179,11 @@ export default function CursosLigerosView() {
     setLoading(true);
     Promise.all([
       apiFetch<{ cursosLigeros: CursoLigero[] }>("/cursos-ligeros/list.php"),
-      apiFetch<{ docentes: Docente[] }>("/docentes/list.php"),
+      // Docente no tiene permiso sobre institucional.docentes (solo lo usa
+      // para el filtro "por docente", que a un docente no le sirve de nada
+      // — solo ve sus propios cursos) — si falla, no debe tumbar la lista
+      // real de cursos, solo dejar el filtro vacío.
+      apiFetch<{ docentes: Docente[] }>("/docentes/list.php").catch(() => ({ docentes: [] })),
     ])
       .then(([c, d]) => { setCursos(c.cursosLigeros); setDocentes(d.docentes); })
       .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar."))

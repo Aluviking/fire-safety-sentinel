@@ -2,7 +2,7 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_permiso($user, 'academico.cursos');
+require_permiso_alguno($user, ['academico.cursos', 'academico.cursos_virtuales']);
 
 // Un docente solo ve SUS propios cursos, no los de todos — el resto de
 // roles (admin/super_admin/equipo) sigue viendo el catálogo completo.

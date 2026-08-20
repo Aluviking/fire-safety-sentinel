@@ -2,7 +2,7 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_permiso($user, 'academico.cursos');
+require_permiso_alguno($user, ['academico.cursos', 'academico.cursos_virtuales']);
 
 $cursoId = (int) ($_GET['cursoId'] ?? 0);
 if ($cursoId === 0) fail('cursoId requerido.');

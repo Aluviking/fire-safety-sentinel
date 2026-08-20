@@ -255,6 +255,26 @@ function require_permiso(array $user, string $modulo, string $accion = 'ver'): v
 }
 
 /**
+ * Igual que require_permiso(), pero pasa con CUALQUIERA de varios módulos —
+ * necesario porque "Estructuración › Crear curso" (academico.cursos) y
+ * "Educación virtual › Cursos virtuales" (academico.cursos_virtuales) son
+ * dos rutas de menú distintas que en realidad leen la MISMA tabla `cursos`;
+ * un rol como Docente puede tener acceso solo por la segunda ruta.
+ */
+function require_permiso_alguno(array $user, array $modulos, string $accion = 'ver'): void
+{
+    if ($user['role'] === 'super_admin') return;
+    if ($user['role'] === 'admin' && empty($user['perfil_id'])) return;
+
+    $permisos = user_permisos($user);
+    if ($permisos['all']) return;
+    foreach ($modulos as $modulo) {
+        if (($permisos['modulos'][$modulo][$accion] ?? false) === true) return;
+    }
+    fail('No autorizado.', 403);
+}
+
+/**
  * Si no existe ya una ficha en `estudiantes` con esa identificación, la crea
  * con los datos mínimos — así una cuenta de acceso (rol estudiante) queda
  * vinculada automáticamente al registro real usado en matrículas, cursos,
@@ -348,7 +368,7 @@ function require_acceso_curso(array $user, int $cursoId): void
         if (!$stmt->fetch()) fail('No autorizado.', 403);
         return;
     }
-    require_permiso($user, 'academico.cursos');
+    require_permiso_alguno($user, ['academico.cursos', 'academico.cursos_virtuales']);
 }
 
 /* ─── Auditoría ────────────────────────────────────────────────────────── */

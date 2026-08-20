@@ -81,8 +81,11 @@ export default function CursosVirtualesView() {
     setLoading(true);
     Promise.all([
       apiFetch<{ cursos: Curso[] }>("/cursos/list.php"),
-      apiFetch<{ programas: Programa[] }>("/programas/list.php"),
-      apiFetch<{ asignaturas: Asignatura[] }>("/asignaturas/list.php"),
+      // Docente no tiene permiso sobre academico.programas/asignaturas (solo
+      // los usan los filtros de esta pantalla) — si fallan, no deben tumbar
+      // la lista real de cursos, solo dejar esos filtros vacíos.
+      apiFetch<{ programas: Programa[] }>("/programas/list.php").catch(() => ({ programas: [] })),
+      apiFetch<{ asignaturas: Asignatura[] }>("/asignaturas/list.php").catch(() => ({ asignaturas: [] })),
     ])
       .then(([c, p, a]) => { setCursos(c.cursos); setProgramas(p.programas); setAsignaturas(a.asignaturas); })
       .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar."))
