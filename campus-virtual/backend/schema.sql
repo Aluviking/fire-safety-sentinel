@@ -311,6 +311,8 @@ CREATE TABLE IF NOT EXISTS programas (
   disponible_oferta_laboral VARCHAR(10)  NULL,
   estado                    VARCHAR(50)  NULL,
   aplica_preinscripcion     VARCHAR(10)  NULL,
+  aplica_grupos             VARCHAR(10)  NULL,
+  categoria                 VARCHAR(150) NULL,
   created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_programa_nombre (nombre)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

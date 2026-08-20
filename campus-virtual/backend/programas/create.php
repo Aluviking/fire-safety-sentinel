@@ -16,12 +16,13 @@ if ($stmt->fetch()) fail('Ya existe un programa con ese nombre.');
 
 db()->prepare(
     'INSERT INTO programas (codigo, nombre, pensum, abreviacion, num_resolucion, fecha_resolucion,
-        disponible_oferta_laboral, estado, aplica_preinscripcion)
-     VALUES (?,?,?,?,?,?,?,?,?)'
+        disponible_oferta_laboral, estado, aplica_preinscripcion, aplica_grupos, categoria)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)'
 )->execute([
     $body['codigo'] ?? null, $nombre, $body['pensum'] ?? null, $body['abreviacion'] ?? null,
     $body['numResolucion'] ?? null, $body['fechaResolucion'] ?? null,
     $body['disponibleOfertaLaboral'] ?? 'Sí', $body['estado'] ?? 'Activo', $body['aplicaPreinscripcion'] ?? 'No',
+    $body['aplicaGrupos'] ?? 'Sí', $body['categoria'] ?? null,
 ]);
 
 respond(['ok' => true, 'programa' => ['id' => (int) db()->lastInsertId(), 'nombre' => $nombre]]);

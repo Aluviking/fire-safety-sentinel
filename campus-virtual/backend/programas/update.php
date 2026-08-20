@@ -30,13 +30,14 @@ $field = fn(string $key, string $col) => array_key_exists($key, $body) ? $body[$
 db()->prepare(
     'UPDATE programas SET codigo = ?, nombre = ?, pensum = ?, abreviacion = ?, num_resolucion = ?,
         fecha_resolucion = ?, disponible_oferta_laboral = ?, estado = ?, aplica_preinscripcion = ?,
-        descripcion = ?, publicado = ?, dias_disponibles = ?, certificado_id = ?
+        aplica_grupos = ?, categoria = ?, descripcion = ?, publicado = ?, dias_disponibles = ?, certificado_id = ?
      WHERE id = ?'
 )->execute([
     $field('codigo', 'codigo'), $nombre, $field('pensum', 'pensum'), $field('abreviacion', 'abreviacion'),
     $field('numResolucion', 'num_resolucion'), $field('fechaResolucion', 'fecha_resolucion'),
     $field('disponibleOfertaLaboral', 'disponible_oferta_laboral'), $field('estado', 'estado'),
-    $field('aplicaPreinscripcion', 'aplica_preinscripcion'),
+    $field('aplicaPreinscripcion', 'aplica_preinscripcion'), $field('aplicaGrupos', 'aplica_grupos'),
+    $field('categoria', 'categoria'),
     $field('descripcion', 'descripcion'),
     array_key_exists('publicado', $body) ? (!empty($body['publicado']) ? 1 : 0) : $row['publicado'],
     $field('diasDisponibles', 'dias_disponibles'), $field('certificadoId', 'certificado_id'),
