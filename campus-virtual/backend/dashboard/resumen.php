@@ -2,7 +2,9 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-if (in_array($user['role'], ['estudiante', 'docente'], true)) fail('No autorizado.', 403);
+// Docente ya usa este mismo panel administrativo (antes tenía uno aparte) —
+// solo Estudiante sigue teniendo su propio dashboard separado.
+if ($user['role'] === 'estudiante') fail('No autorizado.', 403);
 
 // Anuncios recientes de las 4 familias de contenido (programas, asignaturas,
 // cursos, cursos ligeros) — mismo patrón que el resto del sistema, unidos

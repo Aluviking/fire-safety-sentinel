@@ -543,8 +543,17 @@ function ProgramasDestacados({ onNavigate }: { onNavigate: (nav: string, sub: st
 function DashboardHome({
   user, onNavigate, resumen, resumenLoading,
 }: { user: CampusUser; onNavigate: (nav: string, sub: string) => void; resumen: ResumenData | null; resumenLoading: boolean }) {
+  const { canVer, permisos } = useCampusAuth();
   const hour     = new Date().getHours();
   const greeting = hour < 12 ? "Buenos días" : hour < 18 ? "Buenas tardes" : "Buenas noches";
+  // Mismo filtro de permisos que usa el navbar (MODULO_POR_ETIQUETA) — antes
+  // el acceso rápido salía igual para todos sin importar el rol, mostrando
+  // atajos a módulos que esa cuenta ni siquiera puede abrir (ej. "Docentes"
+  // o "Usuarios" para un Docente).
+  const quickAccess = QUICK_ACCESS.filter(({ label }) => {
+    const modulo = MODULO_POR_ETIQUETA[label];
+    return modulo ? permisos.all || canVer(modulo) : true;
+  });
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
@@ -590,7 +599,7 @@ function DashboardHome({
           <span className="h-px flex-1 bg-slate-200" />
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {QUICK_ACCESS.map(({ icon: Icon, label, color, nav, sub }) => (
+          {quickAccess.map(({ icon: Icon, label, color, nav, sub }) => (
             <button
               key={label}
               onClick={() => onNavigate(nav, sub)}
