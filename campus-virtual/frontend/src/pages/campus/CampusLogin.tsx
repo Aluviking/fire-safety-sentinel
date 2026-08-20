@@ -174,7 +174,7 @@ export default function CampusLogin() {
                          rounded-[1.75rem]"
             >
               {/* ── Lado visual (solo desktop) ── */}
-              <div className="hidden lg:flex lg:w-[42%] relative flex-col items-center justify-end border-r border-white/50 overflow-visible">
+              <div className="hidden lg:flex lg:w-[42%] lg:min-h-[520px] relative flex-col items-center justify-end border-r border-white/50 overflow-visible">
                 <div className="absolute inset-[6%] rounded-full bg-[#C41717]/[0.05] blur-3xl pointer-events-none" />
                 {/* Posición absoluta anclada al borde superior del panel (= borde
                     superior de la tarjeta) — la salida es siempre la misma
