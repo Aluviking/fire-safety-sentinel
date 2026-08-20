@@ -247,7 +247,7 @@ function CursoRosterPanel({
 
 export default function EvaluacionesView() {
   const { currentUser } = useCampusAuth();
-  const canEdit = currentUser?.role === "admin" || currentUser?.role === "super_admin";
+  const canEdit = currentUser?.role === "admin" || currentUser?.role === "super_admin" || currentUser?.role === "docente";
   const [estudiantesMap, setEstudiantesMap] = useState<Map<string, string>>(new Map());
   const [tab, setTab] = useState<Tab>("Evaluaciones detalladas");
   const [evaluaciones, setEvaluaciones] = useState<Evaluacion[]>([]);

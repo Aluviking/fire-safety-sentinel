@@ -203,12 +203,18 @@ function rol_modulos_por_defecto(string $role): ?array
     // list.php de cursos/cursos-ligeros filtra por docente_identificacion
     // cuando el rol es docente, para que solo vea SUS propios cursos.
     if ($role === 'docente') {
-        return $ver([
+        $modulos = $ver([
             'institucional.estudiantes',
             'academico.evaluaciones', 'academico.cursos_ligeros', 'academico.cursos_virtuales',
             'academico.aulas_virtuales',
             'informes.consolidado_notas',
         ]);
+        // Única excepción a "editar es solo Super Admin": el docente sí puede
+        // calificar sus propias evaluaciones — el scoping real (solo sus
+        // asignaturas/período, vía docente_tiene_asignatura_periodo()) se
+        // aplica en evaluaciones/list.php y evaluaciones/update.php.
+        $modulos['academico.evaluaciones']['editar'] = true;
+        return $modulos;
     }
     return null;
 }
@@ -369,6 +375,27 @@ function require_acceso_curso(array $user, int $cursoId): void
         return;
     }
     require_permiso_alguno($user, ['academico.cursos', 'academico.cursos_virtuales']);
+}
+
+/**
+ * Puente real entre el histórico de evaluaciones importado de Q10
+ * (identificado solo por texto: asignatura + período, sin FK a docente) y el
+ * docente asignado — usa `cursos.programa_asignatura_jornada` (que contiene
+ * el nombre de la asignatura) + `cursos.periodo` + `cursos.docente_identificacion`,
+ * ya verificado contra la vista real de Q10 para varios casos conocidos.
+ */
+function docente_tiene_asignatura_periodo(string $identificacion, string $asignatura, ?string $periodo): bool
+{
+    if ($periodo === null || $periodo === '' || $asignatura === '') return false;
+    $stmt = db()->prepare(
+        "SELECT 1 FROM cursos
+         WHERE docente_identificacion = ?
+           AND periodo = ?
+           AND programa_asignatura_jornada LIKE CONCAT('%', ?, '%')
+         LIMIT 1"
+    );
+    $stmt->execute([$identificacion, $periodo, $asignatura]);
+    return (bool) $stmt->fetchColumn();
 }
 
 /* ─── Auditoría ────────────────────────────────────────────────────────── */
