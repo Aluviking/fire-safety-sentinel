@@ -17,7 +17,7 @@ if (!$programa) fail('Programa no encontrado.', 404);
 // programa quedó guardado como texto libre "{nombre} - {jornada}". No hay
 // FK: se cruza por prefijo exacto del nombre real del programa.
 $stmt = db()->prepare(
-    "SELECT e.id AS estudiante_id, e.identificacion, e.nombre_completo,
+    "SELECT m.id, e.id AS estudiante_id, e.identificacion, e.nombre_completo,
             m.programa, m.periodo, m.nivel, m.estado, m.sede
      FROM matriculas m
      JOIN estudiantes e ON e.id = m.estudiante_id

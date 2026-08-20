@@ -721,23 +721,23 @@ export default function CampusDashboard() {
 
   // Datos reales para la campana de notificaciones y el inicio (anuncios,
   // próximas clases, auditoría reciente, contadores) — un solo fetch
-  // compartido por ambos, no aplica a estudiante/docente (tienen su propio
-  // panel y nunca llegan a montar este componente).
+  // compartido por todos los que usan este panel; Estudiante tiene el suyo
+  // propio y nunca llega a montar este componente. Docente ya SÍ usa este
+  // panel (con su menú acotado por permisos), no el mini-panel de antes.
   useEffect(() => {
-    if (loading || !user || user.role === "estudiante" || user.role === "docente") return;
+    if (loading || !user || user.role === "estudiante") return;
     apiFetch<ResumenData>("/dashboard/resumen.php")
       .then(setResumen)
       .catch(() => {})
       .finally(() => setResumenLoading(false));
   }, [loading, user]);
 
-  // Estudiante y Docente tienen su propio panel, distinto a este (que es el
-  // panel administrativo) — se redirige automático, sin mostrar "Acceso
+  // Estudiante tiene su propio panel, distinto a este (que es el panel
+  // administrativo) — se redirige automático, sin mostrar "Acceso
   // restringido" para un rol que sí tiene a dónde ir.
   useEffect(() => {
     if (loading || !user) return;
     if (user.role === "estudiante") navigate("/estudiante", { replace: true });
-    else if (user.role === "docente") navigate("/docente", { replace: true });
   }, [loading, user, navigate]);
 
   const logout = () => { authLogout(); navigate("/", { replace: true }); };
@@ -771,7 +771,7 @@ export default function CampusDashboard() {
 
   const toggleMenu = (label: string) => setOpenMenu((prev) => (prev === label ? null : label));
 
-  if (loading || !user || user.role === "estudiante" || user.role === "docente") return null;
+  if (loading || !user || user.role === "estudiante") return null;
 
   const isAdmin = user.role === "admin" || user.role === "super_admin";
   const isSuperAdmin = user.role === "super_admin";
@@ -779,7 +779,7 @@ export default function CampusDashboard() {
   // por su rol, con los permisos por defecto de rol_modulos_por_defecto() en
   // el backend — no requieren ningún paso aparte de "asignar perfil". Un
   // perfil_id explícito (opcional) solo sirve para afinar un caso puntual.
-  const hasAutoRole = user.role === "equipo" || user.role === "administrativo";
+  const hasAutoRole = user.role === "equipo" || user.role === "administrativo" || user.role === "docente";
   const hasPerfil = user.perfilId != null;
   const canEnter = isAdmin || hasAutoRole || hasPerfil;
   const visibleNavItems = filterNavItems(NAV_ITEMS, canVer, permisos.all)

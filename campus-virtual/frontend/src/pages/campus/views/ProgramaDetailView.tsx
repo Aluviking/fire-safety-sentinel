@@ -11,9 +11,11 @@ import { ConfirmModal } from "../ConfirmModal";
 import { type Programa, ProgramaFormModal } from "./ProgramasView";
 
 interface MatriculaReal {
-  estudiante_id: number; identificacion: string; nombre_completo: string;
+  id: number; estudiante_id: number; identificacion: string; nombre_completo: string;
   periodo: string | null; nivel: string | null; estado: string; sede: string | null; jornada: string | null;
 }
+interface EstudianteOption { id: number; identificacion: string; nombre_completo: string }
+const ESTADOS_MATRICULA = ["ACTIVO", "INACTIVO", "CANCELADO", "GRADUADO"];
 interface Certificado { id: number; nombre: string }
 interface AsignaturaOption { id: number; codigo: string | null; nombre: string }
 interface PensumAsignatura {
@@ -88,7 +90,7 @@ function AsignarAsignaturaModal({
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <p className="text-slate-800 font-bold text-[15px]">Asignar asignatura</p>
@@ -166,7 +168,7 @@ function EditarPensumModal({ programa, onClose, onSaved }: { programa: Programa;
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={onClose} />
-      <div className="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <p className="text-slate-800 font-bold text-[15px]">Editar pénsum</p>
@@ -238,7 +240,7 @@ function EditarAsignaturaPensumModal({ item, onClose, onSaved }: { item: PensumA
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={onClose} />
-      <div className="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <p className="text-slate-800 font-bold text-[15px]">Editar asignatura</p>
@@ -336,7 +338,7 @@ function PrerequisitosModal({
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <p className="text-slate-800 font-bold text-[15px]">Administrar prerrequisitos de matrícula</p>
@@ -566,9 +568,12 @@ function FichaYPensumTab({
 }
 
 /* ── Estudiantes matriculados en el programa — matrícula REAL (histórico
-     importado de Q10, tabla `matriculas`), de solo lectura. Ya no hay
-     "Matricular"/"Quitar" a mano: la matrícula académica real es la fuente
-     de verdad, no una lista aparte que había que llenar desde cero. ───────── */
+     importado de Q10, tabla `matriculas`). Agregar/editar/eliminar aquí
+     escribe directamente sobre esa tabla real — a diferencia del resto de
+     datos de Q10 (créditos, pagos, notas), esta pantalla sí necesita poder
+     matricular gente nueva, así que se deja editable (solo Super Admin para
+     editar/eliminar, admin+super_admin para agregar, igual que en el resto
+     de la app). ─────────────────────────────────────────────────────────── */
 const ESTADO_MATRICULA_BADGE: Record<string, string> = {
   ACTIVO: "bg-emerald-50 border-emerald-200 text-emerald-700",
   INACTIVO: "bg-slate-100 border-slate-200 text-slate-500",
@@ -576,22 +581,176 @@ const ESTADO_MATRICULA_BADGE: Record<string, string> = {
   GRADUADO: "bg-blue-50 border-blue-200 text-blue-700",
 };
 
-function EstudiantesTab({ programaId }: { programaId: number }) {
-  const [matriculados, setMatriculados] = useState<MatriculaReal[]>([]);
-  const [loading, setLoading] = useState(true);
+function AgregarMatriculaModal({ programaId, onClose, onSaved }: { programaId: number; onClose: () => void; onSaved: () => void }) {
+  const [estudiantes, setEstudiantes] = useState<EstudianteOption[]>([]);
+  const [estudianteId, setEstudianteId] = useState("");
+  const [jornada, setJornada] = useState("Única");
+  const [periodo, setPeriodo] = useState("");
+  const [nivel, setNivel] = useState("");
+  const [estado, setEstado] = useState("ACTIVO");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    apiFetch<{ estudiantes: EstudianteOption[] }>("/estudiantes/list.php").then((d) => setEstudiantes(d.estudiantes)).catch(() => {});
+  }, []);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!estudianteId) { setError("Selecciona un estudiante."); return; }
+    if (!jornada.trim()) { setError("La jornada es obligatoria."); return; }
+    setSubmitting(true);
+    try {
+      await apiFetch("/programa-matriculas/create.php", {
+        method: "POST",
+        json: { programaId, estudianteId: Number(estudianteId), jornada: jornada.trim(), periodo: periodo || null, nivel: nivel || null, estado },
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al matricular.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <p className="text-slate-800 font-bold text-[15px]">Matricular estudiante</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+        </div>
+        <form onSubmit={submit} className="px-5 py-4 space-y-3">
+          <SearchableSelect value={estudianteId} onChange={setEstudianteId}
+            options={estudiantes.map((e) => ({ value: String(e.id), label: e.nombre_completo, keywords: e.identificacion }))}
+            placeholder="Seleccione estudiante..." />
+          <div className="grid grid-cols-2 gap-2">
+            <input value={jornada} onChange={(e) => setJornada(e.target.value)} placeholder="Jornada (ej. Única)" className={inputCls} />
+            <input value={periodo} onChange={(e) => setPeriodo(e.target.value)} placeholder="Período (ej. 2026-BCI)" className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input value={nivel} onChange={(e) => setNivel(e.target.value)} placeholder="Nivel (ej. BASICO)" className={inputCls} />
+            <select value={estado} onChange={(e) => setEstado(e.target.value)} className={inputCls}>
+              {ESTADOS_MATRICULA.map((e) => <option key={e} value={e}>{e}</option>)}
+            </select>
+          </div>
+          {error && <p className="text-[11px] text-red-500">{error}</p>}
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={submitting}
+              className="flex-1 text-xs font-semibold bg-[#C41717] hover:bg-[#B01313] text-white rounded-lg py-2 disabled:opacity-60 transition-colors">
+              {submitting ? "Matriculando..." : "Matricular"}
+            </button>
+            <button type="button" onClick={onClose} className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EditarMatriculaModal({ item, onClose, onSaved }: { item: MatriculaReal; onClose: () => void; onSaved: () => void }) {
+  const [jornada, setJornada] = useState(item.jornada ?? "");
+  const [periodo, setPeriodo] = useState(item.periodo ?? "");
+  const [nivel, setNivel] = useState(item.nivel ?? "");
+  const [estado, setEstado] = useState(item.estado);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await apiFetch("/programa-matriculas/update.php", {
+        method: "POST",
+        json: { id: item.id, jornada: jornada.trim(), periodo: periodo || null, nivel: nivel || null, estado },
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Error al guardar.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <p className="text-slate-800 font-bold text-[15px]">Editar matrícula</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+        </div>
+        <form onSubmit={submit} className="px-5 py-4 space-y-3">
+          <div>
+            <label className="block text-slate-500 text-[11px] font-semibold mb-1">Estudiante</label>
+            <input value={item.nombre_completo} disabled className={`${inputCls} bg-slate-50 text-slate-400`} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input value={jornada} onChange={(e) => setJornada(e.target.value)} placeholder="Jornada" className={inputCls} />
+            <input value={periodo} onChange={(e) => setPeriodo(e.target.value)} placeholder="Período" className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input value={nivel} onChange={(e) => setNivel(e.target.value)} placeholder="Nivel" className={inputCls} />
+            <select value={estado} onChange={(e) => setEstado(e.target.value)} className={inputCls}>
+              {ESTADOS_MATRICULA.map((e) => <option key={e} value={e}>{e}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={submitting}
+              className="flex-1 text-xs font-semibold bg-[#C41717] hover:bg-[#B01313] text-white rounded-lg py-2 disabled:opacity-60 transition-colors">
+              {submitting ? "Guardando..." : "Guardar cambios"}
+            </button>
+            <button type="button" onClick={onClose} className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function EstudiantesTab({ programaId }: { programaId: number }) {
+  const { currentUser } = useCampusAuth();
+  const canManage = currentUser?.role === "admin" || currentUser?.role === "super_admin";
+  const isSuperAdmin = currentUser?.role === "super_admin";
+  const [matriculados, setMatriculados] = useState<MatriculaReal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [agregando, setAgregando] = useState(false);
+  const [editing, setEditing] = useState<MatriculaReal | null>(null);
+  const [deleting, setDeleting] = useState<MatriculaReal | null>(null);
+
+  const load = () => {
     setLoading(true);
     apiFetch<{ matriculados: MatriculaReal[] }>(`/programa-matriculas/list.php?programaId=${programaId}`)
       .then((d) => setMatriculados(d.matriculados))
       .finally(() => setLoading(false));
-  }, [programaId]);
+  };
+  useEffect(load, [programaId]);
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    await apiFetch("/programa-matriculas/delete.php", { method: "POST", json: { id: deleting.id } });
+    setDeleting(null);
+    load();
+  };
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-sm font-semibold text-slate-700">Estudiantes ({matriculados.length})</h3>
-        <p className="text-[11px] text-slate-400">Matrícula real — histórico importado, de solo lectura.</p>
+        <div className="flex items-center gap-3">
+          <p className="text-[11px] text-slate-400">Matrícula real — histórico importado de Q10.</p>
+          {canManage && (
+            <button onClick={() => setAgregando(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
+              <Plus className="w-3.5 h-3.5" /> Agregar estudiante
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -609,11 +768,12 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Jornada</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Nivel</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estado</th>
+                {isSuperAdmin && <th className="text-right px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Acciones</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {matriculados.map((m, i) => (
-                <tr key={`${m.estudiante_id}-${i}`} className="hover:bg-slate-50/70">
+              {matriculados.map((m) => (
+                <tr key={m.id} className="hover:bg-slate-50/70">
                   <td className="px-3 py-2 text-slate-800 font-medium text-xs">{m.nombre_completo}</td>
                   <td className="px-3 py-2 text-slate-500 text-xs">{m.identificacion}</td>
                   <td className="px-3 py-2 text-slate-500 text-xs">{m.periodo ?? "—"}</td>
@@ -624,12 +784,34 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
                       {m.estado}
                     </span>
                   </td>
+                  {isSuperAdmin && (
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-end gap-2.5">
+                        <button onClick={() => setEditing(m)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => setDeleting(m)} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {agregando && <AgregarMatriculaModal programaId={programaId} onClose={() => setAgregando(false)} onSaved={load} />}
+      {editing && <EditarMatriculaModal item={editing} onClose={() => setEditing(null)} onSaved={load} />}
+      <ConfirmModal
+        open={!!deleting}
+        title="Eliminar matrícula"
+        message={`¿Eliminar la matrícula de "${deleting?.nombre_completo}" en este programa? Esta acción no se puede deshacer.`}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
+      />
     </div>
   );
 }

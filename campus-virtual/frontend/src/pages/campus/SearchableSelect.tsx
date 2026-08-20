@@ -69,7 +69,12 @@ export function SearchableSelect({
   const triggerSize = size === "md" ? "text-sm px-3.5 py-2.5 rounded-xl" : "text-xs px-2.5 py-1.5 rounded-lg";
 
   return (
-    <div className={`relative ${className}`}>
+    // min-w-0 siempre, sin importar el className que traiga cada uso — un
+    // hijo flex-1 con texto largo (ej. un nombre de asignatura) nunca se
+    // encoge por debajo de su ancho de contenido a menos que esto esté
+    // puesto, y eso es lo que hacía que el combo se saliera del modal en
+    // "Administrar prerrequisitos de matrícula".
+    <div className={`relative min-w-0 ${className}`}>
       <button
         ref={triggerRef}
         type="button"

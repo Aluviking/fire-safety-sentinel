@@ -194,6 +194,22 @@ function rol_modulos_por_defecto(string $role): ?array
             'informes.consolidado_notas', 'informes.cartera_general', 'informes.gestion_financiera',
         ]);
     }
+    // Docente — mismo panel administrativo (antes tenía uno aparte, muy
+    // limitado, solo lectura de nombres). Alcance calcado del menú real que
+    // Q10 le muestra a un docente: Estudiantes (sin Docentes/Administrativos),
+    // Evaluaciones, Cursos ligeros/virtuales, Aulas virtuales, Informes. Ver
+    // solamente — crear/editar/eliminar sigue siendo exclusivo de Super
+    // Admin en todos lados, igual que para equipo/administrativo. Además,
+    // list.php de cursos/cursos-ligeros filtra por docente_identificacion
+    // cuando el rol es docente, para que solo vea SUS propios cursos.
+    if ($role === 'docente') {
+        return $ver([
+            'institucional.estudiantes',
+            'academico.evaluaciones', 'academico.cursos_ligeros', 'academico.cursos_virtuales',
+            'academico.aulas_virtuales',
+            'informes.consolidado_notas',
+        ]);
+    }
     return null;
 }
 
