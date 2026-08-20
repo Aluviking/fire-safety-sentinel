@@ -1,362 +1,628 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, ChevronRight, BookOpen, Layers, Users as UsersIcon, Plus, Trash2, Loader2,
-  Megaphone, Video, Settings, Upload, X, Eye, Pencil, Check,
+  ArrowLeft, ChevronRight, BookOpen, Users as UsersIcon, Plus, Loader2,
+  Settings, Upload, X, Pencil, Check, ChevronUp, ChevronDown, Network, Star,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
-import ContenidoEditor from "../ContenidoEditor";
 import { SearchableSelect } from "../SearchableSelect";
-import AsignaturaDetailView, { type Asignatura } from "./AsignaturaDetailView";
+import { ConfirmModal } from "../ConfirmModal";
+import { type Programa, ProgramaFormModal } from "./ProgramasView";
 
-interface Programa {
-  id: number;
-  nombre: string;
-  descripcion: string | null;
-  imagen_path: string | null;
-  publicado: number;
-  dias_disponibles: number | null;
-  certificado_id: number | null;
+interface MatriculaReal {
+  estudiante_id: number; identificacion: string; nombre_completo: string;
+  periodo: string | null; nivel: string | null; estado: string; sede: string | null; jornada: string | null;
 }
-interface EstudianteOption { id: number; identificacion: string; nombre_completo: string }
-interface Matricula { id: number; estudiante_id: number; identificacion: string; nombre_completo: string }
-interface Anuncio { id: number; titulo: string; mensaje: string | null; importancia: string; created_at: string }
-interface AulaRecurso { id: number; nombre: string }
-interface Clase { id: number; titulo: string; aula_recurso_id: number | null; aula_nombre: string | null; fecha_inicio: string; fecha_fin: string | null }
 interface Certificado { id: number; nombre: string }
+interface AsignaturaOption { id: number; codigo: string | null; nombre: string }
+interface PensumAsignatura {
+  id: number; programa_id: number; asignatura_id: number; orden: number;
+  nivel: string | null; creditos: number | null; ih_semanal: number | null; ih_total: number | null;
+  evaluar_para_cerrar: number;
+  asignatura_codigo: string | null; asignatura_nombre: string;
+}
+interface Prerequisito { id: number; prerequisito_asignatura_id: number; prerequisito_nombre: string }
 
 const inputCls = "w-full text-sm bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
 
 const TABS = [
-  { key: "contenido", label: "Contenido del programa", icon: BookOpen },
-  { key: "anuncios", label: "Anuncios", icon: Megaphone },
-  { key: "clases", label: "Clases virtuales", icon: Video },
-  { key: "asignaturas", label: "Asignaturas", icon: Layers },
+  { key: "programa", label: "Programa", icon: BookOpen },
   { key: "estudiantes", label: "Estudiantes", icon: UsersIcon },
   { key: "ajustes", label: "Ajustes", icon: Settings },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
-/* ── Asignaturas del programa (con ojo/lápiz/quitar, igual que el resto) ── */
-function AsignaturasTab({ programaId }: { programaId: number }) {
-  const { currentUser } = useCampusAuth();
-  const isSuperAdmin = currentUser?.role === "super_admin";
-  const [asignaturas, setAsignaturas] = useState<Asignatura[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [viewing, setViewing] = useState<{ asignatura: Asignatura; initialTab: "contenido" | "ajustes" } | null>(null);
-
-  const load = () => {
-    setLoading(true);
-    apiFetch<{ asignaturas: Asignatura[] }>("/asignaturas/list.php")
-      .then((d) => setAsignaturas(d.asignaturas.filter((a) => a.programas.some((p) => p.id === programaId))))
-      .finally(() => setLoading(false));
-  };
-  useEffect(load, [programaId]);
-
-  const quitar = async (a: Asignatura) => {
-    if (!window.confirm(`¿Quitar "${a.nombre}" de este programa? La asignatura no se elimina, solo se desvincula.`)) return;
-    const nuevosProgramaIds = a.programas.filter((p) => p.id !== programaId).map((p) => p.id);
-    await apiFetch("/asignaturas/update.php", { method: "POST", json: { id: a.id, nombre: a.nombre, programaIds: nuevosProgramaIds } });
-    load();
-  };
-
-  if (viewing) {
-    return (
-      <AsignaturaDetailView
-        asignatura={viewing.asignatura}
-        initialTab={viewing.initialTab}
-        onBack={() => { setViewing(null); load(); }}
-        onUpdated={() => {
-          load();
-          apiFetch<{ asignaturas: Asignatura[] }>("/asignaturas/list.php").then((d) => {
-            const fresh = d.asignaturas.find((x) => x.id === viewing.asignatura.id);
-            if (fresh) setViewing({ asignatura: fresh, initialTab: viewing.initialTab });
-          });
-        }}
-      />
-    );
-  }
-
-  if (loading) return <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
-  if (asignaturas.length === 0) {
-    return <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">Este programa aún no tiene asignaturas asociadas.</p>;
-  }
+function InfoField({ label, value }: { label: string; value: string | null }) {
   return (
-    <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-      {asignaturas.map((a) => (
-        <div key={a.id} className="flex items-center gap-2.5 px-4 py-2.5">
-          <Layers className="w-3.5 h-3.5 text-[#C41717]/50 shrink-0" />
-          <p className="text-sm font-medium text-slate-800 flex-1">{a.nombre}</p>
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button onClick={() => setViewing({ asignatura: a, initialTab: "contenido" })} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver asignatura">
-              <Eye className="w-3.5 h-3.5" />
-            </button>
-            {isSuperAdmin && (
-              <>
-                <button onClick={() => setViewing({ asignatura: a, initialTab: "ajustes" })} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => quitar(a)} className="text-slate-400 hover:text-red-500 transition-colors" title="Quitar de este programa">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      ))}
+    <div>
+      <p className="text-xs font-semibold text-slate-500 mb-1">{label}:</p>
+      <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 truncate">{value || "—"}</div>
     </div>
   );
 }
 
-/* ── Estudiantes matriculados en el programa ──────────────────────────────── */
-function EstudiantesTab({ programaId }: { programaId: number }) {
-  const [matriculados, setMatriculados] = useState<Matricula[]>([]);
-  const [estudiantes, setEstudiantes] = useState<EstudianteOption[]>([]);
+/* ── Asignar una asignatura existente al pensum de este programa ─────────── */
+function AsignarAsignaturaModal({
+  programaId, yaAsignadasIds, onClose, onSaved,
+}: { programaId: number; yaAsignadasIds: number[]; onClose: () => void; onSaved: () => void }) {
+  const [asignaturas, setAsignaturas] = useState<AsignaturaOption[]>([]);
+  const [asignaturaId, setAsignaturaId] = useState("");
+  const [nivel, setNivel] = useState("");
+  const [creditos, setCreditos] = useState("");
+  const [ihSemanal, setIhSemanal] = useState("");
+  const [ihTotal, setIhTotal] = useState("");
+  const [evaluarParaCerrar, setEvaluarParaCerrar] = useState(true);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    apiFetch<{ asignaturas: AsignaturaOption[] }>("/asignaturas/list.php").then((d) => setAsignaturas(d.asignaturas)).catch(() => {});
+  }, []);
+
+  const disponibles = asignaturas.filter((a) => !yaAsignadasIds.includes(a.id));
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!asignaturaId) { setError("Selecciona una asignatura."); return; }
+    setSubmitting(true);
+    try {
+      await apiFetch("/programa-asignaturas/create.php", {
+        method: "POST",
+        json: {
+          programaId, asignaturaId: Number(asignaturaId), nivel: nivel || null,
+          creditos: creditos ? Number(creditos) : null, ihSemanal: ihSemanal ? Number(ihSemanal) : null,
+          ihTotal: ihTotal ? Number(ihTotal) : null, evaluarParaCerrar,
+        },
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al asignar.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <p className="text-slate-800 font-bold text-[15px]">Asignar asignatura</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+        </div>
+        <form onSubmit={submit} className="px-5 py-4 space-y-3">
+          <SearchableSelect value={asignaturaId} onChange={setAsignaturaId}
+            options={disponibles.map((a) => ({ value: String(a.id), label: a.nombre }))} placeholder="Seleccione asignatura..." />
+          <div className="grid grid-cols-2 gap-2">
+            <input value={nivel} onChange={(e) => setNivel(e.target.value)} placeholder="Nivel (ej. BASICO)" className={inputCls} />
+            <input value={creditos} onChange={(e) => setCreditos(e.target.value)} type="number" min={0} placeholder="Créditos" className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input value={ihSemanal} onChange={(e) => setIhSemanal(e.target.value)} type="number" min={0} placeholder="IH Semanal" className={inputCls} />
+            <input value={ihTotal} onChange={(e) => setIhTotal(e.target.value)} type="number" min={0} placeholder="IH Total" className={inputCls} />
+          </div>
+          <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200">
+            <p className="text-xs font-semibold text-slate-700">Evaluar para cerrar</p>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+                <input type="radio" checked={evaluarParaCerrar} onChange={() => setEvaluarParaCerrar(true)} className="accent-[#C41717]" /> Sí
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+                <input type="radio" checked={!evaluarParaCerrar} onChange={() => setEvaluarParaCerrar(false)} className="accent-[#C41717]" /> No
+              </label>
+            </div>
+          </div>
+          {error && <p className="text-[11px] text-red-500">{error}</p>}
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={submitting}
+              className="flex-1 text-xs font-semibold bg-[#C41717] hover:bg-[#B01313] text-white rounded-lg py-2 disabled:opacity-60 transition-colors">
+              {submitting ? "Asignando..." : "Asignar"}
+            </button>
+            <button type="button" onClick={onClose} className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ── Editar los ajustes del pensum (nombre + reglas de evaluación) ───────── */
+function EditarPensumModal({ programa, onClose, onSaved }: { programa: Programa; onClose: () => void; onSaved: () => void }) {
+  const [nombre, setNombre] = useState(programa.pensum_nombre || "PENSUM");
+  const [porcentajeInasistencia, setPorcentajeInasistencia] = useState(programa.porcentaje_inasistencia != null ? String(programa.porcentaje_inasistencia) : "");
+  const [notaAprobacion, setNotaAprobacion] = useState(programa.nota_aprobacion != null ? String(programa.nota_aprobacion) : "");
+  const [valorMaximo, setValorMaximo] = useState(programa.valor_maximo_calificacion != null ? String(programa.valor_maximo_calificacion) : "");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!nombre.trim()) { setError("El nombre es obligatorio."); return; }
+    setSubmitting(true);
+    try {
+      await apiFetch("/programas/update-pensum.php", {
+        method: "POST",
+        json: {
+          id: programa.id, pensumNombre: nombre.trim(),
+          porcentajeInasistencia: porcentajeInasistencia ? Number(porcentajeInasistencia) : null,
+          notaAprobacion: notaAprobacion ? Number(notaAprobacion) : null,
+          valorMaximoCalificacion: valorMaximo ? Number(valorMaximo) : null,
+        },
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al guardar.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <p className="text-slate-800 font-bold text-[15px]">Editar pénsum</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+        </div>
+        <form onSubmit={submit} className="px-5 py-4 space-y-3">
+          <div>
+            <label className="block text-slate-500 text-[11px] font-semibold mb-1">Nombre *</label>
+            <input value={nombre} onChange={(e) => setNombre(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-slate-500 text-[11px] font-semibold mb-1">Porcentaje de inasistencia</label>
+            <input value={porcentajeInasistencia} onChange={(e) => setPorcentajeInasistencia(e.target.value)} type="number" min={0} max={100} placeholder="Ej. 30" className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-slate-500 text-[11px] font-semibold mb-1">Nota de aprobación</label>
+              <input value={notaAprobacion} onChange={(e) => setNotaAprobacion(e.target.value)} type="number" step="0.1" min={0} placeholder="Ej. 3.5" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-slate-500 text-[11px] font-semibold mb-1">Valor máximo</label>
+              <input value={valorMaximo} onChange={(e) => setValorMaximo(e.target.value)} type="number" step="0.1" min={0} placeholder="Ej. 5" className={inputCls} />
+            </div>
+          </div>
+          {error && <p className="text-[11px] text-red-500">{error}</p>}
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={submitting}
+              className="flex-1 text-xs font-semibold bg-[#C41717] hover:bg-[#B01313] text-white rounded-lg py-2 disabled:opacity-60 transition-colors">
+              {submitting ? "Guardando..." : "Aceptar"}
+            </button>
+            <button type="button" onClick={onClose} className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ── Editar nivel/créditos/IH/evaluar-para-cerrar de una asignatura DENTRO de este pensum ── */
+function EditarAsignaturaPensumModal({ item, onClose, onSaved }: { item: PensumAsignatura; onClose: () => void; onSaved: () => void }) {
+  const [nivel, setNivel] = useState(item.nivel ?? "");
+  const [creditos, setCreditos] = useState(item.creditos != null ? String(item.creditos) : "");
+  const [ihSemanal, setIhSemanal] = useState(item.ih_semanal != null ? String(item.ih_semanal) : "");
+  const [ihTotal, setIhTotal] = useState(item.ih_total != null ? String(item.ih_total) : "");
+  const [evaluarParaCerrar, setEvaluarParaCerrar] = useState(!!item.evaluar_para_cerrar);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await apiFetch("/programa-asignaturas/update.php", {
+        method: "POST",
+        json: {
+          id: item.id, nivel: nivel || null, creditos: creditos ? Number(creditos) : null,
+          ihSemanal: ihSemanal ? Number(ihSemanal) : null, ihTotal: ihTotal ? Number(ihTotal) : null,
+          evaluarParaCerrar,
+        },
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Error al guardar.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <p className="text-slate-800 font-bold text-[15px]">Editar asignatura</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+        </div>
+        <form onSubmit={submit} className="px-5 py-4 space-y-3">
+          <div>
+            <label className="block text-slate-500 text-[11px] font-semibold mb-1">Asignatura</label>
+            <input value={item.asignatura_nombre} disabled className={`${inputCls} bg-slate-50 text-slate-400`} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-slate-500 text-[11px] font-semibold mb-1">Nivel *</label>
+              <input value={nivel} onChange={(e) => setNivel(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-slate-500 text-[11px] font-semibold mb-1">Créditos *</label>
+              <input value={creditos} onChange={(e) => setCreditos(e.target.value)} type="number" min={0} className={inputCls} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-slate-500 text-[11px] font-semibold mb-1">IH Semanal *</label>
+              <input value={ihSemanal} onChange={(e) => setIhSemanal(e.target.value)} type="number" min={0} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-slate-500 text-[11px] font-semibold mb-1">IH Total *</label>
+              <input value={ihTotal} onChange={(e) => setIhTotal(e.target.value)} type="number" min={0} className={inputCls} />
+            </div>
+          </div>
+          <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200">
+            <p className="text-xs font-semibold text-slate-700">Evaluar para cerrar *</p>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+                <input type="radio" checked={evaluarParaCerrar} onChange={() => setEvaluarParaCerrar(true)} className="accent-[#C41717]" /> Sí
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+                <input type="radio" checked={!evaluarParaCerrar} onChange={() => setEvaluarParaCerrar(false)} className="accent-[#C41717]" /> No
+              </label>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={submitting}
+              className="flex-1 text-xs font-semibold bg-[#C41717] hover:bg-[#B01313] text-white rounded-lg py-2 disabled:opacity-60 transition-colors">
+              {submitting ? "Guardando..." : "Aceptar"}
+            </button>
+            <button type="button" onClick={onClose} className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ── Prerrequisitos de matrícula de una asignatura, dentro de este programa ── */
+function PrerequisitosModal({
+  programaId, item, candidatas, onClose,
+}: { programaId: number; item: PensumAsignatura; candidatas: PensumAsignatura[]; onClose: () => void }) {
+  const [prerequisitos, setPrerequisitos] = useState<Prerequisito[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState("");
   const [adding, setAdding] = useState(false);
-  const [error, setError] = useState("");
 
   const load = () => {
     setLoading(true);
-    Promise.all([
-      apiFetch<{ matriculados: Matricula[] }>(`/programa-estudiantes/list.php?programaId=${programaId}`),
-      apiFetch<{ estudiantes: EstudianteOption[] }>("/estudiantes/list.php"),
-    ]).then(([m, e]) => { setMatriculados(m.matriculados); setEstudiantes(e.estudiantes); }).finally(() => setLoading(false));
+    apiFetch<{ prerequisitos: Prerequisito[] }>(`/programa-asignatura-prerequisitos/list.php?programaId=${programaId}&asignaturaId=${item.asignatura_id}`)
+      .then((d) => setPrerequisitos(d.prerequisitos)).finally(() => setLoading(false));
   };
-  useEffect(load, [programaId]);
+  useEffect(load, [programaId, item.asignatura_id]);
 
-  const inscritosIds = new Set(matriculados.map((m) => m.estudiante_id));
-  const disponibles = estudiantes.filter((e) => !inscritosIds.has(e.id));
+  const yaSonPrereq = new Set(prerequisitos.map((p) => p.prerequisito_asignatura_id));
+  const disponibles = candidatas.filter((c) => !yaSonPrereq.has(c.asignatura_id));
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedId) return;
-    setError("");
     setAdding(true);
     try {
-      await apiFetch("/programa-estudiantes/create.php", { method: "POST", json: { programaId, estudianteId: Number(selectedId) } });
+      await apiFetch("/programa-asignatura-prerequisitos/create.php", {
+        method: "POST",
+        json: { programaId, asignaturaId: item.asignatura_id, prerequisitoAsignaturaId: Number(selectedId) },
+      });
       setSelectedId("");
       load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al matricular.");
     } finally {
       setAdding(false);
     }
   };
 
   const remove = async (id: number) => {
-    await apiFetch("/programa-estudiantes/delete.php", { method: "POST", json: { id } });
+    await apiFetch("/programa-asignatura-prerequisitos/delete.php", { method: "POST", json: { id } });
     load();
   };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <p className="text-slate-800 font-bold text-[15px]">Administrar prerrequisitos de matrícula</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          <p className="text-xs text-slate-500"><span className="font-semibold text-slate-700">Asignatura:</span> {item.asignatura_nombre}</p>
+          <form onSubmit={add} className="flex gap-2">
+            <SearchableSelect value={selectedId} onChange={setSelectedId}
+              options={disponibles.map((c) => ({ value: String(c.asignatura_id), label: c.asignatura_nombre }))}
+              placeholder="Seleccione..." className="flex-1" />
+            <button type="submit" disabled={adding || !selectedId}
+              className="px-4 rounded-lg bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold disabled:opacity-60 transition-colors shrink-0">
+              Agregar
+            </button>
+          </form>
+          {loading ? (
+            <div className="flex justify-center py-6 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+          ) : prerequisitos.length === 0 ? (
+            <p className="text-slate-400 text-xs text-center py-6 border border-slate-200 rounded-xl">No hay registros.</p>
+          ) : (
+            <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+              {prerequisitos.map((p) => (
+                <div key={p.id} className="flex items-center justify-between px-3.5 py-2.5">
+                  <p className="text-sm text-slate-700">{p.prerequisito_nombre}</p>
+                  <button onClick={() => remove(p.id)} className="text-slate-400 hover:text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Sección Pensum (settings + tabla de asignaturas del programa) ───────── */
+function PensumSection({ programa, canEdit, onUpdated }: { programa: Programa; canEdit: boolean; onUpdated: () => void }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [asignaturas, setAsignaturas] = useState<PensumAsignatura[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [asignando, setAsignando] = useState(false);
+  const [editandoPensum, setEditandoPensum] = useState(false);
+  const [eliminandoPensum, setEliminandoPensum] = useState(false);
+  const [editingAsig, setEditingAsig] = useState<PensumAsignatura | null>(null);
+  const [prerequisitosDe, setPrerequisitosDe] = useState<PensumAsignatura | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    apiFetch<{ asignaturas: PensumAsignatura[] }>(`/programa-asignaturas/list.php?programaId=${programa.id}`)
+      .then((d) => setAsignaturas(d.asignaturas)).finally(() => setLoading(false));
+  };
+  useEffect(load, [programa.id]);
+
+  const quitarAsignatura = async (pa: PensumAsignatura) => {
+    if (!window.confirm(`¿Quitar "${pa.asignatura_nombre}" de este pensum?`)) return;
+    await apiFetch("/programa-asignaturas/delete.php", { method: "POST", json: { id: pa.id } });
+    load();
+  };
+
+  const confirmEliminarPensum = async () => {
+    await apiFetch("/programas/reset-pensum.php", { method: "POST", json: { id: programa.id } });
+    setEliminandoPensum(false);
+    load();
+    onUpdated();
+  };
+
+  return (
+    <div className="border border-slate-200 rounded-xl overflow-hidden">
+      <div className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+        <button onClick={() => setCollapsed((v) => !v)} className="flex items-center gap-2 text-sm font-bold text-slate-700">
+          {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          {(programa.pensum_nombre || "PENSUM").toUpperCase()}
+        </button>
+        {canEdit && !collapsed && (
+          <div className="flex items-center gap-4">
+            <button onClick={() => setAsignando(true)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
+              <Plus className="w-3.5 h-3.5" /> Asignar asignatura
+            </button>
+            <button onClick={() => setEditandoPensum(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#C41717]">
+              <Pencil className="w-3.5 h-3.5" /> Editar pensum
+            </button>
+            <button onClick={() => setEliminandoPensum(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-red-500">
+              <X className="w-3.5 h-3.5" /> Eliminar pensum
+            </button>
+          </div>
+        )}
+      </div>
+
+      {!collapsed && (
+        <div className="p-4 space-y-4">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold">
+            <Star className="w-3 h-3 fill-current" /> Pensum actual
+          </span>
+          <div className="grid sm:grid-cols-3 gap-4">
+            <InfoField label="Porcentaje de inasistencia" value={programa.porcentaje_inasistencia != null ? `${programa.porcentaje_inasistencia}%` : null} />
+            <InfoField label="Nota de aprobación" value={programa.nota_aprobacion != null ? String(programa.nota_aprobacion) : null} />
+            <InfoField label="Valor máximo de calificación" value={programa.valor_maximo_calificacion != null ? String(programa.valor_maximo_calificacion) : null} />
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+          ) : asignaturas.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">Este pensum aún no tiene asignaturas.</p>
+          ) : (
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Código</th>
+                    <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Asignatura</th>
+                    <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Nivel</th>
+                    <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Créditos</th>
+                    <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">IH Semanal</th>
+                    <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">IH Total</th>
+                    {canEdit && <th className="text-right px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Acciones</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {asignaturas.map((pa) => (
+                    <tr key={pa.id} className="hover:bg-slate-50/70">
+                      <td className="px-3 py-2 text-slate-500 text-xs whitespace-nowrap">{String(pa.orden).padStart(2, "0")} - {programa.codigo ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-800 font-medium text-xs">{pa.asignatura_nombre}</td>
+                      <td className="px-3 py-2 text-slate-500 text-xs">{pa.nivel ?? "—"}</td>
+                      <td className="px-3 py-2 text-center text-slate-500 text-xs">{pa.creditos ?? 0}</td>
+                      <td className="px-3 py-2 text-center text-slate-500 text-xs">{pa.ih_semanal ?? "—"}</td>
+                      <td className="px-3 py-2 text-center text-slate-500 text-xs">{pa.ih_total ?? "—"}</td>
+                      {canEdit && (
+                        <td className="px-3 py-2">
+                          <div className="flex items-center justify-end gap-2.5">
+                            <button onClick={() => setPrerequisitosDe(pa)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Prerrequisitos">
+                              <Network className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => setEditingAsig(pa)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => quitarAsignatura(pa)} className="text-slate-400 hover:text-red-500 transition-colors" title="Quitar">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {asignando && (
+        <AsignarAsignaturaModal programaId={programa.id} yaAsignadasIds={asignaturas.map((a) => a.asignatura_id)}
+          onClose={() => setAsignando(false)} onSaved={load} />
+      )}
+      {editandoPensum && <EditarPensumModal programa={programa} onClose={() => setEditandoPensum(false)} onSaved={onUpdated} />}
+      {editingAsig && <EditarAsignaturaPensumModal item={editingAsig} onClose={() => setEditingAsig(null)} onSaved={load} />}
+      {prerequisitosDe && (
+        <PrerequisitosModal programaId={programa.id} item={prerequisitosDe}
+          candidatas={asignaturas.filter((a) => a.asignatura_id !== prerequisitosDe.asignatura_id)}
+          onClose={() => setPrerequisitosDe(null)} />
+      )}
+      <ConfirmModal
+        open={eliminandoPensum}
+        title="Eliminar pensum"
+        message={`¿Eliminar el pensum "${programa.pensum_nombre || "PENSUM"}"? Se quitarán todas sus asignaturas y prerrequisitos. Esta acción no se puede deshacer.`}
+        onConfirm={confirmEliminarPensum}
+        onCancel={() => setEliminandoPensum(false)}
+      />
+    </div>
+  );
+}
+
+/* ── Ficha del programa + su Pensum (reemplaza el viejo "Contenido del programa") ── */
+function FichaYPensumTab({
+  programa, canEdit, onBack, onUpdated,
+}: { programa: Programa; canEdit: boolean; onBack: () => void; onUpdated: () => void }) {
+  const [editingFicha, setEditingFicha] = useState(false);
+  const [deletingPrograma, setDeletingPrograma] = useState(false);
+
+  const confirmDeletePrograma = async () => {
+    await apiFetch("/programas/delete.php", { method: "POST", json: { id: programa.id } });
+    setDeletingPrograma(false);
+    onBack();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Programa:</h3>
+          {canEdit && (
+            <div className="flex items-center gap-4">
+              <button onClick={() => setEditingFicha(true)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
+                <Pencil className="w-3.5 h-3.5" /> Editar
+              </button>
+              <button onClick={() => setDeletingPrograma(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-red-500">
+                <X className="w-3.5 h-3.5" /> Eliminar
+              </button>
+            </div>
+          )}
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 mb-4">{programa.nombre}</h2>
+        <div className="grid sm:grid-cols-3 gap-4">
+          <InfoField label="Código" value={programa.codigo} />
+          <InfoField label="N° Res. autorización" value={programa.num_resolucion} />
+          <InfoField label="F. Res. autorización" value={programa.fecha_resolucion ? new Date(programa.fecha_resolucion).toLocaleDateString("es-CO") : null} />
+          <InfoField label="Aplica para preinscripciones" value={programa.aplica_preinscripcion} />
+          <InfoField label="Aplica para grupos" value={programa.aplica_grupos} />
+          <InfoField label="Estado" value={programa.estado} />
+          <InfoField label="Categoría" value={programa.categoria} />
+        </div>
+      </div>
+
+      <PensumSection programa={programa} canEdit={canEdit} onUpdated={onUpdated} />
+
+      <ProgramaFormModal target={editingFicha ? programa : null} onClose={() => setEditingFicha(false)} onSaved={onUpdated} />
+      <ConfirmModal
+        open={deletingPrograma}
+        title="Eliminar programa"
+        message={`¿Eliminar "${programa.nombre}"? Esta acción no se puede deshacer.`}
+        onConfirm={confirmDeletePrograma}
+        onCancel={() => setDeletingPrograma(false)}
+      />
+    </div>
+  );
+}
+
+/* ── Estudiantes matriculados en el programa — matrícula REAL (histórico
+     importado de Q10, tabla `matriculas`), de solo lectura. Ya no hay
+     "Matricular"/"Quitar" a mano: la matrícula académica real es la fuente
+     de verdad, no una lista aparte que había que llenar desde cero. ───────── */
+const ESTADO_MATRICULA_BADGE: Record<string, string> = {
+  ACTIVO: "bg-emerald-50 border-emerald-200 text-emerald-700",
+  INACTIVO: "bg-slate-100 border-slate-200 text-slate-500",
+  CANCELADO: "bg-red-50 border-red-200 text-red-600",
+  GRADUADO: "bg-blue-50 border-blue-200 text-blue-700",
+};
+
+function EstudiantesTab({ programaId }: { programaId: number }) {
+  const [matriculados, setMatriculados] = useState<MatriculaReal[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    apiFetch<{ matriculados: MatriculaReal[] }>(`/programa-matriculas/list.php?programaId=${programaId}`)
+      .then((d) => setMatriculados(d.matriculados))
+      .finally(() => setLoading(false));
+  }, [programaId]);
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700">Estudiantes ({matriculados.length})</h3>
+        <p className="text-[11px] text-slate-400">Matrícula real — histórico importado, de solo lectura.</p>
       </div>
-      <form onSubmit={add} className="flex gap-2">
-        <SearchableSelect
-          value={selectedId} onChange={setSelectedId}
-          options={disponibles.map((e) => ({ value: String(e.id), label: e.nombre_completo, keywords: e.identificacion }))}
-          placeholder="Seleccione estudiante..."
-          className="flex-1"
-        />
-        <button type="submit" disabled={adding || !selectedId}
-          className="flex items-center gap-1.5 px-4 rounded-lg bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0">
-          <Plus className="w-3.5 h-3.5" /> Matricular
-        </button>
-      </form>
-      {error && <p className="text-[11px] text-red-500">{error}</p>}
 
       {loading ? (
         <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : matriculados.length === 0 ? (
-        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">Aún no hay estudiantes matriculados en este programa.</p>
-      ) : (
-        <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-          {matriculados.map((m) => (
-            <div key={m.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-800 truncate">{m.nombre_completo}</p>
-                <p className="text-xs text-slate-400">{m.identificacion}</p>
-              </div>
-              <button onClick={() => remove(m.id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0" title="Quitar del programa">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Anuncios ─────────────────────────────────────────────────────────────── */
-function AnunciosTab({ programaId }: { programaId: number }) {
-  const [items, setItems] = useState<Anuncio[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [titulo, setTitulo] = useState("");
-  const [mensaje, setMensaje] = useState("");
-  const [importancia, setImportancia] = useState("Normal");
-
-  const load = () => {
-    setLoading(true);
-    apiFetch<{ anuncios: Anuncio[] }>(`/programa-anuncios/list.php?programaId=${programaId}`)
-      .then((d) => setItems(d.anuncios)).finally(() => setLoading(false));
-  };
-  useEffect(load, [programaId]);
-
-  const add = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!titulo.trim()) return;
-    await apiFetch("/programa-anuncios/create.php", { method: "POST", json: { programaId, titulo: titulo.trim(), mensaje: mensaje || null, importancia } });
-    setTitulo(""); setMensaje(""); setImportancia("Normal"); setCreating(false);
-    load();
-  };
-
-  const remove = async (id: number) => {
-    await apiFetch("/programa-anuncios/delete.php", { method: "POST", json: { id } });
-    load();
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">Anuncios</h3>
-        <button onClick={() => setCreating((v) => !v)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
-          <Plus className="w-3.5 h-3.5" /> Crear anuncio
-        </button>
-      </div>
-      {creating && (
-        <form onSubmit={add} className="space-y-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
-          <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título del anuncio" className={inputCls} />
-          <textarea value={mensaje} onChange={(e) => setMensaje(e.target.value)} placeholder="Mensaje (opcional)" rows={3} className={inputCls} />
-          <div className="flex gap-2">
-            <select value={importancia} onChange={(e) => setImportancia(e.target.value)} className={inputCls}>
-              <option value="Normal">Normal</option>
-              <option value="Importante">Importante</option>
-            </select>
-            <button type="submit" className="px-4 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold shrink-0">Publicar</button>
-          </div>
-        </form>
-      )}
-      {loading ? (
-        <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
-      ) : items.length === 0 ? (
-        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">No hay anuncios actualmente cargados.</p>
-      ) : (
-        <div className="space-y-2">
-          {items.map((a) => (
-            <div key={a.id} className="p-3.5 rounded-xl border border-slate-200 group">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">{a.titulo}</p>
-                  {a.mensaje && <p className="text-xs text-slate-500 mt-0.5">{a.mensaje}</p>}
-                </div>
-                <button onClick={() => remove(a.id)} className="text-slate-300 group-hover:text-red-500 transition-colors shrink-0">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Clases virtuales ─────────────────────────────────────────────────────── */
-function ClasesTab({ programaId }: { programaId: number }) {
-  const [clases, setClases] = useState<Clase[]>([]);
-  const [aulas, setAulas] = useState<AulaRecurso[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [subtab, setSubtab] = useState<"proximas" | "anteriores">("proximas");
-  const [creating, setCreating] = useState(false);
-  const [titulo, setTitulo] = useState("");
-  const [aulaId, setAulaId] = useState("");
-  const [fechaInicio, setFechaInicio] = useState("");
-  const [fechaFin, setFechaFin] = useState("");
-
-  const load = () => {
-    setLoading(true);
-    Promise.all([
-      apiFetch<{ clases: Clase[] }>(`/programa-clases/list.php?programaId=${programaId}`),
-      apiFetch<{ aulas: AulaRecurso[] }>("/aulas-recursos/list.php"),
-    ]).then(([c, a]) => { setClases(c.clases); setAulas(a.aulas); }).finally(() => setLoading(false));
-  };
-  useEffect(load, [programaId]);
-
-  const add = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!titulo.trim() || !fechaInicio) return;
-    await apiFetch("/programa-clases/create.php", {
-      method: "POST",
-      json: { programaId, titulo: titulo.trim(), aulaRecursoId: aulaId ? Number(aulaId) : null, fechaInicio, fechaFin: fechaFin || null },
-    });
-    setTitulo(""); setAulaId(""); setFechaInicio(""); setFechaFin(""); setCreating(false);
-    load();
-  };
-
-  const remove = async (id: number) => {
-    await apiFetch("/programa-clases/delete.php", { method: "POST", json: { id } });
-    load();
-  };
-
-  const now = new Date();
-  const filtered = clases.filter((c) => (subtab === "proximas" ? new Date(c.fecha_inicio) >= now : new Date(c.fecha_inicio) < now));
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1">
-          <button onClick={() => setSubtab("proximas")} className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${subtab === "proximas" ? "bg-[#C41717]/10 text-[#C41717]" : "text-slate-500"}`}>Próximas clases</button>
-          <button onClick={() => setSubtab("anteriores")} className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${subtab === "anteriores" ? "bg-[#C41717]/10 text-[#C41717]" : "text-slate-500"}`}>Clases anteriores</button>
-        </div>
-        <button onClick={() => setCreating((v) => !v)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
-          <Plus className="w-3.5 h-3.5" /> Programar clase
-        </button>
-      </div>
-      {creating && (
-        <form onSubmit={add} className="space-y-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
-          <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título de la clase" className={inputCls} />
-          <SearchableSelect
-            value={aulaId} onChange={setAulaId}
-            options={aulas.map((a) => ({ value: String(a.id), label: a.nombre }))}
-            placeholder="Aula virtual (opcional)..."
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <input value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} type="datetime-local" className={inputCls} />
-            <input value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} type="datetime-local" className={inputCls} />
-          </div>
-          <button type="submit" className="px-4 py-2 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold">Programar</button>
-        </form>
-      )}
-      {loading ? (
-        <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
-      ) : filtered.length === 0 ? (
-        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">No hay registros.</p>
+        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">No hay estudiantes matriculados en este programa.</p>
       ) : (
         <div className="overflow-x-auto border border-slate-200 rounded-xl">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Clase</th>
-                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Aula</th>
-                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Inicio</th>
-                <th className="text-right px-3 py-2"></th>
+                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estudiante</th>
+                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Identificación</th>
+                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Período</th>
+                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Jornada</th>
+                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Nivel</th>
+                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estado</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50/70">
-                  <td className="px-3 py-2 text-slate-800 font-medium text-xs whitespace-nowrap">{c.titulo}</td>
-                  <td className="px-3 py-2 text-slate-500 text-xs">{c.aula_nombre ?? "—"}</td>
-                  <td className="px-3 py-2 text-slate-500 text-xs whitespace-nowrap">{new Date(c.fecha_inicio).toLocaleString("es-CO")}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button onClick={() => remove(c.id)} className="text-slate-300 hover:text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
+              {matriculados.map((m, i) => (
+                <tr key={`${m.estudiante_id}-${i}`} className="hover:bg-slate-50/70">
+                  <td className="px-3 py-2 text-slate-800 font-medium text-xs">{m.nombre_completo}</td>
+                  <td className="px-3 py-2 text-slate-500 text-xs">{m.identificacion}</td>
+                  <td className="px-3 py-2 text-slate-500 text-xs">{m.periodo ?? "—"}</td>
+                  <td className="px-3 py-2 text-slate-500 text-xs">{m.jornada ?? "—"}</td>
+                  <td className="px-3 py-2 text-slate-500 text-xs">{m.nivel ?? "—"}</td>
+                  <td className="px-3 py-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-medium ${ESTADO_MATRICULA_BADGE[m.estado] ?? "bg-slate-100 border-slate-200 text-slate-500"}`}>
+                      {m.estado}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -498,7 +764,7 @@ export default function ProgramaDetailView({
 }: { programa: Programa; onBack: () => void; onUpdated: () => void }) {
   const { currentUser } = useCampusAuth();
   const canEditSettings = currentUser?.role === "super_admin";
-  const [tab, setTab] = useState<TabKey>("contenido");
+  const [tab, setTab] = useState<TabKey>("programa");
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
@@ -522,15 +788,7 @@ export default function ProgramaDetailView({
             </nav>
           </div>
           <div className="flex-1 p-5 min-w-0">
-            {tab === "contenido" && (
-              <ContenidoEditor
-                contentBase="/programa-contenido" questionsBase="/programa-preguntas" ownerIdKey="programaId" ownerId={programa.id}
-                heading="Contenido del programa" addLabel="Agregar programa"
-              />
-            )}
-            {tab === "anuncios" && <AnunciosTab programaId={programa.id} />}
-            {tab === "clases" && <ClasesTab programaId={programa.id} />}
-            {tab === "asignaturas" && <AsignaturasTab programaId={programa.id} />}
+            {tab === "programa" && <FichaYPensumTab programa={programa} canEdit={canEditSettings} onBack={onBack} onUpdated={onUpdated} />}
             {tab === "estudiantes" && <EstudiantesTab programaId={programa.id} />}
             {tab === "ajustes" && <AjustesTab programa={programa} canEdit={canEditSettings} onUpdated={onUpdated} />}
           </div>

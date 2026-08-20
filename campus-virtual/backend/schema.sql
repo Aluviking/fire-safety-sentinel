@@ -337,10 +337,41 @@ CREATE TABLE IF NOT EXISTS programa_asignaturas (
   id             INT AUTO_INCREMENT PRIMARY KEY,
   programa_id    INT NOT NULL,
   asignatura_id  INT NOT NULL,
+  -- Fase 20: el pensum de un programa no es solo "qué asignaturas tiene" —
+  -- cada asignatura, DENTRO de este programa puntual, tiene su propio
+  -- nivel/créditos/intensidad horaria y si cuenta para cerrar el programa
+  -- (igual que en Q10: son valores del vínculo, no de la asignatura global).
+  orden               INT NOT NULL DEFAULT 0,
+  nivel               VARCHAR(50) NULL,
+  creditos            INT NULL,
+  ih_semanal          INT NULL,
+  ih_total            INT NULL,
+  evaluar_para_cerrar TINYINT(1) NOT NULL DEFAULT 1,
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_programa_asignatura (programa_id, asignatura_id),
   FOREIGN KEY (programa_id)   REFERENCES programas(id)   ON DELETE CASCADE,
   FOREIGN KEY (asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Fase 20 — Pensum real de un Programa (igual a Q10): la propia tabla
+-- `programas` gana sus ajustes de pensum, y se agrega el prerrequisito entre
+-- asignaturas DENTRO de un programa puntual (la misma asignatura puede tener
+-- prerrequisitos distintos según el programa en el que esté).
+ALTER TABLE programas
+  ADD COLUMN pensum_nombre              VARCHAR(100) NULL DEFAULT 'PENSUM',
+  ADD COLUMN porcentaje_inasistencia    DECIMAL(5,2) NULL,
+  ADD COLUMN nota_aprobacion            DECIMAL(3,1) NULL,
+  ADD COLUMN valor_maximo_calificacion  DECIMAL(3,1) NULL;
+
+CREATE TABLE IF NOT EXISTS programa_asignatura_prerequisitos (
+  id                          INT AUTO_INCREMENT PRIMARY KEY,
+  programa_id                 INT NOT NULL,
+  asignatura_id               INT NOT NULL,
+  prerequisito_asignatura_id  INT NOT NULL,
+  UNIQUE KEY uniq_prerequisito (programa_id, asignatura_id, prerequisito_asignatura_id),
+  FOREIGN KEY (programa_id)                REFERENCES programas(id)   ON DELETE CASCADE,
+  FOREIGN KEY (asignatura_id)              REFERENCES asignaturas(id) ON DELETE CASCADE,
+  FOREIGN KEY (prerequisito_asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS cursos (

@@ -42,14 +42,27 @@ db()->prepare(
     $id,
 ]);
 
-// Resincroniza los programas vinculados: borra los actuales y vuelve a
-// insertar los que llegaron en la petición (mismo patrón que create.php).
-db()->prepare('DELETE FROM programa_asignaturas WHERE asignatura_id = ?')->execute([$id]);
-$programaIds = $body['programaIds'] ?? [];
-if (is_array($programaIds)) {
-    $stmt = db()->prepare('INSERT IGNORE INTO programa_asignaturas (programa_id, asignatura_id) VALUES (?, ?)');
-    foreach ($programaIds as $pid) {
-        $stmt->execute([(int) $pid, $id]);
+// Resincroniza los programas vinculados — a diferencia de antes, ya NO se
+// borran todos los vínculos y se reinsertan de cero: cada vínculo ahora
+// guarda su propio nivel/créditos/IH/orden de pensum (Fase 20), y un borra-e-
+// inserta ciego destruiría esa metadata cada vez que alguien solo edita el
+// nombre de la asignatura desde su propio módulo. Se calcula la diferencia:
+// solo se quitan los programas que de verdad se deseleccionaron, y solo se
+// agregan los que de verdad son nuevos.
+$stmt = db()->prepare('SELECT programa_id FROM programa_asignaturas WHERE asignatura_id = ?');
+$stmt->execute([$id]);
+$idsActuales = array_map('intval', array_column($stmt->fetchAll(), 'programa_id'));
+$idsNuevos   = array_map('intval', is_array($body['programaIds'] ?? null) ? $body['programaIds'] : []);
+
+foreach (array_diff($idsActuales, $idsNuevos) as $pid) {
+    db()->prepare('DELETE FROM programa_asignatura_prerequisitos WHERE programa_id = ? AND (asignatura_id = ? OR prerequisito_asignatura_id = ?)')
+        ->execute([$pid, $id, $id]);
+    db()->prepare('DELETE FROM programa_asignaturas WHERE programa_id = ? AND asignatura_id = ?')->execute([$pid, $id]);
+}
+if (!empty(array_diff($idsNuevos, $idsActuales))) {
+    $insert = db()->prepare('INSERT IGNORE INTO programa_asignaturas (programa_id, asignatura_id) VALUES (?, ?)');
+    foreach (array_diff($idsNuevos, $idsActuales) as $pid) {
+        $insert->execute([$pid, $id]);
     }
 }
 

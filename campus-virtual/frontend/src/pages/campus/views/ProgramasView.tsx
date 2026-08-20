@@ -6,7 +6,7 @@ import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
 import ProgramaDetailView from "./ProgramaDetailView";
 
-interface Programa {
+export interface Programa {
   id: number;
   codigo: string | null;
   nombre: string;
@@ -25,6 +25,10 @@ interface Programa {
   publicado: number;
   dias_disponibles: number | null;
   certificado_id: number | null;
+  pensum_nombre: string | null;
+  porcentaje_inasistencia: number | null;
+  nota_aprobacion: number | null;
+  valor_maximo_calificacion: number | null;
 }
 
 // Mismas 26 categorías del clasificador oficial (CINE-F / SNIES) que ya usa
@@ -72,7 +76,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="block text-slate-500 text-[11px] font-semibold mb-1">{children}</label>;
 }
 
-function ProgramaFormModal({
+export function ProgramaFormModal({
   target, onClose, onSaved,
 }: { target: Programa | "new" | null; onClose: () => void; onSaved: () => void }) {
   const isOpen = target !== null;

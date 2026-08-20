@@ -8,15 +8,18 @@ if (empty($user['identificacion'])) {
     respond(['ok' => true, 'programas' => [], 'vinculado' => false]);
 }
 
-// Igual que cursos ligeros: matricular al estudiante ya es suficiente para
-// que lo vea — no hace falta un paso aparte de "publicar".
+// La matrícula real es el histórico importado de Q10 (tabla `matriculas`,
+// programa guardado como texto libre "{nombre} - {jornada}", sin FK) — ya no
+// depende de que alguien lo matricule a mano en Campus Virtual. Se excluyen
+// solo los CANCELADO (el estudiante se retiró); ACTIVO/INACTIVO/GRADUADO sí
+// dan acceso al contenido, igual que cursos ligeros no exige "publicar".
 $stmt = db()->prepare(
-    'SELECT p.id, p.nombre, p.descripcion, p.imagen_path, p.dias_disponibles
+    "SELECT DISTINCT p.id, p.nombre, p.descripcion, p.imagen_path, p.dias_disponibles
      FROM programas p
-     JOIN programa_estudiantes pe ON pe.programa_id = p.id
-     JOIN estudiantes e ON e.id = pe.estudiante_id
+     JOIN matriculas m ON m.programa LIKE CONCAT(p.nombre, ' - %') AND m.estado != 'CANCELADO'
+     JOIN estudiantes e ON e.id = m.estudiante_id
      WHERE e.identificacion = ?
-     ORDER BY p.nombre'
+     ORDER BY p.nombre"
 );
 $stmt->execute([$user['identificacion']]);
 respond(['ok' => true, 'programas' => $stmt->fetchAll(), 'vinculado' => true]);
