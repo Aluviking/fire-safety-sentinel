@@ -243,6 +243,80 @@ function RecursoFormModal({
   );
 }
 
+/* ── Importar una pregunta ya existente del Banco de preguntas ────────────── */
+interface BancoEtiqueta { id: number; nombre: string; color: string | null }
+interface BancoPreguntaSlim { id: number; titulo: string; tipo: number; etiquetas: BancoEtiqueta[] }
+interface BancoOpcion { texto: string; correcta: boolean }
+interface BancoPar { termino: string; respuesta: string }
+interface BancoPreguntaDetalle extends BancoPreguntaSlim {
+  descripcion: string; puntos: number; aplica_retroalimentacion: number; retroalimentacion: string | null;
+  opciones: BancoOpcion[]; pares: BancoPar[];
+}
+const BANCO_TIPO_LABEL: Record<number, string> = { 1: "Única respuesta", 2: "Múltiple respuesta", 4: "Asociación", 6: "Descriptiva" };
+
+function ImportarBancoModal({ onClose, onImport }: { onClose: () => void; onImport: (p: BancoPreguntaDetalle) => void }) {
+  const [etiquetas, setEtiquetas] = useState<BancoEtiqueta[]>([]);
+  const [preguntas, setPreguntas] = useState<BancoPreguntaSlim[]>([]);
+  const [filtroEtiqueta, setFiltroEtiqueta] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingId, setLoadingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      apiFetch<{ etiquetas: BancoEtiqueta[] }>("/banco-etiquetas/list.php"),
+      apiFetch<{ preguntas: BancoPreguntaSlim[] }>("/banco-preguntas/list.php"),
+    ])
+      .then(([et, pr]) => { setEtiquetas(et.etiquetas); setPreguntas(pr.preguntas.filter((p) => p.tipo !== 3)); })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtradas = filtroEtiqueta ? preguntas.filter((p) => p.etiquetas.some((e) => e.id === filtroEtiqueta)) : preguntas;
+
+  const pick = async (id: number) => {
+    setLoadingId(id);
+    try {
+      const { pregunta } = await apiFetch<{ pregunta: BancoPreguntaDetalle }>(`/banco-preguntas/detail.php?id=${id}`);
+      onImport(pregunta);
+      onClose();
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4 py-8">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-full overflow-hidden flex flex-col">
+        <div className="h-[3px] bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/30 shrink-0" />
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
+          <h3 className="font-bold text-slate-800">Importar del banco de preguntas</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="px-5 py-3 border-b border-slate-100 shrink-0">
+          <select value={filtroEtiqueta ?? ""} onChange={(e) => setFiltroEtiqueta(e.target.value ? Number(e.target.value) : null)} className={inputCls}>
+            <option value="">Todas las etiquetas</option>
+            {etiquetas.map((et) => <option key={et.id} value={et.id}>{et.nombre}</option>)}
+          </select>
+        </div>
+        <div className="overflow-y-auto px-5 py-3 space-y-1.5">
+          {loading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
+          ) : filtradas.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-6">Sin preguntas en el banco para este filtro.</p>
+          ) : filtradas.map((p) => (
+            <button key={p.id} onClick={() => pick(p.id)} disabled={loadingId !== null}
+              className="w-full text-left flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-200 disabled:opacity-50">
+              <span className="text-sm text-slate-700 truncate">{p.titulo}</span>
+              <span className="text-[11px] font-semibold text-slate-400 border border-slate-200 rounded-full px-2 py-0.5 shrink-0">
+                {loadingId === p.id ? "..." : BANCO_TIPO_LABEL[p.tipo]}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Formulario para agregar una pregunta a un cuestionario ──────────────── */
 function PreguntaForm({
   questionsBase, contenidoId, onDone, onCancel,
@@ -256,6 +330,22 @@ function PreguntaForm({
   ]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [importando, setImportando] = useState(false);
+
+  const applyImport = (p: BancoPreguntaDetalle) => {
+    setTexto(p.descripcion.replace(/<[^>]*>/g, "").trim() || p.titulo);
+    if (p.tipo === 4) {
+      setTipoRespuesta("asociacion");
+      setOpciones(p.pares.map((par) => ({ texto: par.termino, parejaTexto: par.respuesta, esCorrecta: false })));
+    } else if (p.tipo === 6) {
+      setTipoRespuesta("descriptiva");
+    } else {
+      setTipoRespuesta(p.tipo === 2 ? "multiple" : "unica");
+      setOpciones(p.opciones.map((o) => ({ texto: o.texto, parejaTexto: "", esCorrecta: o.correcta })));
+    }
+    setPuntos(String(p.puntos));
+    setRetro(p.aplica_retroalimentacion && p.retroalimentacion ? p.retroalimentacion : "");
+  };
 
   const toggleCorrecta = (i: number) => setOpciones((prev) => prev.map((o, idx) => {
     if (tipoRespuesta === "unica") return { ...o, esCorrecta: idx === i };
@@ -298,6 +388,14 @@ function PreguntaForm({
 
   return (
     <form onSubmit={submit} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+      <div className="flex justify-end">
+        <button type="button" onClick={() => setImportando(true)} className="flex items-center gap-1.5 text-[11px] font-semibold text-[#C41717] hover:text-[#B01313]">
+          <Import className="w-3.5 h-3.5" /> Importar del banco de preguntas
+        </button>
+      </div>
+      {importando && (
+        <ImportarBancoModal onClose={() => setImportando(false)} onImport={applyImport} />
+      )}
       <textarea value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Texto de la pregunta" rows={2} className={inputCls} />
       <div className="flex gap-2">
         <select value={tipoRespuesta} onChange={(e) => setTipoRespuesta(e.target.value as TipoRespuesta)} className={`${inputCls} flex-1`}>
