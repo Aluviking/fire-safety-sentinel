@@ -1084,3 +1084,65 @@ CREATE TABLE IF NOT EXISTS curso_estudiantes (
   FOREIGN KEY (curso_id) REFERENCES cursos(id) ON DELETE CASCADE,
   FOREIGN KEY (estudiante_id) REFERENCES estudiantes(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Banco de preguntas — calcado del módulo real de Q10 (Académico › Educación
+-- virtual › Banco de preguntas), analizado en vivo vía scraping de solo
+-- lectura. Modelo real confirmado: lista plana de preguntas (no árbol por
+-- programa/asignatura), organizadas por etiquetas muchos-a-muchos; 5 tipos
+-- de pregunta reales (única, múltiple, rellene espacios, asociación,
+-- descriptiva — el código 5 no existe en Q10, se omite aquí también).
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS banco_etiquetas (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  nombre     VARCHAR(150) NOT NULL,
+  color      VARCHAR(20)  NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS banco_preguntas (
+  id                        INT AUTO_INCREMENT PRIMARY KEY,
+  titulo                    VARCHAR(255) NOT NULL,
+  descripcion               TEXT NOT NULL,
+  -- 1 única | 2 múltiple | 3 rellene espacios | 4 asociación | 6 descriptiva
+  tipo                      TINYINT NOT NULL,
+  puntos                    DECIMAL(6,2) NOT NULL DEFAULT 10,
+  respuestas_aleatorias     TINYINT(1) NOT NULL DEFAULT 1,
+  permite_puntos_parciales  TINYINT(1) NOT NULL DEFAULT 0,
+  aplica_retroalimentacion  TINYINT(1) NOT NULL DEFAULT 0,
+  retroalimentacion         TEXT NULL,
+  created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS banco_pregunta_etiquetas (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  pregunta_id  INT NOT NULL,
+  etiqueta_id  INT NOT NULL,
+  UNIQUE KEY uniq_pregunta_etiqueta (pregunta_id, etiqueta_id),
+  FOREIGN KEY (pregunta_id) REFERENCES banco_preguntas(id) ON DELETE CASCADE,
+  FOREIGN KEY (etiqueta_id) REFERENCES banco_etiquetas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Opciones de respuesta — usada para tipo 1 (única), tipo 2 (múltiple) y
+-- tipo 3 (rellene los espacios, donde `texto` = respuesta aceptada del
+-- espacio en blanco número `orden`, y `correcta` no aplica).
+CREATE TABLE IF NOT EXISTS banco_pregunta_opciones (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  pregunta_id  INT NOT NULL,
+  texto        TEXT NOT NULL,
+  correcta     TINYINT(1) NOT NULL DEFAULT 0,
+  orden        INT NOT NULL DEFAULT 0,
+  FOREIGN KEY (pregunta_id) REFERENCES banco_preguntas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Pares término/respuesta — solo tipo 4 (asociación).
+CREATE TABLE IF NOT EXISTS banco_pregunta_pares (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  pregunta_id  INT NOT NULL,
+  termino      TEXT NOT NULL,
+  respuesta    TEXT NOT NULL,
+  orden        INT NOT NULL DEFAULT 0,
+  FOREIGN KEY (pregunta_id) REFERENCES banco_preguntas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

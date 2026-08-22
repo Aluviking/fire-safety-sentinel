@@ -139,6 +139,7 @@ function modulos_catalogo(): array
             'academico.programas'          => 'Programas',
             'academico.asignaturas'        => 'Asignaturas',
             'academico.cursos'             => 'Cursos',
+            'academico.banco_preguntas'    => 'Banco de preguntas',
         ],
         'Tesorería' => [
             'tesoreria.creditos'      => 'Créditos',
@@ -184,6 +185,7 @@ function rol_modulos_por_defecto(string $role): ?array
             'academico.evaluaciones', 'academico.educacion_virtual', 'academico.cursos_ligeros',
             'academico.cursos_virtuales', 'academico.plantillas', 'academico.certificados',
             'academico.aulas_virtuales', 'academico.programas', 'academico.asignaturas', 'academico.cursos',
+            'academico.banco_preguntas',
             'informes.consolidado_notas', 'informes.cartera_general', 'informes.gestion_financiera',
         ]);
     }

@@ -34,6 +34,7 @@ import CursosLigerosView from "./views/CursosLigerosView";
 import CursosVirtualesView from "./views/CursosVirtualesView";
 import PlantillasView from "./views/PlantillasView";
 import CertificadosView from "./views/CertificadosView";
+import BancoPreguntasView from "./views/BancoPreguntasView";
 import PerfilesView from "./views/PerfilesView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
@@ -85,7 +86,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: "Evaluaciones", icon: ClipboardList },
       {
         label: "Educación virtual", icon: BookOpen,
-        subs: ["Cursos ligeros", "Cursos virtuales", "Plantillas", "Certificados", "Aulas virtuales"],
+        subs: ["Cursos ligeros", "Cursos virtuales", "Plantillas", "Certificados", "Banco de preguntas", "Aulas virtuales"],
       },
       {
         label: "Estructuración", icon: LayoutDashboard,
@@ -142,6 +143,7 @@ const MODULO_POR_ETIQUETA: Record<string, string> = {
   "Cursos virtuales": "academico.cursos_virtuales",
   "Plantillas": "academico.plantillas",
   "Certificados": "academico.certificados",
+  "Banco de preguntas": "academico.banco_preguntas",
   "Aulas virtuales": "academico.aulas_virtuales",
   "Programa": "academico.programas",
   "Asignaturas": "academico.asignaturas",
@@ -1109,6 +1111,8 @@ export default function CampusDashboard() {
           <PlantillasView />
         ) : activeNav.sub === "Educación virtual › Certificados" ? (
           <CertificadosView />
+        ) : activeNav.sub === "Educación virtual › Banco de preguntas" ? (
+          <BancoPreguntasView />
         ) : activeNav.sub === "Educación virtual › Aulas virtuales" ? (
           <SalasVirtualesView />
         ) : activeNav.sub === "Consolidado de notas" ? (
