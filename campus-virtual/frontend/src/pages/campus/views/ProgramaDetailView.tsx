@@ -3,12 +3,14 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, BookOpen, Users as UsersIcon, Plus, Loader2,
   Settings, Upload, X, Pencil, Check, ChevronUp, ChevronDown, Network, Star,
+  Megaphone, Video, Trash2,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { SearchableSelect } from "../SearchableSelect";
 import { ConfirmModal } from "../ConfirmModal";
 import { type Programa, ProgramaFormModal } from "./ProgramasView";
+import ContenidoEditor from "../ContenidoEditor";
 
 interface MatriculaReal {
   id: number; estudiante_id: number; identificacion: string; nombre_completo: string;
@@ -30,10 +32,181 @@ const inputCls = "w-full text-sm bg-white border border-slate-300 rounded-xl px-
 
 const TABS = [
   { key: "programa", label: "Programa", icon: BookOpen },
+  { key: "contenido", label: "Contenido del curso", icon: BookOpen },
+  { key: "anuncios", label: "Anuncios", icon: Megaphone },
+  { key: "clases", label: "Clases virtuales", icon: Video },
   { key: "estudiantes", label: "Estudiantes", icon: UsersIcon },
   { key: "ajustes", label: "Ajustes", icon: Settings },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
+
+interface Anuncio { id: number; titulo: string; mensaje: string | null; importancia: string; created_at: string }
+interface Clase { id: number; titulo: string; aula_recurso_id: number | null; aula_nombre: string | null; fecha_inicio: string; fecha_fin: string | null }
+interface AulaRecurso { id: number; nombre: string }
+
+/* ── Anuncios del programa ─────────────────────────────────────────────────── */
+function ProgramaAnunciosTab({ programaId }: { programaId: number }) {
+  const [items, setItems] = useState<Anuncio[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [titulo, setTitulo] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const [importancia, setImportancia] = useState("Normal");
+
+  const load = () => {
+    setLoading(true);
+    apiFetch<{ anuncios: Anuncio[] }>(`/programa-anuncios/list.php?programaId=${programaId}`)
+      .then((d) => setItems(d.anuncios)).finally(() => setLoading(false));
+  };
+  useEffect(load, [programaId]);
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!titulo.trim()) return;
+    await apiFetch("/programa-anuncios/create.php", { method: "POST", json: { programaId, titulo: titulo.trim(), mensaje: mensaje || null, importancia } });
+    setTitulo(""); setMensaje(""); setImportancia("Normal"); setCreating(false);
+    load();
+  };
+
+  const remove = async (id: number) => {
+    await apiFetch("/programa-anuncios/delete.php", { method: "POST", json: { id } });
+    load();
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-700">Anuncios</h3>
+        <button onClick={() => setCreating((v) => !v)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
+          <Plus className="w-3.5 h-3.5" /> Crear anuncio
+        </button>
+      </div>
+      {creating && (
+        <form onSubmit={add} className="space-y-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título del anuncio" className={inputCls} />
+          <textarea value={mensaje} onChange={(e) => setMensaje(e.target.value)} placeholder="Mensaje (opcional)" rows={3} className={inputCls} />
+          <div className="flex gap-2">
+            <select value={importancia} onChange={(e) => setImportancia(e.target.value)} className={inputCls}>
+              <option value="Normal">Normal</option>
+              <option value="Importante">Importante</option>
+            </select>
+            <button type="submit" className="px-4 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold shrink-0">Publicar</button>
+          </div>
+        </form>
+      )}
+      {loading ? (
+        <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+      ) : items.length === 0 ? (
+        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">No hay anuncios actualmente cargados.</p>
+      ) : (
+        <div className="space-y-2">
+          {items.map((a) => (
+            <div key={a.id} className="p-3.5 rounded-xl border border-slate-200 group">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">{a.titulo}</p>
+                  {a.mensaje && <p className="text-xs text-slate-500 mt-0.5">{a.mensaje}</p>}
+                </div>
+                <button onClick={() => remove(a.id)} className="text-slate-300 group-hover:text-red-500 transition-colors shrink-0">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Clases virtuales del programa ────────────────────────────────────────── */
+function ProgramaClasesTab({ programaId }: { programaId: number }) {
+  const [clases, setClases] = useState<Clase[]>([]);
+  const [aulas, setAulas] = useState<AulaRecurso[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [subtab, setSubtab] = useState<"proximas" | "anteriores">("proximas");
+  const [creating, setCreating] = useState(false);
+  const [titulo, setTitulo] = useState("");
+  const [aulaId, setAulaId] = useState("");
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [fechaFin, setFechaFin] = useState("");
+
+  const load = () => {
+    setLoading(true);
+    Promise.all([
+      apiFetch<{ clases: Clase[] }>(`/programa-clases/list.php?programaId=${programaId}`),
+      apiFetch<{ aulas: AulaRecurso[] }>("/aulas-recursos/list.php"),
+    ]).then(([c, a]) => { setClases(c.clases); setAulas(a.aulas); }).finally(() => setLoading(false));
+  };
+  useEffect(load, [programaId]);
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!titulo.trim() || !fechaInicio) return;
+    await apiFetch("/programa-clases/create.php", {
+      method: "POST",
+      json: { programaId, titulo: titulo.trim(), aulaRecursoId: aulaId ? Number(aulaId) : null, fechaInicio, fechaFin: fechaFin || null },
+    });
+    setTitulo(""); setAulaId(""); setFechaInicio(""); setFechaFin(""); setCreating(false);
+    load();
+  };
+
+  const remove = async (id: number) => {
+    await apiFetch("/programa-clases/delete.php", { method: "POST", json: { id } });
+    load();
+  };
+
+  const now = new Date();
+  const filtered = clases.filter((c) => (subtab === "proximas" ? new Date(c.fecha_inicio) >= now : new Date(c.fecha_inicio) < now));
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1">
+          <button onClick={() => setSubtab("proximas")} className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${subtab === "proximas" ? "bg-[#C41717]/10 text-[#C41717]" : "text-slate-500"}`}>Próximas clases</button>
+          <button onClick={() => setSubtab("anteriores")} className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${subtab === "anteriores" ? "bg-[#C41717]/10 text-[#C41717]" : "text-slate-500"}`}>Clases anteriores</button>
+        </div>
+        <button onClick={() => setCreating((v) => !v)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
+          <Plus className="w-3.5 h-3.5" /> Programar clase
+        </button>
+      </div>
+      {creating && (
+        <form onSubmit={add} className="space-y-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título de la clase" className={inputCls} />
+          <SearchableSelect
+            value={aulaId} onChange={setAulaId}
+            options={aulas.map((a) => ({ value: String(a.id), label: a.nombre }))}
+            placeholder="Aula virtual (opcional)..."
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <input value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} type="datetime-local" className={inputCls} />
+            <input value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} type="datetime-local" className={inputCls} />
+          </div>
+          <button type="submit" className="px-4 py-2 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold">Programar</button>
+        </form>
+      )}
+      {loading ? (
+        <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+      ) : filtered.length === 0 ? (
+        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">No hay registros.</p>
+      ) : (
+        <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+          {filtered.map((c) => (
+            <div key={c.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 group">
+              <div>
+                <p className="text-sm text-slate-800 font-medium">{c.titulo}</p>
+                <p className="text-xs text-slate-400">{c.aula_nombre ?? "Sin aula"} · {new Date(c.fecha_inicio).toLocaleString("es-CO")}</p>
+              </div>
+              <button onClick={() => remove(c.id)} className="text-slate-300 group-hover:text-red-500 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function InfoField({ label, value }: { label: string; value: string | null }) {
   return (
@@ -971,6 +1144,14 @@ export default function ProgramaDetailView({
           </div>
           <div className="flex-1 p-5 min-w-0">
             {tab === "programa" && <FichaYPensumTab programa={programa} canEdit={canEditSettings} onBack={onBack} onUpdated={onUpdated} />}
+            {tab === "contenido" && (
+              <ContenidoEditor
+                contentBase="/programa-contenido" questionsBase="/programa-preguntas" ownerIdKey="programaId" ownerId={programa.id}
+                heading="Contenido del programa" addLabel="Agregar recurso"
+              />
+            )}
+            {tab === "anuncios" && <ProgramaAnunciosTab programaId={programa.id} />}
+            {tab === "clases" && <ProgramaClasesTab programaId={programa.id} />}
             {tab === "estudiantes" && <EstudiantesTab programaId={programa.id} />}
             {tab === "ajustes" && <AjustesTab programa={programa} canEdit={canEditSettings} onUpdated={onUpdated} />}
           </div>

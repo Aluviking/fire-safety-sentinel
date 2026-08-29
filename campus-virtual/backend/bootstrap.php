@@ -333,10 +333,14 @@ function require_acceso_programa(array $user, int $programaId): void
 {
     if ($user['role'] === 'estudiante') {
         if (empty($user['identificacion'])) fail('No autorizado.', 403);
+        // Matrícula real (importada de Q10), no la tabla programa_estudiantes
+        // vieja — mismo puente que usa mis-programas/list.php.
         $stmt = db()->prepare(
-            'SELECT pe.id FROM programa_estudiantes pe
-             JOIN estudiantes e ON e.id = pe.estudiante_id
-             WHERE pe.programa_id = ? AND e.identificacion = ?'
+            "SELECT m.id FROM matriculas m
+             JOIN estudiantes e ON e.id = m.estudiante_id
+             JOIN programas p ON p.id = ?
+             WHERE e.identificacion = ? AND m.estado != 'CANCELADO'
+               AND m.programa LIKE CONCAT(p.nombre, ' - %')"
         );
         $stmt->execute([$programaId, $user['identificacion']]);
         if (!$stmt->fetch()) fail('No autorizado.', 403);
