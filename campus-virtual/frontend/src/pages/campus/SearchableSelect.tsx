@@ -34,15 +34,31 @@ export function SearchableSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [rect, setRect] = useState<{ top?: number; bottom?: number; left: number; width: number; maxHeight: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Se abre hacia abajo normalmente, pero si el campo queda cerca del borde
+  // inferior de la pantalla (ej. un modal largo, o el campo hasta abajo del
+  // formulario) y arriba hay más espacio libre, se abre hacia arriba en su
+  // lugar — así la lista nunca queda tapada por el borde de la ventana. El
+  // alto máximo también se ajusta al espacio real disponible de ese lado,
+  // en vez de un límite fijo que a veces sobraba y a veces no alcanzaba.
+  const GAP = 6;
+  const PANEL_MIN = 160;
+  const PANEL_IDEAL = 260;
 
   const updateRect = () => {
     const el = triggerRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setRect({ top: r.bottom + 6, left: r.left, width: r.width });
+    const spaceBelow = window.innerHeight - r.bottom - GAP;
+    const spaceAbove = r.top - GAP;
+    if (spaceBelow < PANEL_MIN && spaceAbove > spaceBelow) {
+      setRect({ bottom: window.innerHeight - r.top + GAP, left: r.left, width: r.width, maxHeight: Math.min(PANEL_IDEAL, spaceAbove) });
+    } else {
+      setRect({ top: r.bottom + GAP, left: r.left, width: r.width, maxHeight: Math.min(PANEL_IDEAL, Math.max(spaceBelow, PANEL_MIN)) });
+    }
   };
 
   useEffect(() => {
@@ -107,10 +123,13 @@ export function SearchableSelect({
           <div className="fixed inset-0 z-[200]" onClick={() => setOpen(false)} />
           <motion.div
             initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-            style={{ position: "fixed", top: rect.top, left: rect.left, width: Math.max(rect.width, 220) }}
-            className="bg-white rounded-xl border border-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.16)] z-[201] overflow-hidden"
+            style={{
+              position: "fixed", left: rect.left, width: Math.max(rect.width, 220),
+              ...(rect.top !== undefined ? { top: rect.top } : { bottom: rect.bottom }),
+            }}
+            className="bg-white rounded-xl border border-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.16)] z-[201] overflow-hidden flex flex-col"
           >
-            <div className="p-2 border-b border-slate-100">
+            <div className="p-2 border-b border-slate-100 shrink-0">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
                 <input
@@ -123,7 +142,7 @@ export function SearchableSelect({
                 />
               </div>
             </div>
-            <div className="max-h-56 overflow-y-auto py-1">
+            <div className="overflow-y-auto py-1" style={{ maxHeight: rect.maxHeight - 48 }}>
               {filtered.length === 0 ? (
                 <p className="text-center text-xs text-slate-400 py-4">Sin resultados</p>
               ) : (
