@@ -188,7 +188,7 @@ export default function CertificadosView() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-slate-900 font-bold text-lg">Certificados</h1>
-          <p className="text-slate-500 text-xs mt-0.5">Diseños de certificado disponibles. Nuevo, sin datos importados de Q10.</p>
+          <p className="text-slate-500 text-xs mt-0.5">Diseños de certificado disponibles.</p>
         </div>
         {(currentUser?.role === "admin" || isSuperAdmin) && (
           <button onClick={() => setCreating(true)}

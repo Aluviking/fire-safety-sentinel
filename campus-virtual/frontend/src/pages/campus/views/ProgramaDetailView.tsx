@@ -935,7 +935,7 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-sm font-semibold text-slate-700">Estudiantes ({matriculados.length})</h3>
         <div className="flex items-center gap-3">
-          <p className="text-[11px] text-slate-400">Matrícula real — histórico importado de Q10.</p>
+          <p className="text-[11px] text-slate-400">Matrícula real de estudiantes.</p>
           {canManage && (
             <button onClick={() => setAgregando(true)}
               className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
