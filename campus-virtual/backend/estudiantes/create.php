@@ -39,4 +39,8 @@ if ($periodo || $sede || $programa) {
     )->execute([$estudianteId, $sede, $programa, $periodo]);
 }
 
-respond(['ok' => true, 'estudiante' => ['id' => $estudianteId, 'identificacion' => $identificacion, 'nombreCompleto' => $nombreCompleto]]);
+// Cuenta de acceso automática (rol estudiante) — usuario y clave son
+// siempre la identificación.
+$cuentaCreada = crear_cuenta_acceso_automatica($identificacion, $nombreCompleto, 'estudiante', $correo, 'estudiantes.gfoacademy.local');
+
+respond(['ok' => true, 'estudiante' => ['id' => $estudianteId, 'identificacion' => $identificacion, 'nombreCompleto' => $nombreCompleto], 'cuentaCreada' => $cuentaCreada]);

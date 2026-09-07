@@ -33,4 +33,8 @@ db()->prepare(
     $body['fechaIngreso'] ?? null, $body['tipoVinculacion'] ?? null, $body['estado'] ?? 'Activo',
 ]);
 
-respond(['ok' => true, 'docente' => ['id' => (int) db()->lastInsertId(), 'identificacion' => $identificacion, 'nombreCompleto' => $nombreCompleto]]);
+// Cuenta de acceso automática (rol docente) — usuario y clave son siempre
+// la identificación.
+$cuentaCreada = crear_cuenta_acceso_automatica($identificacion, $nombreCompleto, 'docente', $body['correo'] ?? null, 'docentes.gfoacademy.local');
+
+respond(['ok' => true, 'docente' => ['id' => (int) db()->lastInsertId(), 'identificacion' => $identificacion, 'nombreCompleto' => $nombreCompleto], 'cuentaCreada' => $cuentaCreada]);

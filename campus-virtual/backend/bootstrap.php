@@ -79,6 +79,37 @@ function new_id(string $prefix): string
     return $prefix . '-' . bin2hex(random_bytes(8));
 }
 
+/**
+ * Crea automáticamente la cuenta de acceso (login) de un estudiante/docente
+ * si no existe ya una para esa identificación — usuario y clave son siempre
+ * la identificación misma. Se usa al registrar uno nuevo y también para el
+ * respaldo masivo de los ya existentes. No falla nunca — si algo no cuadra
+ * (identificación muy corta para servir de clave, o el usuario/correo ya
+ * está en uso por otra cuenta) simplemente no crea la cuenta y devuelve
+ * false, sin afectar el registro del estudiante/docente en sí.
+ */
+function crear_cuenta_acceso_automatica(
+    string $identificacion, string $nombreCompleto, string $role, ?string $correo, string $dominioPlaceholder
+): bool {
+    if (strlen($identificacion) < 6) return false;
+
+    $existe = db()->prepare('SELECT id FROM users WHERE identificacion = ?');
+    $existe->execute([$identificacion]);
+    if ($existe->fetch()) return false;
+
+    $email = ($correo && str_contains($correo, '@')) ? $correo : "{$identificacion}@{$dominioPlaceholder}";
+    $dup = db()->prepare('SELECT id FROM users WHERE email = ? OR username = ?');
+    $dup->execute([$email, $identificacion]);
+    if ($dup->fetch()) return false;
+
+    $userId = new_id('usr');
+    $hash   = password_hash($identificacion, PASSWORD_DEFAULT);
+    db()->prepare(
+        'INSERT INTO users (id, nombre, email, username, password_hash, role, identificacion) VALUES (?,?,?,?,?,?,?)'
+    )->execute([$userId, $nombreCompleto, $email, $identificacion, $hash, $role, $identificacion]);
+    return true;
+}
+
 /* ─── Auth ─────────────────────────────────────────────────────────────── */
 function bearer_token(): ?string
 {
