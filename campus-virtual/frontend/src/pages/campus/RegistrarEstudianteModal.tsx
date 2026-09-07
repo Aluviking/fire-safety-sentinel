@@ -95,13 +95,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 interface FormData {
   nombreCompleto: string; tipoId: string; numeroId: string;
-  genero: string; correo: string; celular: string; subgrupoSisben: string;
+  genero: string; correo: string; celular: string;
   periodo: string; curso: string; programa: string;
 }
 
 const EMPTY: FormData = {
   nombreCompleto: "", tipoId: "", numeroId: "",
-  genero: "", correo: "", celular: "", subgrupoSisben: "",
+  genero: "", correo: "", celular: "",
   periodo: "", curso: "", programa: "",
 };
 
@@ -166,7 +166,7 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, e
       setForm({
         nombreCompleto: editing.nombre_completo, tipoId: editing.tipo_documento ?? "", numeroId: editing.identificacion,
         genero: editing.genero ?? "", correo: editing.correo ?? "", celular: editing.celular ?? "",
-        subgrupoSisben: editing.subgrupo_sisben ?? "", periodo: "", curso: "", programa: "",
+        periodo: "", curso: "", programa: "",
       });
     } else {
       setForm(EMPTY);
@@ -201,7 +201,6 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, e
             tipoDocumento: form.tipoId || null,
             celular: form.celular || null,
             correo: form.correo || null,
-            subgrupoSisben: form.subgrupoSisben || null,
           },
         });
       } else {
@@ -214,7 +213,6 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, e
             tipoDocumento: form.tipoId || null,
             celular: form.celular || null,
             correo: form.correo || null,
-            subgrupoSisben: form.subgrupoSisben || null,
             periodo: form.periodo || null,
             programa: form.programa || null,
           },
@@ -272,7 +270,6 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, e
               <Section title="Contacto">
                 <FInput label="Correo electrónico" type="email" icon={Mail} value={form.correo} onChange={set("correo")} />
                 <FInput label="Celular" type="tel" icon={Phone} value={form.celular} onChange={set("celular")} />
-                <FInput label="Subgrupo Sisbén" value={form.subgrupoSisben} onChange={set("subgrupoSisben")} />
               </Section>
 
               {!isEditing && (
