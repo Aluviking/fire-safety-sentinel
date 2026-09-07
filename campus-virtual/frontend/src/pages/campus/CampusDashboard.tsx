@@ -92,7 +92,7 @@ const NAV_ITEMS: NavItem[] = [
       {
         label: "Estructuración", icon: LayoutDashboard,
         subs: [
-          "Programa", "Crear curso", "Asignaturas",
+          "Crear programa", "Crear curso", "Crear asignatura",
           "Parámetros de constancias y certificados",
         ],
       },
@@ -147,8 +147,8 @@ const MODULO_POR_ETIQUETA: Record<string, string> = {
   "Certificados": "academico.certificados",
   "Banco de preguntas": "academico.banco_preguntas",
   "Aulas virtuales": "academico.aulas_virtuales",
-  "Programa": "academico.programas",
-  "Asignaturas": "academico.asignaturas",
+  "Crear programa": "academico.programas",
+  "Crear asignatura": "academico.asignaturas",
   "Crear curso": "academico.cursos",
   "Créditos": "tesoreria.creditos",
   "Pagos": "tesoreria.pagos",
@@ -232,7 +232,7 @@ const QUICK_ACCESS = [
   { icon: GraduationCap,   label: "Estudiantes",    color: "#1E40AF", nav: "Institucional", sub: "Estudiantes › Información básica" },
   { icon: UserCheck,       label: "Docentes",        color: "#065F46", nav: "Institucional", sub: "Docentes › Información básica" },
   { icon: BookOpen,        label: "Crear curso",     color: "#9F1239", nav: "Académico",     sub: "Estructuración › Crear curso" },
-  { icon: LayoutDashboard, label: "Programa",        color: "#6B21A8", nav: "Académico",     sub: "Estructuración › Programa" },
+  { icon: LayoutDashboard, label: "Crear programa",  color: "#6B21A8", nav: "Académico",     sub: "Estructuración › Crear programa" },
   { icon: Award,           label: "Cursos ligeros",  color: "#92400E", nav: "Académico",     sub: "Educación virtual › Cursos ligeros" },
   { icon: Video,           label: "Aulas virtuales", color: "#1E3A5F", nav: "Académico",     sub: "Educación virtual › Aulas virtuales" },
   { icon: ClipboardList,   label: "Evaluaciones",    color: "#374151", nav: "Académico",     sub: "Evaluaciones" },
@@ -530,7 +530,7 @@ function ProgramasDestacados({ onNavigate }: { onNavigate: (nav: string, sub: st
         {programas.slice(0, 3).map((p) => (
           <button
             key={p.id}
-            onClick={() => onNavigate("Académico", "Estructuración › Programa")}
+            onClick={() => onNavigate("Académico", "Estructuración › Crear programa")}
             className="flex items-center gap-4 rounded-2xl bg-white border border-slate-200 shadow-sm
                        px-4 py-4 hover:shadow-md hover:border-slate-300 transition-all text-left group"
           >
@@ -1115,9 +1115,9 @@ export default function CampusDashboard() {
           <NotasCreditoView />
         ) : activeNav.sub === "Codeudores › Información básica" ? (
           <CodeudoresInfoView />
-        ) : activeNav.sub === "Estructuración › Programa" ? (
+        ) : activeNav.sub === "Estructuración › Crear programa" ? (
           <ProgramasView />
-        ) : activeNav.sub === "Estructuración › Asignaturas" ? (
+        ) : activeNav.sub === "Estructuración › Crear asignatura" ? (
           <AsignaturasView />
         ) : activeNav.sub === "Estructuración › Crear curso" ? (
           <ProgramasView soloTipo="curso" />

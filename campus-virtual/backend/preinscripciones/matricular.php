@@ -29,8 +29,8 @@ if ($existente) {
     $estudianteId = (int) $existente['id'];
 } else {
     db()->prepare(
-        'INSERT INTO estudiantes (identificacion, nombre_completo, celular, correo) VALUES (?,?,?,?)'
-    )->execute([$identificacion, $nombreCompleto, $pre['celular'], $pre['correo']]);
+        'INSERT INTO estudiantes (identificacion, nombre_completo, tipo_documento, celular, correo) VALUES (?,?,?,?,?)'
+    )->execute([$identificacion, $nombreCompleto, $pre['tipo_documento'] ?? null, $pre['celular'], $pre['correo']]);
     $estudianteId = (int) db()->lastInsertId();
 }
 

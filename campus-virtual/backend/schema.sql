@@ -1173,6 +1173,7 @@ CREATE TABLE IF NOT EXISTS preinscripciones (
   id             INT AUTO_INCREMENT PRIMARY KEY,
   nombres        VARCHAR(150) NOT NULL,
   apellidos      VARCHAR(150) NOT NULL,
+  tipo_documento VARCHAR(80)  NULL,
   identificacion VARCHAR(30)  NOT NULL,
   celular        VARCHAR(30)  NULL,
   correo         VARCHAR(190) NULL,
@@ -1181,4 +1182,36 @@ CREATE TABLE IF NOT EXISTS preinscripciones (
   estado         VARCHAR(20)  NOT NULL DEFAULT 'Pendiente',
   estudiante_id  INT NULL,
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Cursos para empresas — dentro de un curso (programa con nombre "CURSO...")
+-- una empresa-cliente puede matricular a varios de sus empleados de un
+-- golpe (alta manual o importación de Excel), sin pasar por el flujo de
+-- estudiante individual.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS curso_empresas (
+  id                 INT AUTO_INCREMENT PRIMARY KEY,
+  programa_id        INT NOT NULL,
+  nit                VARCHAR(50)  NOT NULL,
+  razon_social       VARCHAR(255) NOT NULL,
+  correo             VARCHAR(190) NULL,
+  celular            VARCHAR(30)  NULL,
+  cantidad_empleados INT NULL,
+  created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (programa_id) REFERENCES programas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS curso_empresa_empleados (
+  id             INT AUTO_INCREMENT PRIMARY KEY,
+  empresa_id     INT NOT NULL,
+  nombres        VARCHAR(150) NOT NULL,
+  apellidos      VARCHAR(150) NOT NULL,
+  tipo_documento VARCHAR(80)  NULL,
+  identificacion VARCHAR(30)  NOT NULL,
+  celular        VARCHAR(30)  NULL,
+  correo         VARCHAR(190) NULL,
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (empresa_id) REFERENCES curso_empresas(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

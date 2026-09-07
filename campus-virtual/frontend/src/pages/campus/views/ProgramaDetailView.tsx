@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, BookOpen, Users as UsersIcon, Plus, Loader2,
   Settings, Upload, X, Pencil, Check, ChevronUp, ChevronDown, Network, Star,
-  Megaphone, Video, Trash2,
+  Megaphone, Video, Trash2, Building2,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
@@ -11,6 +11,9 @@ import { SearchableSelect } from "../SearchableSelect";
 import { ConfirmModal } from "../ConfirmModal";
 import { type Programa, ProgramaFormModal } from "./ProgramasView";
 import ContenidoEditor from "../ContenidoEditor";
+// Carga diferida — trae la librería de Excel (xlsx), que solo hace falta
+// para quien de verdad abra esta pestaña, en vez de en cada carga del panel.
+const CursoEmpresasTab = lazy(() => import("./CursoEmpresasTab"));
 
 interface MatriculaReal {
   id: number; estudiante_id: number; identificacion: string; nombre_completo: string;
@@ -36,6 +39,7 @@ const TABS = [
   { key: "anuncios", label: "Anuncios", icon: Megaphone },
   { key: "clases", label: "Clases virtuales", icon: Video },
   { key: "estudiantes", label: "Estudiantes", icon: UsersIcon },
+  { key: "empresas", label: "Cursos para empresas", icon: Building2 },
   { key: "ajustes", label: "Ajustes", icon: Settings },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
@@ -1177,6 +1181,10 @@ export default function ProgramaDetailView({
   const { currentUser } = useCampusAuth();
   const canEditSettings = currentUser?.role === "super_admin";
   const [tab, setTab] = useState<TabKey>("programa");
+  // "Cursos para empresas" solo aplica a los programas tipo Curso — en
+  // Técnico/Diplomado no tiene sentido matricular empresas-cliente.
+  const esCurso = programa.nombre.toUpperCase().startsWith("CURSO");
+  const tabsVisibles = esCurso ? TABS : TABS.filter((t) => t.key !== "empresas");
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
@@ -1189,7 +1197,7 @@ export default function ProgramaDetailView({
           <div className="lg:w-56 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-100 p-4">
             <h2 className="font-bold text-slate-900 text-sm mb-3 leading-snug">{programa.nombre}</h2>
             <nav className="space-y-1">
-              {TABS.map((t) => (
+              {tabsVisibles.map((t) => (
                 <button key={t.key} onClick={() => setTab(t.key)}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors
                               ${tab === t.key ? "bg-[#C41717]/10 text-[#C41717]" : "text-slate-600 hover:bg-slate-50"}`}>
@@ -1210,6 +1218,11 @@ export default function ProgramaDetailView({
             {tab === "anuncios" && <ProgramaAnunciosTab programaId={programa.id} />}
             {tab === "clases" && <ProgramaClasesTab programaId={programa.id} />}
             {tab === "estudiantes" && <EstudiantesTab programaId={programa.id} />}
+            {tab === "empresas" && esCurso && (
+              <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
+                <CursoEmpresasTab programaId={programa.id} />
+              </Suspense>
+            )}
             {tab === "ajustes" && <AjustesTab programa={programa} canEdit={canEditSettings} onUpdated={onUpdated} />}
           </div>
         </div>

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, GraduationCap, BookOpen, Award, Loader2, ChevronRight } from "lucide-react";
 import gfoLogo from "@/assets/gfo-academy-logo.png";
 import { apiFetch } from "@/lib/api";
+import { TIPOS_ID } from "@/data/academicCatalog";
 
 interface Opcion { id: number; nombre: string }
 interface Opciones { programas: Opcion[]; diplomados: Opcion[]; cursos: Opcion[] }
@@ -26,6 +27,7 @@ export default function PreinscripcionPublica() {
 
   const [nombres, setNombres] = useState("");
   const [apellidos, setApellidos] = useState("");
+  const [tipoDocumento, setTipoDocumento] = useState("");
   const [identificacion, setIdentificacion] = useState("");
   const [celular, setCelular] = useState("");
   const [correo, setCorreo] = useState("");
@@ -59,7 +61,8 @@ export default function PreinscripcionPublica() {
       await apiFetch("/preinscripciones/create.php", {
         method: "POST",
         json: {
-          nombres: nombres.trim(), apellidos: apellidos.trim(), identificacion: identificacion.trim(),
+          nombres: nombres.trim(), apellidos: apellidos.trim(),
+          tipoDocumento: tipoDocumento || null, identificacion: identificacion.trim(),
           celular: celular.trim() || null, correo: correo.trim() || null,
           tipoInteres, itemNombre,
         },
@@ -113,14 +116,21 @@ export default function PreinscripcionPublica() {
                   <input className={inputCls} value={apellidos} onChange={(e) => setApellidos(e.target.value)} />
                 </div>
                 <div>
-                  <label className="block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Identificación *</label>
+                  <label className="block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Tipo de identificación</label>
+                  <select className={inputCls} value={tipoDocumento} onChange={(e) => setTipoDocumento(e.target.value)}>
+                    <option value="">Selecciona...</option>
+                    {TIPOS_ID.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Número de identificación *</label>
                   <input className={inputCls} value={identificacion} onChange={(e) => setIdentificacion(e.target.value)} />
                 </div>
                 <div>
                   <label className="block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Celular</label>
                   <input className={inputCls} value={celular} onChange={(e) => setCelular(e.target.value)} />
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <label className="block text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-1.5">Correo</label>
                   <input type="email" className={inputCls} value={correo} onChange={(e) => setCorreo(e.target.value)} />
                 </div>
