@@ -10,7 +10,6 @@ import { useCampusAuth } from "@/context/CampusAuthContext";
 import { SearchableSelect } from "../SearchableSelect";
 import { ConfirmModal } from "../ConfirmModal";
 import { type Programa, ProgramaFormModal } from "./ProgramasView";
-import ContenidoEditor from "../ContenidoEditor";
 // Carga diferida — trae la librería de Excel (xlsx), que solo hace falta
 // para quien de verdad abra esta pestaña, en vez de en cada carga del panel.
 const CursoEmpresasTab = lazy(() => import("./CursoEmpresasTab"));
@@ -35,7 +34,7 @@ const inputCls = "w-full text-sm bg-white border border-slate-300 rounded-xl px-
 
 const TABS = [
   { key: "programa", label: "Programa", icon: BookOpen },
-  { key: "contenido", label: "Contenido del curso", icon: BookOpen },
+  { key: "asignatura", label: "Asignatura", icon: BookOpen },
   { key: "anuncios", label: "Anuncios", icon: Megaphone },
   { key: "clases", label: "Clases virtuales", icon: Video },
   { key: "estudiantes", label: "Estudiantes", icon: UsersIcon },
@@ -552,12 +551,82 @@ function PrerequisitosModal({
   );
 }
 
+/* ── Crear una asignatura nueva y dejarla vinculada de una vez a este pensum
+     — el contenido (videos/documentos/clases) de esa asignatura solo se crea
+     desde el módulo Asignaturas; aquí solo se da de alta el registro y su
+     vínculo, igual que hace "Crear asignatura" en ese módulo. ───────────── */
+function CrearAsignaturaModal({ programaId, onClose, onSaved }: { programaId: number; onClose: () => void; onSaved: () => void }) {
+  const [codigo, setCodigo] = useState("");
+  const [nombre, setNombre] = useState("");
+  const [abreviacion, setAbreviacion] = useState("");
+  const [numCreditos, setNumCreditos] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!nombre.trim()) { setError("El nombre es obligatorio."); return; }
+    setSubmitting(true);
+    try {
+      await apiFetch("/asignaturas/create.php", {
+        method: "POST",
+        json: {
+          codigo: codigo.trim() || null, nombre: nombre.trim(), abreviacion: abreviacion.trim() || null,
+          numCreditos: numCreditos ? Number(numCreditos) : null, programaIds: [programaId],
+        },
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al crear la asignatura.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <p className="text-slate-800 font-bold text-[15px]">Crear asignatura</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+        </div>
+        <form onSubmit={submit} className="px-5 py-4 space-y-3">
+          <div className="grid grid-cols-3 gap-2">
+            <input value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Código" className={inputCls} />
+            <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre de la asignatura" className={`${inputCls} col-span-2`} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <input value={abreviacion} onChange={(e) => setAbreviacion(e.target.value)} placeholder="Abreviación (opcional)" className={inputCls} />
+            <input value={numCreditos} onChange={(e) => setNumCreditos(e.target.value)} type="number" min={0} placeholder="Número de créditos" className={inputCls} />
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Queda creada en el módulo Asignaturas y vinculada de una vez al pensum de este programa.
+          </p>
+          {error && <p className="text-[11px] text-red-500">{error}</p>}
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={submitting}
+              className="flex-1 text-xs font-semibold bg-[#C41717] hover:bg-[#B01313] text-white rounded-lg py-2 disabled:opacity-60 transition-colors">
+              {submitting ? "Creando..." : "Crear"}
+            </button>
+            <button type="button" onClick={onClose} className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* ── Sección Pensum (settings + tabla de asignaturas del programa) ───────── */
 function PensumSection({ programa, canEdit, onUpdated }: { programa: Programa; canEdit: boolean; onUpdated: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
   const [asignaturas, setAsignaturas] = useState<PensumAsignatura[]>([]);
   const [loading, setLoading] = useState(true);
   const [asignando, setAsignando] = useState(false);
+  const [creandoAsignatura, setCreandoAsignatura] = useState(false);
   const [editandoPensum, setEditandoPensum] = useState(false);
   const [eliminandoPensum, setEliminandoPensum] = useState(false);
   const [editingAsig, setEditingAsig] = useState<PensumAsignatura | null>(null);
@@ -593,13 +662,16 @@ function PensumSection({ programa, canEdit, onUpdated }: { programa: Programa; c
         {canEdit && !collapsed && (
           <div className="flex items-center gap-4">
             <button onClick={() => setAsignando(true)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
-              <Plus className="w-3.5 h-3.5" /> Asignar asignatura
+              <Plus className="w-3.5 h-3.5" /> Traer asignatura
+            </button>
+            <button onClick={() => setCreandoAsignatura(true)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
+              <Plus className="w-3.5 h-3.5" /> Crear asignatura
             </button>
             <button onClick={() => setEditandoPensum(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#C41717]">
-              <Pencil className="w-3.5 h-3.5" /> Editar pensum
+              <Pencil className="w-3.5 h-3.5" /> Editar
             </button>
             <button onClick={() => setEliminandoPensum(true)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-red-500">
-              <X className="w-3.5 h-3.5" /> Eliminar pensum
+              <X className="w-3.5 h-3.5" /> Eliminar
             </button>
           </div>
         )}
@@ -671,6 +743,7 @@ function PensumSection({ programa, canEdit, onUpdated }: { programa: Programa; c
         <AsignarAsignaturaModal programaId={programa.id} yaAsignadasIds={asignaturas.map((a) => a.asignatura_id)}
           onClose={() => setAsignando(false)} onSaved={load} />
       )}
+      {creandoAsignatura && <CrearAsignaturaModal programaId={programa.id} onClose={() => setCreandoAsignatura(false)} onSaved={load} />}
       {editandoPensum && <EditarPensumModal programa={programa} onClose={() => setEditandoPensum(false)} onSaved={onUpdated} />}
       {editingAsig && <EditarAsignaturaPensumModal item={editingAsig} onClose={() => setEditingAsig(null)} onSaved={load} />}
       {prerequisitosDe && (
@@ -689,8 +762,9 @@ function PensumSection({ programa, canEdit, onUpdated }: { programa: Programa; c
   );
 }
 
-/* ── Ficha del programa + su Pensum (reemplaza el viejo "Contenido del programa") ── */
-function FichaYPensumTab({
+/* ── Ficha del programa (solo datos + editar/eliminar programa) — el Pensum
+     vive aparte, en la pestaña "Asignatura". ──────────────────────────────── */
+function FichaTab({
   programa, canEdit, onBack, onUpdated,
 }: { programa: Programa; canEdit: boolean; onBack: () => void; onUpdated: () => void }) {
   const [editingFicha, setEditingFicha] = useState(false);
@@ -729,8 +803,6 @@ function FichaYPensumTab({
           <InfoField label="Categoría" value={programa.categoria} />
         </div>
       </div>
-
-      <PensumSection programa={programa} canEdit={canEdit} onUpdated={onUpdated} />
 
       <ProgramaFormModal target={editingFicha ? programa : null} onClose={() => setEditingFicha(false)} onSaved={onUpdated} />
       <ConfirmModal
@@ -1208,13 +1280,8 @@ export default function ProgramaDetailView({
             </nav>
           </div>
           <div className="flex-1 p-5 min-w-0">
-            {tab === "programa" && <FichaYPensumTab programa={programa} canEdit={canEditSettings} onBack={onBack} onUpdated={onUpdated} />}
-            {tab === "contenido" && (
-              <ContenidoEditor
-                contentBase="/programa-contenido" questionsBase="/programa-preguntas" ownerIdKey="programaId" ownerId={programa.id}
-                heading="Contenido del programa" addLabel="Agregar recurso"
-              />
-            )}
+            {tab === "programa" && <FichaTab programa={programa} canEdit={canEditSettings} onBack={onBack} onUpdated={onUpdated} />}
+            {tab === "asignatura" && <PensumSection programa={programa} canEdit={canEditSettings} onUpdated={onUpdated} />}
             {tab === "anuncios" && <ProgramaAnunciosTab programaId={programa.id} />}
             {tab === "clases" && <ProgramaClasesTab programaId={programa.id} />}
             {tab === "estudiantes" && <EstudiantesTab programaId={programa.id} />}
