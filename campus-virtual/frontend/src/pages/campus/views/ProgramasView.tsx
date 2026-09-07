@@ -242,7 +242,12 @@ export function ProgramaFormModal({
   );
 }
 
-export default function ProgramasView() {
+// `soloTipo="curso"` reutiliza toda esta pantalla (misma tabla `programas`,
+// mismo CRUD, mismo detalle con Contenido/Anuncios/Clases/Estudiantes/Ajustes)
+// para el módulo "Crear curso" — filtrado a los programas cuyo nombre
+// empieza por "CURSO", en vez de duplicar el componente. El módulo
+// "Programa" (sin esta prop) excluye esos mismos para no repetirlos.
+export default function ProgramasView({ soloTipo }: { soloTipo?: "curso" } = {}) {
   const { currentUser, canVer } = useCampusAuth();
   const isSuperAdmin = currentUser?.role === "super_admin";
   const canManage = currentUser?.role === "admin" || isSuperAdmin;
@@ -274,9 +279,17 @@ export default function ProgramasView() {
 
   useEffect(load, []);
 
+  // Los 2 programas tipo "Curso" y el resto (Técnico/Diplomado) son
+  // mutuamente excluyentes entre esta pantalla y "Crear curso" — nunca
+  // deben repetirse en las dos.
+  const deEstaCategoria = useMemo(
+    () => programas.filter((p) => (soloTipo === "curso") === p.nombre.toUpperCase().startsWith("CURSO")),
+    [programas, soloTipo]
+  );
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return programas.filter((p) => {
+    return deEstaCategoria.filter((p) => {
       if (!incluirInactivos && p.estado === "Inactivo") return false;
       if (term) {
         const haystack = `${p.codigo ?? ""} ${p.nombre} ${p.abreviacion ?? ""}`.toLowerCase();
@@ -284,7 +297,7 @@ export default function ProgramasView() {
       }
       return true;
     });
-  }, [programas, search, incluirInactivos]);
+  }, [deEstaCategoria, search, incluirInactivos]);
 
   useEffect(() => setPage(1), [search, incluirInactivos]);
 
@@ -334,17 +347,19 @@ export default function ProgramasView() {
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-slate-900 font-bold text-lg">Programas</h1>
-          <p className="text-slate-500 text-xs mt-0.5">Programas académicos de GFO Academy</p>
+          <h1 className="text-slate-900 font-bold text-lg">{soloTipo === "curso" ? "Cursos" : "Programas"}</h1>
+          <p className="text-slate-500 text-xs mt-0.5">
+            {soloTipo === "curso" ? "Cursos de GFO Academy" : "Programas académicos de GFO Academy"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C41717]/8 border border-[#C41717]/20 text-[#C41717] text-xs font-semibold">
-            {filtered.length} de {programas.length} registros
+            {filtered.length} de {deEstaCategoria.length} registros
           </span>
           {canManage && (
             <button onClick={() => setFormTarget("new")}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold shadow-sm transition-colors">
-              <Plus className="w-3.5 h-3.5" /> Crear programa
+              <Plus className="w-3.5 h-3.5" /> {soloTipo === "curso" ? "Crear curso" : "Crear programa"}
             </button>
           )}
         </div>

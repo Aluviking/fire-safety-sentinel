@@ -23,7 +23,6 @@ import NotasCreditoView from "./views/NotasCreditoView";
 import CodeudoresInfoView from "./views/CodeudoresInfoView";
 import ProgramasView from "./views/ProgramasView";
 import AsignaturasView from "./views/AsignaturasView";
-import CursosView from "./views/CursosView";
 import EvaluacionesView from "./views/EvaluacionesView";
 import ConsolidadoNotasView from "./views/ConsolidadoNotasView";
 import CarteraGeneralView from "./views/CarteraGeneralView";
@@ -1121,7 +1120,7 @@ export default function CampusDashboard() {
         ) : activeNav.sub === "Estructuración › Asignaturas" ? (
           <AsignaturasView />
         ) : activeNav.sub === "Estructuración › Crear curso" ? (
-          <CursosView />
+          <ProgramasView soloTipo="curso" />
         ) : activeNav.sub === "Educación virtual › Cursos ligeros" ? (
           <CursosLigerosView />
         ) : activeNav.sub === "Educación virtual › Cursos virtuales" ? (
