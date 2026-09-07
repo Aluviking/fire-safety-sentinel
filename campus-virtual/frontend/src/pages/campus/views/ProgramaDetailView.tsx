@@ -895,6 +895,9 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
   const [agregando, setAgregando] = useState(false);
   const [editing, setEditing] = useState<MatriculaReal | null>(null);
   const [deleting, setDeleting] = useState<MatriculaReal | null>(null);
+  const [busqueda, setBusqueda] = useState("");
+  const [eliminandoTodos, setEliminandoTodos] = useState(false);
+  const [borrandoTodos, setBorrandoTodos] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -904,11 +907,27 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
   };
   useEffect(load, [programaId]);
 
+  const q = busqueda.trim().toLowerCase();
+  const filtrados = q
+    ? matriculados.filter((m) => m.nombre_completo.toLowerCase().includes(q) || m.identificacion.includes(q))
+    : matriculados;
+
   const confirmDelete = async () => {
     if (!deleting) return;
     await apiFetch("/programa-matriculas/delete.php", { method: "POST", json: { id: deleting.id } });
     setDeleting(null);
     load();
+  };
+
+  const confirmDeleteTodos = async () => {
+    setBorrandoTodos(true);
+    try {
+      await Promise.all(filtrados.map((m) => apiFetch("/programa-matriculas/delete.php", { method: "POST", json: { id: m.id } })));
+      setEliminandoTodos(false);
+      load();
+    } finally {
+      setBorrandoTodos(false);
+    }
   };
 
   return (
@@ -926,10 +945,36 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
         </div>
       </div>
 
+      {matriculados.length > 0 && (
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="relative w-full max-w-xs">
+            <input
+              value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar por nombre o identificación..."
+              className="w-full text-xs bg-white border border-slate-300 rounded-lg pl-3 pr-7 py-1.5
+                         focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
+            />
+            {busqueda && (
+              <button onClick={() => setBusqueda("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          {isSuperAdmin && (
+            <button onClick={() => setEliminandoTodos(true)} disabled={filtrados.length === 0}
+              className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-600 disabled:opacity-40 disabled:cursor-not-allowed">
+              <X className="w-3.5 h-3.5" /> Eliminar todos ({filtrados.length})
+            </button>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : matriculados.length === 0 ? (
         <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">No hay estudiantes matriculados en este programa.</p>
+      ) : filtrados.length === 0 ? (
+        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">Sin resultados para "{busqueda}".</p>
       ) : (
         <div className="overflow-x-auto border border-slate-200 rounded-xl">
           <table className="w-full text-sm border-collapse">
@@ -945,7 +990,7 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {matriculados.map((m) => (
+              {filtrados.map((m) => (
                 <tr key={m.id} className="hover:bg-slate-50/70">
                   <td className="px-3 py-2 text-slate-800 font-medium text-xs">{m.nombre_completo}</td>
                   <td className="px-3 py-2 text-slate-500 text-xs">{m.identificacion}</td>
@@ -984,6 +1029,18 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
         message={`¿Eliminar la matrícula de "${deleting?.nombre_completo}" en este programa? Esta acción no se puede deshacer.`}
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(null)}
+      />
+      <ConfirmModal
+        open={eliminandoTodos}
+        title="Eliminar todos los estudiantes"
+        message={
+          busqueda
+            ? `¿Eliminar la matrícula de los ${filtrados.length} estudiantes que coinciden con "${busqueda}"? Esta acción no se puede deshacer.`
+            : `¿Eliminar la matrícula de los ${filtrados.length} estudiantes de este programa? Esta acción no se puede deshacer.`
+        }
+        confirmLabel={borrandoTodos ? "Eliminando..." : "Eliminar todos"}
+        onConfirm={confirmDeleteTodos}
+        onCancel={() => setEliminandoTodos(false)}
       />
     </div>
   );
