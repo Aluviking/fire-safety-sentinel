@@ -33,6 +33,7 @@ const ACTION_LABEL: Record<string, string> = {
   perfil_create: "Creó perfil", perfil_update: "Editó perfil", perfil_delete: "Eliminó perfil",
   banco_pregunta_create: "Creó pregunta", banco_pregunta_update: "Editó pregunta", banco_pregunta_delete: "Eliminó pregunta",
   banco_etiqueta_create: "Creó etiqueta", banco_etiqueta_update: "Editó etiqueta", banco_etiqueta_delete: "Eliminó etiqueta",
+  periodo_matricula_create: "Creó período de matrícula",
 };
 
 const ACTION_ICON: Record<string, React.ElementType> = {
@@ -52,6 +53,7 @@ const ACTION_ICON: Record<string, React.ElementType> = {
   perfil_create: UserPlus, perfil_update: Pencil, perfil_delete: UserMinus,
   banco_pregunta_create: UserPlus, banco_pregunta_update: Pencil, banco_pregunta_delete: UserMinus,
   banco_etiqueta_create: UserPlus, banco_etiqueta_update: Pencil, banco_etiqueta_delete: UserMinus,
+  periodo_matricula_create: UserPlus,
 };
 
 const ACTION_ACCENT: Record<string, string> = {
@@ -71,6 +73,7 @@ const ACTION_ACCENT: Record<string, string> = {
   perfil_create: "#059669", perfil_update: "#d97706", perfil_delete: "#dc2626",
   banco_pregunta_create: "#059669", banco_pregunta_update: "#d97706", banco_pregunta_delete: "#dc2626",
   banco_etiqueta_create: "#059669", banco_etiqueta_update: "#d97706", banco_etiqueta_delete: "#dc2626",
+  periodo_matricula_create: "#059669",
 };
 
 const ROLE_ICON: Record<string, React.ElementType> = {

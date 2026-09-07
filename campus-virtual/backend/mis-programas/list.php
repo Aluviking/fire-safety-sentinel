@@ -12,11 +12,13 @@ if (empty($user['identificacion'])) {
 // programa guardado como texto libre "{nombre} - {jornada}", sin FK) — ya no
 // depende de que alguien lo matricule a mano en Campus Virtual. Se excluyen
 // solo los CANCELADO (el estudiante se retiró); ACTIVO/INACTIVO/GRADUADO sí
-// dan acceso al contenido, igual que cursos ligeros no exige "publicar".
+// dan acceso al contenido, igual que cursos ligeros no exige "publicar". Las
+// matrículas nuevas (creadas desde Registrar estudiante) no llevan sufijo de
+// jornada, así que también se acepta el nombre exacto del programa.
 $stmt = db()->prepare(
     "SELECT DISTINCT p.id, p.nombre, p.descripcion, p.imagen_path, p.dias_disponibles
      FROM programas p
-     JOIN matriculas m ON m.programa LIKE CONCAT(p.nombre, ' - %') AND m.estado != 'CANCELADO'
+     JOIN matriculas m ON (m.programa = p.nombre OR m.programa LIKE CONCAT(p.nombre, ' - %')) AND m.estado != 'CANCELADO'
      JOIN estudiantes e ON e.id = m.estudiante_id
      WHERE e.identificacion = ?
      ORDER BY p.nombre"

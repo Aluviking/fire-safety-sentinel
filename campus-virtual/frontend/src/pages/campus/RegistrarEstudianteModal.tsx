@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronRight, User, Mail, Phone, FileText } from "lucide-react";
-import { TIPOS_ID, SEXOS, PERIODOS, SEDES, PROGRAMAS_POR_SEDE } from "@/data/academicCatalog";
+import { X, ChevronRight, User, Mail, Phone, FileText, Plus } from "lucide-react";
+import { TIPOS_ID, SEXOS } from "@/data/academicCatalog";
 import { apiFetch } from "@/lib/api";
 import { SearchableSelect } from "./SearchableSelect";
 
@@ -96,13 +96,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 interface FormData {
   nombreCompleto: string; tipoId: string; numeroId: string;
   genero: string; correo: string; celular: string; subgrupoSisben: string;
-  periodo: string; sedeJornada: string; programa: string;
+  periodo: string; curso: string; programa: string;
 }
 
 const EMPTY: FormData = {
   nombreCompleto: "", tipoId: "", numeroId: "",
   genero: "", correo: "", celular: "", subgrupoSisben: "",
-  periodo: "", sedeJornada: "", programa: "",
+  periodo: "", curso: "", programa: "",
 };
 
 export interface EstudianteEditable {
@@ -124,26 +124,61 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, e
   const [submitting, setSubmitting] = useState(false);
   const isEditing = !!editing;
 
+  const [periodos, setPeriodos] = useState<{ id: number; nombre: string }[]>([]);
+  const [creandoPeriodo, setCreandoPeriodo] = useState(false);
+  const [nuevoPeriodo, setNuevoPeriodo] = useState("");
+  const [periodoError, setPeriodoError] = useState("");
+
+  const loadPeriodos = () => {
+    apiFetch<{ periodos: { id: number; nombre: string }[] }>("/periodos-matricula/list.php")
+      .then((d) => setPeriodos(d.periodos))
+      .catch(() => {});
+  };
+
+  // Programas reales (los que existan hoy + los que se creen después, siempre
+  // al día porque se piden cada vez que se abre el modal) — "Diplomados" es
+  // el mismo catálogo, filtrado a los que su nombre empieza por "DIPLOMADO".
+  const [programas, setProgramas] = useState<{ id: number; nombre: string; estado: string | null }[]>([]);
+  const loadProgramas = () => {
+    apiFetch<{ programas: { id: number; nombre: string; estado: string | null }[] }>("/programas/list.php")
+      .then((d) => setProgramas(d.programas.filter((p) => p.estado === "Activo")))
+      .catch(() => {});
+  };
+  const diplomados = programas.filter((p) => p.nombre.toUpperCase().startsWith("DIPLOMADO"));
+
+  const crearPeriodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nuevoPeriodo.trim()) return;
+    setPeriodoError("");
+    try {
+      await apiFetch("/periodos-matricula/create.php", { method: "POST", json: { nombre: nuevoPeriodo.trim() } });
+      setNuevoPeriodo("");
+      setCreandoPeriodo(false);
+      loadPeriodos();
+    } catch (err) {
+      setPeriodoError(err instanceof Error ? err.message : "Error al crear el período.");
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) return;
     if (editing) {
       setForm({
         nombreCompleto: editing.nombre_completo, tipoId: editing.tipo_documento ?? "", numeroId: editing.identificacion,
         genero: editing.genero ?? "", correo: editing.correo ?? "", celular: editing.celular ?? "",
-        subgrupoSisben: editing.subgrupo_sisben ?? "", periodo: "", sedeJornada: "", programa: "",
+        subgrupoSisben: editing.subgrupo_sisben ?? "", periodo: "", curso: "", programa: "",
       });
     } else {
       setForm(EMPTY);
     }
+    if (!isEditing) { loadPeriodos(); loadProgramas(); }
+    setCreandoPeriodo(false); setNuevoPeriodo(""); setPeriodoError("");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, editing]);
 
   const set = (field: keyof FormData) => (value: string) => {
-    if (field === "periodo") setForm((f) => ({ ...f, periodo: value, sedeJornada: "", programa: "" }));
-    else if (field === "sedeJornada") setForm((f) => ({ ...f, sedeJornada: value, programa: "" }));
-    else setForm((f) => ({ ...f, [field]: value }));
+    setForm((f) => ({ ...f, [field]: value }));
   };
-
-  const programaOpts = PROGRAMAS_POR_SEDE[form.sedeJornada] ?? [];
 
   const handleClose = () => { setForm(EMPTY); setError(""); onClose(); };
 
@@ -181,7 +216,6 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, e
             correo: form.correo || null,
             subgrupoSisben: form.subgrupoSisben || null,
             periodo: form.periodo || null,
-            sede: form.sedeJornada || null,
             programa: form.programa || null,
           },
         });
@@ -243,18 +277,63 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, e
 
               {!isEditing && (
                 <Section title="Matrícula académica">
-                  <FSelect label="Período" value={form.periodo} onChange={set("periodo")} options={PERIODOS} />
-                  <FSelect
-                    label="Sede - jornada" value={form.sedeJornada} onChange={set("sedeJornada")}
-                    options={SEDES} disabled={!form.periodo}
-                    placeholder={form.periodo ? "Seleccione" : "Primero seleccione período"}
-                  />
+                  <div className="flex flex-col">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label>Período</Label>
+                      {!creandoPeriodo && (
+                        <button type="button" onClick={() => setCreandoPeriodo(true)}
+                          className="flex items-center gap-1 text-[11px] font-semibold text-[#C41717] hover:text-[#B01313]">
+                          <Plus className="w-3 h-3" /> Crear período
+                        </button>
+                      )}
+                    </div>
+                    {creandoPeriodo ? (
+                      <form onSubmit={crearPeriodo} className="flex items-center gap-1.5">
+                        <input
+                          autoFocus value={nuevoPeriodo} onChange={(e) => setNuevoPeriodo(e.target.value)}
+                          placeholder="Ej: 2027-1" className={inputBase}
+                          onKeyDown={(e) => { if (e.key === "Escape") { setCreandoPeriodo(false); setNuevoPeriodo(""); } }}
+                        />
+                        <button type="submit" className="shrink-0 text-emerald-600 hover:text-emerald-700 text-xs font-bold px-1">✓</button>
+                        <button type="button" onClick={() => { setCreandoPeriodo(false); setNuevoPeriodo(""); setPeriodoError(""); }}
+                          className="shrink-0 text-slate-400 hover:text-slate-600 text-xs font-bold px-1">✗</button>
+                      </form>
+                    ) : (
+                      <select
+                        value={form.periodo} onChange={(e) => set("periodo")(e.target.value)}
+                        className={selectBase} style={selectStyle}
+                      >
+                        <option value="">Seleccione</option>
+                        {periodos.map((p) => <option key={p.id} value={p.nombre}>{p.nombre}</option>)}
+                      </select>
+                    )}
+                    {periodoError && <p className="text-red-500 text-[11px] mt-1">{periodoError}</p>}
+                  </div>
+                  <div className="flex flex-col">
+                    <Label>Curso</Label>
+                    <SearchableSelect
+                      value={form.curso} onChange={set("curso")}
+                      options={[]}
+                      placeholder="Próximamente"
+                      size="md"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <Label>Diplomados</Label>
+                    <SearchableSelect
+                      value={diplomados.some((d) => d.nombre === form.programa) ? form.programa : ""}
+                      onChange={set("programa")}
+                      options={diplomados.map((d) => ({ value: d.nombre, label: d.nombre }))}
+                      placeholder="Seleccione"
+                      size="md"
+                    />
+                  </div>
                   <div className="flex flex-col">
                     <Label>Programa</Label>
                     <SearchableSelect
-                      value={form.programa} onChange={set("programa")} disabled={!form.sedeJornada}
-                      options={programaOpts.map((p) => ({ value: p, label: p }))}
-                      placeholder={!form.sedeJornada ? "Primero seleccione sede" : "Seleccione"}
+                      value={form.programa} onChange={set("programa")}
+                      options={programas.map((p) => ({ value: p.nombre, label: p.nombre }))}
+                      placeholder="Seleccione"
                       size="md"
                     />
                   </div>

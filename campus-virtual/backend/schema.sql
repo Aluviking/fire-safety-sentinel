@@ -1146,3 +1146,19 @@ CREATE TABLE IF NOT EXISTS banco_pregunta_pares (
   orden        INT NOT NULL DEFAULT 0,
   FOREIGN KEY (pregunta_id) REFERENCES banco_preguntas(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Períodos de matrícula para el formulario simplificado de "Registrar
+-- estudiante" — reemplaza la lista larga y fija de períodos históricos
+-- (PERIODOS en el frontend, que Prematrículas sigue usando tal cual para el
+-- histórico ya importado). Con esta tabla, un admin puede crear el período
+-- del siguiente semestre sin que nadie tenga que tocar código.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS periodos_matricula (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  nombre     VARCHAR(50) NOT NULL UNIQUE,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO periodos_matricula (nombre) VALUES ('2026-2');
