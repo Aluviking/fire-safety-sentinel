@@ -96,13 +96,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 interface FormData {
   nombreCompleto: string; tipoId: string; numeroId: string;
   genero: string; correo: string; celular: string;
-  periodo: string; curso: string; programa: string;
+  periodo: string; programa: string;
 }
 
 const EMPTY: FormData = {
   nombreCompleto: "", tipoId: "", numeroId: "",
   genero: "", correo: "", celular: "",
-  periodo: "", curso: "", programa: "",
+  periodo: "", programa: "",
 };
 
 export interface EstudianteEditable {
@@ -145,6 +145,8 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, e
       .catch(() => {});
   };
   const diplomados = programas.filter((p) => p.nombre.toUpperCase().startsWith("DIPLOMADO"));
+  const cursos = programas.filter((p) => p.nombre.toUpperCase().startsWith("CURSO"));
+  const tecnicos = programas.filter((p) => p.nombre.toUpperCase().startsWith("TECNICO"));
 
   const crearPeriodo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,7 +168,7 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, e
       setForm({
         nombreCompleto: editing.nombre_completo, tipoId: editing.tipo_documento ?? "", numeroId: editing.identificacion,
         genero: editing.genero ?? "", correo: editing.correo ?? "", celular: editing.celular ?? "",
-        periodo: "", curso: "", programa: "",
+        periodo: "", programa: "",
       });
     } else {
       setForm(EMPTY);
@@ -309,9 +311,10 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, e
                   <div className="flex flex-col">
                     <Label>Curso</Label>
                     <SearchableSelect
-                      value={form.curso} onChange={set("curso")}
-                      options={[]}
-                      placeholder="Próximamente"
+                      value={cursos.some((c) => c.nombre === form.programa) ? form.programa : ""}
+                      onChange={set("programa")}
+                      options={cursos.map((c) => ({ value: c.nombre, label: c.nombre }))}
+                      placeholder="Seleccione"
                       size="md"
                     />
                   </div>
@@ -328,8 +331,9 @@ export default function RegistrarEstudianteModal({ isOpen, onClose, onCreated, e
                   <div className="flex flex-col">
                     <Label>Programa</Label>
                     <SearchableSelect
-                      value={form.programa} onChange={set("programa")}
-                      options={programas.map((p) => ({ value: p.nombre, label: p.nombre }))}
+                      value={tecnicos.some((t) => t.nombre === form.programa) ? form.programa : ""}
+                      onChange={set("programa")}
+                      options={tecnicos.map((t) => ({ value: t.nombre, label: t.nombre }))}
                       placeholder="Seleccione"
                       size="md"
                     />

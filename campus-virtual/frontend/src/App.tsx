@@ -5,6 +5,7 @@ import { CampusAuthProvider } from "./context/CampusAuthContext";
 const CampusLogin = lazy(() => import("./pages/campus/CampusLogin"));
 const CampusDashboard = lazy(() => import("./pages/campus/CampusDashboard"));
 const EstudianteDashboard = lazy(() => import("./pages/campus/EstudianteDashboard"));
+const PreinscripcionPublica = lazy(() => import("./pages/campus/PreinscripcionPublica"));
 
 const App = () => (
   <BrowserRouter basename="/campus-virtual">
@@ -14,6 +15,7 @@ const App = () => (
           <Route path="/" element={<CampusLogin />} />
           <Route path="/dashboard" element={<CampusDashboard />} />
           <Route path="/estudiante" element={<EstudianteDashboard />} />
+          <Route path="/inscripcion" element={<PreinscripcionPublica />} />
         </Routes>
       </Suspense>
     </CampusAuthProvider>

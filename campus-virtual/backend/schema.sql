@@ -1162,3 +1162,23 @@ CREATE TABLE IF NOT EXISTS periodos_matricula (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT IGNORE INTO periodos_matricula (nombre) VALUES ('2026-2');
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Preinscripciones — formulario público (sin login) para que un prospecto
+-- pida inscribirse a un curso/programa/diplomado. Queda pendiente hasta que
+-- alguien del equipo lo matricula de verdad desde el módulo "Inscritos".
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS preinscripciones (
+  id             INT AUTO_INCREMENT PRIMARY KEY,
+  nombres        VARCHAR(150) NOT NULL,
+  apellidos      VARCHAR(150) NOT NULL,
+  identificacion VARCHAR(30)  NOT NULL,
+  celular        VARCHAR(30)  NULL,
+  correo         VARCHAR(190) NULL,
+  tipo_interes   VARCHAR(20)  NOT NULL,
+  item_nombre    VARCHAR(255) NOT NULL,
+  estado         VARCHAR(20)  NOT NULL DEFAULT 'Pendiente',
+  estudiante_id  INT NULL,
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

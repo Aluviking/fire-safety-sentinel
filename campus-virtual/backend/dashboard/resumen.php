@@ -53,6 +53,17 @@ if ($user['role'] === 'super_admin') {
     )->fetchColumn();
 }
 
+// Preinscripciones pendientes (formulario público de inscripción) — se
+// muestran en la campana igual que anuncios/auditoría, con su propio link
+// directo al módulo "Inscritos".
+$preinscripciones = db()->query(
+    "SELECT id, nombres, apellidos, tipo_interes, item_nombre, created_at
+     FROM preinscripciones WHERE estado = 'Pendiente' ORDER BY created_at DESC LIMIT 8"
+)->fetchAll();
+$preinscripcionesPendientesCount = (int) db()->query(
+    "SELECT COUNT(*) FROM preinscripciones WHERE estado = 'Pendiente'"
+)->fetchColumn();
+
 // Contadores reales para las tarjetas del encabezado (nada decorativo).
 $totalCursos = (int) db()->query('SELECT COUNT(*) FROM cursos')->fetchColumn();
 $pagosPendientes = (int) db()->query('SELECT COUNT(*) FROM pagos_pendientes')->fetchColumn();
@@ -70,9 +81,10 @@ respond([
     'anuncios' => $anuncios,
     'clases' => $clases,
     'auditoria' => $auditoria,
+    'preinscripciones' => $preinscripciones,
     'stats' => [
         'cursos' => $totalCursos,
         'pagosPendientes' => $pagosPendientes,
-        'notificaciones' => $anunciosRecientesCount + $auditoriaRecienteCount,
+        'notificaciones' => $anunciosRecientesCount + $auditoriaRecienteCount + $preinscripcionesPendientesCount,
     ],
 ]);

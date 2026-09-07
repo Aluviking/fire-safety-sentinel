@@ -7,7 +7,7 @@ import {
   Users, BookOpen, GraduationCap, DollarSign, FileText,
   Calendar, Award, ClipboardList, UserCheck, Building,
   ChevronRight, LayoutDashboard, AlertCircle, Briefcase,
-  Shield, TrendingUp, Clock, UserCog, ScrollText, ShieldCheck, Video,
+  Shield, TrendingUp, Clock, UserCog, ScrollText, ShieldCheck, Video, UserPlus,
 } from "lucide-react";
 import { useCampusAuth, type CampusUser } from "@/context/CampusAuthContext";
 import { apiFetch } from "@/lib/api";
@@ -35,6 +35,7 @@ import CursosVirtualesView from "./views/CursosVirtualesView";
 import PlantillasView from "./views/PlantillasView";
 import CertificadosView from "./views/CertificadosView";
 import BancoPreguntasView from "./views/BancoPreguntasView";
+import InscritosView from "./views/InscritosView";
 import PerfilesView from "./views/PerfilesView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
@@ -77,6 +78,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: "Estudiantes",      icon: GraduationCap, subs: ["Registrar estudiante", "Información básica"] },
       { label: "Docentes",         icon: UserCheck,      subs: ["Registrar docente", "Información básica"] },
       { label: "Administrativos",  icon: Briefcase,      subs: ["Registrar administrativo", "Información básica"] },
+      { label: "Inscritos",        icon: UserPlus },
     ],
   },
   {
@@ -138,6 +140,7 @@ const MODULO_POR_ETIQUETA: Record<string, string> = {
   "Docentes": "institucional.docentes",
   "Administrativos": "institucional.administrativos",
   "Codeudores": "institucional.codeudores",
+  "Inscritos": "institucional.inscritos",
   "Evaluaciones": "academico.evaluaciones",
   "Cursos ligeros": "academico.cursos_ligeros",
   "Cursos virtuales": "academico.cursos_virtuales",
@@ -241,10 +244,12 @@ const QUICK_ACCESS = [
 interface AnuncioReciente { origen: string; origen_nombre: string; titulo: string; mensaje: string | null; importancia: string; created_at: string }
 interface ClaseProxima { origen: string; origen_nombre: string; titulo: string; fecha_inicio: string; fecha_fin: string | null }
 interface AuditoriaReciente { id: number; user_name: string; action: string; detail: string | null; created_at: string }
+interface PreinscripcionReciente { id: number; nombres: string; apellidos: string; tipo_interes: string; item_nombre: string; created_at: string }
 interface ResumenData {
   anuncios: AnuncioReciente[];
   clases: ClaseProxima[];
   auditoria: AuditoriaReciente[];
+  preinscripciones: PreinscripcionReciente[];
   stats: { cursos: number; pagosPendientes: number; notificaciones: number };
 }
 
@@ -372,8 +377,8 @@ function NavDropdown({
 
 /* ── Campana de notificaciones (real: anuncios + auditoría de los últimos 7 días) ── */
 function NotificationBell({
-  resumen, loading, isSuperAdmin, onGoHistorial,
-}: { resumen: ResumenData | null; loading: boolean; isSuperAdmin: boolean; onGoHistorial: () => void }) {
+  resumen, loading, isSuperAdmin, onGoHistorial, onGoInscritos,
+}: { resumen: ResumenData | null; loading: boolean; isSuperAdmin: boolean; onGoHistorial: () => void; onGoInscritos: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -390,10 +395,17 @@ function NotificationBell({
   const items = resumen
     ? [
         ...resumen.anuncios.map((a, i) => ({
-          key: `a-${i}`, titulo: a.titulo, detalle: `${a.origen}: ${a.origen_nombre}`, fecha: a.created_at,
+          key: `a-${i}`, titulo: a.titulo, detalle: `${a.origen}: ${a.origen_nombre}`, fecha: a.created_at, onClick: undefined as (() => void) | undefined,
         })),
         ...resumen.auditoria.map((a) => ({
-          key: `h-${a.id}`, titulo: a.detail ?? a.action, detalle: a.user_name, fecha: a.created_at,
+          key: `h-${a.id}`, titulo: a.detail ?? a.action, detalle: a.user_name, fecha: a.created_at, onClick: undefined as (() => void) | undefined,
+        })),
+        ...(resumen.preinscripciones ?? []).map((p) => ({
+          key: `p-${p.id}`,
+          titulo: `Nueva inscripción: ${p.nombres} ${p.apellidos}`,
+          detalle: `${p.tipo_interes === "programa" ? "Programa" : p.tipo_interes === "diplomado" ? "Diplomado" : "Curso"}: ${p.item_nombre}`,
+          fecha: p.created_at,
+          onClick: onGoInscritos,
         })),
       ]
         .sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime())
@@ -434,7 +446,11 @@ function NotificationBell({
                 <p className="text-center text-slate-400 text-xs py-8">Sin novedades por ahora.</p>
               ) : (
                 items.map((it) => (
-                  <div key={it.key} className="px-4 py-3 hover:bg-slate-50 transition-colors">
+                  <div
+                    key={it.key}
+                    onClick={it.onClick ? () => { setOpen(false); it.onClick!(); } : undefined}
+                    className={`px-4 py-3 hover:bg-slate-50 transition-colors ${it.onClick ? "cursor-pointer" : ""}`}
+                  >
                     <p className="text-slate-700 text-xs font-medium leading-snug">{it.titulo}</p>
                     <p className="text-slate-400 text-[11px] mt-0.5">
                       {it.detalle} · {new Date(it.fecha).toLocaleDateString("es-CO", { day: "numeric", month: "short" })}
@@ -924,6 +940,7 @@ export default function CampusDashboard() {
               loading={resumenLoading}
               isSuperAdmin={isSuperAdmin}
               onGoHistorial={() => setActiveNav({ nav: "Historial", sub: "" })}
+              onGoInscritos={() => setActiveNav({ nav: "Institucional", sub: "Inscritos" })}
             />
             <button className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-all">
               <HelpCircle className="w-4 h-4" />
@@ -1087,6 +1104,8 @@ export default function CampusDashboard() {
           <PersonalInfoView tipo="docente" />
         ) : activeNav.sub === "Administrativos › Información básica" ? (
           <PersonalInfoView tipo="administrativo" />
+        ) : activeNav.sub === "Inscritos" ? (
+          <InscritosView />
         ) : activeNav.sub === "Evaluaciones" ? (
           <EvaluacionesView />
         ) : activeNav.sub === "Créditos" ? (

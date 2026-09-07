@@ -158,6 +158,7 @@ function modulos_catalogo(): array
             'institucional.docentes'        => 'Docentes',
             'institucional.administrativos' => 'Administrativos',
             'institucional.codeudores'      => 'Codeudores',
+            'institucional.inscritos'       => 'Inscritos',
         ],
         'Académico' => [
             'academico.evaluaciones'       => 'Evaluaciones',
@@ -213,6 +214,7 @@ function rol_modulos_por_defecto(string $role): ?array
     if ($role === 'equipo') {
         return $ver([
             'institucional.estudiantes', 'institucional.docentes', 'institucional.administrativos',
+            'institucional.inscritos',
             'academico.evaluaciones', 'academico.educacion_virtual', 'academico.cursos_ligeros',
             'academico.cursos_virtuales', 'academico.plantillas', 'academico.certificados',
             'academico.aulas_virtuales', 'academico.programas', 'academico.asignaturas', 'academico.cursos',
@@ -223,6 +225,7 @@ function rol_modulos_por_defecto(string $role): ?array
     if ($role === 'administrativo') {
         return $ver([
             'institucional.estudiantes', 'institucional.docentes', 'institucional.administrativos',
+            'institucional.inscritos',
             'tesoreria.creditos', 'tesoreria.pagos', 'tesoreria.notas_credito',
             'informes.consolidado_notas', 'informes.cartera_general', 'informes.gestion_financiera',
         ]);
