@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, ChevronRight, BookOpen, Layers, Users as UsersIcon, Plus, Trash2, Loader2,
+  ArrowLeft, ChevronRight, BookOpen, Layers, Plus, Trash2, Loader2,
   Megaphone, Video, Settings, Upload, X, Check,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
@@ -20,8 +20,6 @@ export interface Asignatura {
   dias_disponibles: number | null;
   certificado_id: number | null;
 }
-interface EstudianteOption { id: number; identificacion: string; nombre_completo: string }
-interface Matricula { id: number; estudiante_id: number; identificacion: string; nombre_completo: string }
 interface Anuncio { id: number; titulo: string; mensaje: string | null; importancia: string; created_at: string }
 interface AulaRecurso { id: number; nombre: string }
 interface Clase { id: number; titulo: string; aula_recurso_id: number | null; aula_nombre: string | null; fecha_inicio: string; fecha_fin: string | null }
@@ -34,94 +32,9 @@ const TABS = [
   { key: "anuncios", label: "Anuncios", icon: Megaphone },
   { key: "clases", label: "Clases virtuales", icon: Video },
   { key: "programas", label: "Programas", icon: Layers },
-  { key: "estudiantes", label: "Estudiantes", icon: UsersIcon },
   { key: "ajustes", label: "Ajustes", icon: Settings },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
-
-/* ── Estudiantes matriculados en la asignatura ────────────────────────────── */
-function EstudiantesTab({ asignaturaId }: { asignaturaId: number }) {
-  const [matriculados, setMatriculados] = useState<Matricula[]>([]);
-  const [estudiantes, setEstudiantes] = useState<EstudianteOption[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedId, setSelectedId] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [error, setError] = useState("");
-
-  const load = () => {
-    setLoading(true);
-    Promise.all([
-      apiFetch<{ matriculados: Matricula[] }>(`/asignatura-estudiantes/list.php?asignaturaId=${asignaturaId}`),
-      apiFetch<{ estudiantes: EstudianteOption[] }>("/estudiantes/list.php"),
-    ]).then(([m, e]) => { setMatriculados(m.matriculados); setEstudiantes(e.estudiantes); }).finally(() => setLoading(false));
-  };
-  useEffect(load, [asignaturaId]);
-
-  const inscritosIds = new Set(matriculados.map((m) => m.estudiante_id));
-  const disponibles = estudiantes.filter((e) => !inscritosIds.has(e.id));
-
-  const add = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedId) return;
-    setError("");
-    setAdding(true);
-    try {
-      await apiFetch("/asignatura-estudiantes/create.php", { method: "POST", json: { asignaturaId, estudianteId: Number(selectedId) } });
-      setSelectedId("");
-      load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al matricular.");
-    } finally {
-      setAdding(false);
-    }
-  };
-
-  const remove = async (id: number) => {
-    await apiFetch("/asignatura-estudiantes/delete.php", { method: "POST", json: { id } });
-    load();
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">Estudiantes ({matriculados.length})</h3>
-      </div>
-      <form onSubmit={add} className="flex gap-2">
-        <SearchableSelect
-          value={selectedId} onChange={setSelectedId}
-          options={disponibles.map((e) => ({ value: String(e.id), label: e.nombre_completo, keywords: e.identificacion }))}
-          placeholder="Seleccione estudiante..."
-          className="flex-1"
-        />
-        <button type="submit" disabled={adding || !selectedId}
-          className="flex items-center gap-1.5 px-4 rounded-lg bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0">
-          <Plus className="w-3.5 h-3.5" /> Matricular
-        </button>
-      </form>
-      {error && <p className="text-[11px] text-red-500">{error}</p>}
-
-      {loading ? (
-        <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
-      ) : matriculados.length === 0 ? (
-        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">Aún no hay estudiantes matriculados en esta asignatura.</p>
-      ) : (
-        <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-          {matriculados.map((m) => (
-            <div key={m.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-800 truncate">{m.nombre_completo}</p>
-                <p className="text-xs text-slate-400">{m.identificacion}</p>
-              </div>
-              <button onClick={() => remove(m.id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0" title="Quitar de la asignatura">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* ── Anuncios ─────────────────────────────────────────────────────────────── */
 function AnunciosTab({ asignaturaId }: { asignaturaId: number }) {
@@ -471,7 +384,6 @@ export default function AsignaturaDetailView({
                 </div>
               )
             )}
-            {tab === "estudiantes" && <EstudiantesTab asignaturaId={asignatura.id} />}
             {tab === "ajustes" && <AjustesTab asignatura={asignatura} canEdit={canEditSettings} onUpdated={onUpdated} />}
           </div>
         </div>

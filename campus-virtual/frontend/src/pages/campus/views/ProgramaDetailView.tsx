@@ -220,10 +220,13 @@ function InfoField({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-/* ── Asignar una asignatura existente al pensum de este programa ─────────── */
+/* ── Traer una asignatura existente al pensum de este programa — se muestra
+     el catálogo completo, incluidas las que ya están en este mismo pensum
+     (el backend avisa "ya está asignada" si se intenta repetir), porque el
+     cliente quiere poder ver/buscar todo el catálogo desde un solo lugar. ── */
 function AsignarAsignaturaModal({
-  programaId, yaAsignadasIds, onClose, onSaved,
-}: { programaId: number; yaAsignadasIds: number[]; onClose: () => void; onSaved: () => void }) {
+  programaId, onClose, onSaved,
+}: { programaId: number; onClose: () => void; onSaved: () => void }) {
   const [asignaturas, setAsignaturas] = useState<AsignaturaOption[]>([]);
   const [asignaturaId, setAsignaturaId] = useState("");
   const [nivel, setNivel] = useState("");
@@ -238,7 +241,7 @@ function AsignarAsignaturaModal({
     apiFetch<{ asignaturas: AsignaturaOption[] }>("/asignaturas/list.php").then((d) => setAsignaturas(d.asignaturas)).catch(() => {});
   }, []);
 
-  const disponibles = asignaturas.filter((a) => !yaAsignadasIds.includes(a.id));
+  const disponibles = asignaturas;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,7 +272,7 @@ function AsignarAsignaturaModal({
       <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <p className="text-slate-800 font-bold text-[15px]">Asignar asignatura</p>
+          <p className="text-slate-800 font-bold text-[15px]">Traer asignatura</p>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
         </div>
         <form onSubmit={submit} className="px-5 py-4 space-y-3">
@@ -740,8 +743,7 @@ function PensumSection({ programa, canEdit, onUpdated }: { programa: Programa; c
       )}
 
       {asignando && (
-        <AsignarAsignaturaModal programaId={programa.id} yaAsignadasIds={asignaturas.map((a) => a.asignatura_id)}
-          onClose={() => setAsignando(false)} onSaved={load} />
+        <AsignarAsignaturaModal programaId={programa.id} onClose={() => setAsignando(false)} onSaved={load} />
       )}
       {creandoAsignatura && <CrearAsignaturaModal programaId={programa.id} onClose={() => setCreandoAsignatura(false)} onSaved={load} />}
       {editandoPensum && <EditarPensumModal programa={programa} onClose={() => setEditandoPensum(false)} onSaved={onUpdated} />}
