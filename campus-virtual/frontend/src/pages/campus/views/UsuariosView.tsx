@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { UserPlus, Trash2, Users as UsersIcon, Pencil, KeyRound, Check, X as XIcon } from "lucide-react";
+import { UserPlus, Trash2, Users as UsersIcon, Pencil, KeyRound, Check, X as XIcon, Search } from "lucide-react";
 import { useCampusAuth, type Role } from "@/context/CampusAuthContext";
 import { apiFetch } from "@/lib/api";
 import { ResetPasswordModal } from "../ResetPasswordModal";
@@ -140,6 +140,17 @@ export default function UsuariosView() {
     apiFetch<{ perfiles: Perfil[] }>("/perfiles/list.php").then((d) => setPerfiles(d.perfiles)).catch(() => {});
   }, [isSuperAdmin]);
 
+  const [busqueda, setBusqueda] = useState("");
+  const q = busqueda.trim().toLowerCase();
+  const usuariosFiltrados = q
+    ? users.filter((u) =>
+        u.nombre.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.username.toLowerCase().includes(q) ||
+        (u.identificacion ?? "").toLowerCase().includes(q)
+      )
+    : users;
+
   const [resettingUser, setResettingUser] = useState<{ id: string; nombre: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNombre, setEditNombre] = useState("");
@@ -221,14 +232,26 @@ export default function UsuariosView() {
         <div className="h-1 bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="font-semibold text-slate-800 text-sm">Todos los usuarios</h2>
-          <span className="text-xs font-bold text-slate-500">{users.length}</span>
+          <span className="text-xs font-bold text-slate-500">
+            {q ? `${usuariosFiltrados.length} de ${users.length}` : users.length}
+          </span>
         </div>
 
         <div className="p-5">
           <CreateUserForm isSuperAdmin={isSuperAdmin} />
 
-          <div className="divide-y divide-slate-100 mt-4">
-            {users.map((u) => {
+          <div className="relative mt-4 max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+            <input
+              value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar por nombre, usuario, correo o identificación..."
+              className="w-full text-xs bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-2
+                         focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
+            />
+          </div>
+
+          <div className="divide-y divide-slate-100 mt-3">
+            {usuariosFiltrados.map((u) => {
               const targetIsAdminTier = u.role === "admin" || u.role === "super_admin";
               const locked = targetIsAdminTier && !isSuperAdmin;
               const isEditing = editingId === u.id;
@@ -330,9 +353,11 @@ export default function UsuariosView() {
                 </div>
               );
             })}
-            {users.length === 0 && (
+            {users.length === 0 ? (
               <p className="text-slate-400 text-sm text-center py-8">Aún no hay usuarios creados.</p>
-            )}
+            ) : usuariosFiltrados.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-8">Sin resultados para "{busqueda}".</p>
+            ) : null}
           </div>
         </div>
       </div>
