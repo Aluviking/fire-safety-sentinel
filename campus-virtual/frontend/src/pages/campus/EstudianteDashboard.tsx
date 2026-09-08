@@ -131,11 +131,17 @@ export default function EstudianteDashboard() {
   const navigate = useNavigate();
   const [cursos, setCursos] = useState<CursoLigero[]>([]);
   const [programas, setProgramas] = useState<Programa[]>([]);
-  const [asignaturas, setAsignaturas] = useState<Asignatura[]>([]);
   const [cursosVirtuales, setCursosVirtuales] = useState<CursoVirtual[]>([]);
   const [vinculado, setVinculado] = useState(true);
   const [loading, setLoading] = useState(true);
   const [activo, setActivo] = useState<Activo | null>(null);
+
+  // Un programa/curso/diplomado abierto muestra SUS asignaturas adentro (no
+  // una lista suelta de todas mezcladas) — así se ve organizado por dónde
+  // realmente pertenece cada una.
+  const [programaAbierto, setProgramaAbierto] = useState<Programa | null>(null);
+  const [asignaturasPrograma, setAsignaturasPrograma] = useState<Asignatura[]>([]);
+  const [loadingAsignaturas, setLoadingAsignaturas] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -151,22 +157,30 @@ export default function EstudianteDashboard() {
     Promise.all([
       apiFetch<{ cursos: CursoLigero[]; vinculado: boolean }>("/mis-cursos-ligeros/list.php").catch(() => ({ cursos: [], vinculado: true })),
       apiFetch<{ programas: Programa[]; vinculado: boolean }>("/mis-programas/list.php").catch(() => ({ programas: [], vinculado: true })),
-      apiFetch<{ asignaturas: Asignatura[]; vinculado: boolean }>("/mis-asignaturas/list.php").catch(() => ({ asignaturas: [], vinculado: true })),
       apiFetch<{ cursos: CursoVirtual[]; vinculado: boolean }>("/mis-cursos-virtuales/list.php").catch(() => ({ cursos: [], vinculado: true })),
     ])
-      .then(([c, p, a, cv]) => {
-        setCursos(c.cursos); setProgramas(p.programas); setAsignaturas(a.asignaturas); setCursosVirtuales(cv.cursos);
-        setVinculado(c.vinculado && p.vinculado && a.vinculado && cv.vinculado);
+      .then(([c, p, cv]) => {
+        setCursos(c.cursos); setProgramas(p.programas); setCursosVirtuales(cv.cursos);
+        setVinculado(c.vinculado && p.vinculado && cv.vinculado);
       })
       .finally(() => setLoading(false));
   }, [user]);
+
+  useEffect(() => {
+    if (!programaAbierto) return;
+    setLoadingAsignaturas(true);
+    apiFetch<{ asignaturas: Asignatura[] }>(`/mis-programas/asignaturas.php?programaId=${programaAbierto.id}`)
+      .then((d) => setAsignaturasPrograma(d.asignaturas))
+      .catch(() => setAsignaturasPrograma([]))
+      .finally(() => setLoadingAsignaturas(false));
+  }, [programaAbierto]);
 
   const handleLogout = () => { logout(); navigate("/", { replace: true }); };
 
   if (authLoading || !user || user.role !== "estudiante") return null;
 
-  const sinNada = cursos.length === 0 && programas.length === 0 && asignaturas.length === 0 && cursosVirtuales.length === 0;
-  const totalItems = cursos.length + programas.length + asignaturas.length + cursosVirtuales.length;
+  const sinNada = cursos.length === 0 && programas.length === 0 && cursosVirtuales.length === 0;
+  const totalItems = cursos.length + programas.length + cursosVirtuales.length;
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Buenos días" : hour < 18 ? "Buenas tardes" : "Buenas noches";
 
@@ -195,7 +209,7 @@ export default function EstudianteDashboard() {
             <div className="h-1.5 bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
             <div className="p-5 sm:p-7">
               <button onClick={() => setActivo(null)} className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-[#C41717] transition-colors mb-4">
-                <ArrowLeft className="w-3.5 h-3.5" /> Volver a mis cursos
+                <ArrowLeft className="w-3.5 h-3.5" /> {programaAbierto ? `Volver a ${programaAbierto.nombre}` : "Volver a mis cursos"}
               </button>
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-10 h-10 rounded-xl bg-[#C41717]/8 border border-[#C41717]/20 flex items-center justify-center shrink-0">
@@ -210,6 +224,54 @@ export default function EstudianteDashboard() {
                 ownerId={activo.ownerId}
               />
             </div>
+          </motion.div>
+        ) : programaAbierto ? (
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-5">
+            <button onClick={() => setProgramaAbierto(null)} className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-[#C41717] transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" /> Volver a mis cursos
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#C41717]/8 border border-[#C41717]/20 flex items-center justify-center shrink-0">
+                <GraduationCap className="w-5 h-5 text-[#C41717]" />
+              </div>
+              <h1 className="text-slate-900 font-bold text-lg leading-snug">{programaAbierto.nombre}</h1>
+            </div>
+            {loadingAsignaturas ? (
+              <div className="flex items-center justify-center py-16 text-slate-400 gap-2 text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" /> Cargando...
+              </div>
+            ) : asignaturasPrograma.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center">
+                <Layers className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 text-sm">Este programa aún no tiene asignaturas con contenido.</p>
+              </div>
+            ) : (
+              <div>
+                <SectionHeader icon={Layers} label="Asignaturas" count={asignaturasPrograma.length} />
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {asignaturasPrograma.map((a) => (
+                    <ItemCard
+                      key={a.id}
+                      icon={Layers}
+                      title={a.nombre}
+                      subtitle={a.descripcion}
+                      imagePath={a.imagen_path ? `/asignaturas/imagen.php?id=${a.id}` : null}
+                      accent={accentFor(a.nombre)}
+                      onClick={() => setActivo({ nombre: a.nombre, contentBase: "/asignatura-contenido", questionsBase: "/asignatura-preguntas", ownerIdKey: "asignaturaId", ownerId: a.id })}
+                      footer={
+                        a.dias_disponibles != null ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                            <Clock className="w-3 h-3 text-slate-400" /> {a.dias_disponibles} días disponibles
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-300">Sin fecha límite</span>
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </motion.div>
         ) : (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-7">
@@ -266,39 +328,11 @@ export default function EstudianteDashboard() {
                           subtitle={p.descripcion}
                           imagePath={p.imagen_path ? `/programas/imagen.php?id=${p.id}` : null}
                           accent={accentFor(p.nombre)}
-                          onClick={() => setActivo({ nombre: p.nombre, contentBase: "/programa-contenido", questionsBase: "/programa-preguntas", ownerIdKey: "programaId", ownerId: p.id })}
+                          onClick={() => setProgramaAbierto(p)}
                           footer={
                             p.dias_disponibles != null ? (
                               <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
                                 <Clock className="w-3 h-3 text-slate-400" /> {p.dias_disponibles} días disponibles
-                              </span>
-                            ) : (
-                              <span className="text-[11px] text-slate-300">Sin fecha límite</span>
-                            )
-                          }
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {asignaturas.length > 0 && (
-                  <div>
-                    <SectionHeader icon={Layers} label="Asignaturas" count={asignaturas.length} />
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {asignaturas.map((a) => (
-                        <ItemCard
-                          key={a.id}
-                          icon={Layers}
-                          title={a.nombre}
-                          subtitle={a.descripcion}
-                          imagePath={a.imagen_path ? `/asignaturas/imagen.php?id=${a.id}` : null}
-                          accent={accentFor(a.nombre)}
-                          onClick={() => setActivo({ nombre: a.nombre, contentBase: "/asignatura-contenido", questionsBase: "/asignatura-preguntas", ownerIdKey: "asignaturaId", ownerId: a.id })}
-                          footer={
-                            a.dias_disponibles != null ? (
-                              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                                <Clock className="w-3 h-3 text-slate-400" /> {a.dias_disponibles} días disponibles
                               </span>
                             ) : (
                               <span className="text-[11px] text-slate-300">Sin fecha límite</span>

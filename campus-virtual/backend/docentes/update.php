@@ -19,6 +19,10 @@ $dup = db()->prepare('SELECT id FROM docentes WHERE identificacion = ? AND id !=
 $dup->execute([$identificacion, $id]);
 if ($dup->fetch()) fail('Ya existe otro docente con esa identificación.');
 
+$actual = db()->prepare('SELECT identificacion FROM docentes WHERE id = ?');
+$actual->execute([$id]);
+$identificacionAnterior = $actual->fetchColumn();
+
 db()->prepare(
     'UPDATE docentes SET
         identificacion = ?, nombre_completo = ?, genero = ?, tipo_documento = ?, municipio_expedicion = ?,
@@ -36,6 +40,18 @@ db()->prepare(
     $body['fechaIngreso'] ?? null, $body['tipoVinculacion'] ?? null, $body['estado'] ?? 'Activo',
     $id,
 ]);
+
+// Misma razón que en estudiantes/update.php — la cuenta de acceso queda
+// enlazada a la ficha real por la identificación; si se corrige aquí y no se
+// actualiza también en `users`, la cuenta deja de encontrar su propia ficha.
+if ($identificacionAnterior && $identificacionAnterior !== $identificacion) {
+    $dupUser = db()->prepare("SELECT id FROM users WHERE identificacion = ? AND identificacion != ?");
+    $dupUser->execute([$identificacion, $identificacionAnterior]);
+    if (!$dupUser->fetch()) {
+        db()->prepare("UPDATE users SET identificacion = ?, username = ? WHERE identificacion = ? AND role = 'docente'")
+            ->execute([$identificacion, $identificacion, $identificacionAnterior]);
+    }
+}
 
 log_trace($user, 'docente_update', "Editó a $nombreCompleto");
 respond(['ok' => true]);

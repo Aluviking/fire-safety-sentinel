@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { UserPlus, Trash2, Users as UsersIcon, Pencil, KeyRound, Check, X as XIcon, Search } from "lucide-react";
+import { UserPlus, Trash2, Users as UsersIcon, Pencil, KeyRound, Check, X as XIcon, Search, RefreshCw } from "lucide-react";
 import { useCampusAuth, type Role } from "@/context/CampusAuthContext";
 import { apiFetch } from "@/lib/api";
 import { ResetPasswordModal } from "../ResetPasswordModal";
+import { ConfirmModal } from "../ConfirmModal";
 import { SearchableSelect } from "../SearchableSelect";
 
 interface Perfil { id: number; nombre: string }
@@ -151,6 +152,66 @@ export default function UsuariosView() {
       )
     : users;
 
+  const [sincronizando, setSincronizando] = useState(false);
+  const [resultadoSync, setResultadoSync] = useState<{ actualizados: number; omitidos: number } | null>(null);
+
+  // No te puedes seleccionar/eliminar a ti mismo — mismo límite que ya tenía
+  // el botón de eliminar individual.
+  const seleccionables = usuariosFiltrados.filter((u) => u.id !== currentUser?.id);
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const todosSeleccionados = seleccionables.length > 0 && seleccionables.every((u) => seleccionados.has(u.id));
+  const [eliminandoSeleccionados, setEliminandoSeleccionados] = useState(false);
+  const [borrandoSeleccionados, setBorrandoSeleccionados] = useState(false);
+
+  const toggleSeleccionado = (id: string) => {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSeleccionarTodos = () => {
+    setSeleccionados((prev) => {
+      if (todosSeleccionados) {
+        const next = new Set(prev);
+        seleccionables.forEach((u) => next.delete(u.id));
+        return next;
+      }
+      const next = new Set(prev);
+      seleccionables.forEach((u) => next.add(u.id));
+      return next;
+    });
+  };
+
+  const confirmEliminarSeleccionados = async () => {
+    const ids = seleccionados.size > 0 ? Array.from(seleccionados) : seleccionables.map((u) => u.id);
+    setBorrandoSeleccionados(true);
+    try {
+      const resultados = await Promise.all(ids.map((id) => deleteUser(id)));
+      const fallidos = resultados.filter((r) => !r.ok).length;
+      setSeleccionados(new Set());
+      setEliminandoSeleccionados(false);
+      if (fallidos > 0) window.alert(`${fallidos} usuario(s) no se pudieron eliminar.`);
+    } finally {
+      setBorrandoSeleccionados(false);
+    }
+  };
+
+  const sincronizarClaves = async () => {
+    if (!window.confirm("Esto restablece el usuario y la clave de TODOS los estudiantes para que vuelvan a ser su número de identificación, sin importar lo que tuvieran antes. Cierra sus sesiones activas. ¿Continuar?")) return;
+    setSincronizando(true);
+    setResultadoSync(null);
+    try {
+      const r = await apiFetch<{ actualizados: number; omitidos: number }>("/usuarios/resetear-claves-estudiantes.php", { method: "POST" });
+      setResultadoSync(r);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Error al sincronizar.");
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
   const [resettingUser, setResettingUser] = useState<{ id: string; nombre: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNombre, setEditNombre] = useState("");
@@ -226,6 +287,23 @@ export default function UsuariosView() {
           <h1 className="text-slate-900 font-bold text-lg">Usuarios</h1>
           <p className="text-slate-500 text-xs">Crea cuentas y asigna roles del equipo de GFO Academy.</p>
         </div>
+        {isSuperAdmin && (
+          <div className="ml-auto flex flex-col items-end gap-1">
+            <button
+              onClick={sincronizarClaves} disabled={sincronizando}
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#C41717] disabled:opacity-60 transition-colors"
+              title="Restablece usuario y clave de todos los estudiantes a su identificación"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${sincronizando ? "animate-spin" : ""}`} />
+              {sincronizando ? "Sincronizando..." : "Sincronizar claves de estudiantes"}
+            </button>
+            {resultadoSync && (
+              <p className="text-[11px] text-emerald-600 font-medium">
+                {resultadoSync.actualizados} actualizado(s){resultadoSync.omitidos > 0 && `, ${resultadoSync.omitidos} omitido(s)`}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -240,15 +318,31 @@ export default function UsuariosView() {
         <div className="p-5">
           <CreateUserForm isSuperAdmin={isSuperAdmin} />
 
-          <div className="relative mt-4 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-            <input
-              value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por nombre, usuario, correo o identificación..."
-              className="w-full text-xs bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-2
-                         focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
-            />
+          <div className="flex items-center justify-between flex-wrap gap-2 mt-4">
+            <div className="relative w-full max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <input
+                value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por nombre, usuario, correo o identificación..."
+                className="w-full text-xs bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-2
+                           focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
+              />
+            </div>
+            {isSuperAdmin && seleccionables.length > 0 && (
+              <button onClick={() => setEliminandoSeleccionados(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-600">
+                <Trash2 className="w-3.5 h-3.5" />
+                {seleccionados.size > 0 ? `Eliminar seleccionados (${seleccionados.size})` : `Eliminar todos (${seleccionables.length})`}
+              </button>
+            )}
           </div>
+
+          {isSuperAdmin && seleccionables.length > 0 && (
+            <label className="flex items-center gap-2 mt-3 text-xs text-slate-500 cursor-pointer w-fit">
+              <input type="checkbox" checked={todosSeleccionados} onChange={toggleSeleccionarTodos} className="accent-[#C41717]" />
+              Seleccionar todos
+            </label>
+          )}
 
           <div className="divide-y divide-slate-100 mt-3">
             {usuariosFiltrados.map((u) => {
@@ -291,6 +385,9 @@ export default function UsuariosView() {
                     </form>
                   ) : (
                   <div className="flex items-center gap-3.5">
+                    {isSuperAdmin && u.id !== currentUser?.id && (
+                      <input type="checkbox" checked={seleccionados.has(u.id)} onChange={() => toggleSeleccionado(u.id)} className="accent-[#C41717] shrink-0" />
+                    )}
                     <div className="w-10 h-10 rounded-full bg-[#C41717]/15 border border-[#C41717]/30
                                     flex items-center justify-center shrink-0">
                       <span className="text-[#C41717] text-sm font-bold">{u.nombre.charAt(0)}</span>
@@ -366,6 +463,20 @@ export default function UsuariosView() {
         user={resettingUser}
         onConfirm={confirmResetPassword}
         onCancel={() => setResettingUser(null)}
+      />
+      <ConfirmModal
+        open={eliminandoSeleccionados}
+        title={seleccionados.size > 0 ? "Eliminar usuarios seleccionados" : "Eliminar todos los usuarios"}
+        message={
+          seleccionados.size > 0
+            ? `¿Eliminar los ${seleccionados.size} usuario(s) seleccionado(s)? Esta acción no se puede deshacer.`
+            : busqueda
+              ? `¿Eliminar los ${seleccionables.length} usuario(s) que coinciden con "${busqueda}"? Esta acción no se puede deshacer.`
+              : `¿Eliminar los ${seleccionables.length} usuario(s)? Esta acción no se puede deshacer.`
+        }
+        confirmLabel={borrandoSeleccionados ? "Eliminando..." : "Eliminar"}
+        onConfirm={confirmEliminarSeleccionados}
+        onCancel={() => setEliminandoSeleccionados(false)}
       />
     </motion.div>
   );

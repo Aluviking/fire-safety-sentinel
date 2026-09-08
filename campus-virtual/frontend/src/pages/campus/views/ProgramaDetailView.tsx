@@ -688,6 +688,10 @@ function PensumSection({ programa, canEdit, onUpdated }: { programa: Programa; c
   const [eliminandoPensum, setEliminandoPensum] = useState(false);
   const [editingAsig, setEditingAsig] = useState<PensumAsignatura | null>(null);
   const [prerequisitosDe, setPrerequisitosDe] = useState<PensumAsignatura | null>(null);
+  const [busqueda, setBusqueda] = useState("");
+  const [seleccionadas, setSeleccionadas] = useState<Set<number>>(new Set());
+  const [eliminandoSeleccionadas, setEliminandoSeleccionadas] = useState(false);
+  const [borrandoSeleccionadas, setBorrandoSeleccionadas] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -700,6 +704,44 @@ function PensumSection({ programa, canEdit, onUpdated }: { programa: Programa; c
     if (!window.confirm(`¿Quitar "${pa.asignatura_nombre}" de este pensum?`)) return;
     await apiFetch("/programa-asignaturas/delete.php", { method: "POST", json: { id: pa.id } });
     load();
+  };
+
+  const q = busqueda.trim().toLowerCase();
+  const filtradas = q ? asignaturas.filter((pa) => pa.asignatura_nombre.toLowerCase().includes(q)) : asignaturas;
+  const todasFiltradasSeleccionadas = filtradas.length > 0 && filtradas.every((pa) => seleccionadas.has(pa.id));
+
+  const toggleSeleccionada = (id: number) => {
+    setSeleccionadas((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSeleccionarTodas = () => {
+    setSeleccionadas((prev) => {
+      if (todasFiltradasSeleccionadas) {
+        const next = new Set(prev);
+        filtradas.forEach((pa) => next.delete(pa.id));
+        return next;
+      }
+      const next = new Set(prev);
+      filtradas.forEach((pa) => next.add(pa.id));
+      return next;
+    });
+  };
+
+  const confirmEliminarSeleccionadas = async () => {
+    const ids = seleccionadas.size > 0 ? Array.from(seleccionadas) : filtradas.map((pa) => pa.id);
+    setBorrandoSeleccionadas(true);
+    try {
+      await Promise.all(ids.map((id) => apiFetch("/programa-asignaturas/delete.php", { method: "POST", json: { id } })));
+      setSeleccionadas(new Set());
+      setEliminandoSeleccionadas(false);
+      load();
+    } finally {
+      setBorrandoSeleccionadas(false);
+    }
   };
 
   const confirmEliminarPensum = async () => {
@@ -745,15 +787,47 @@ function PensumSection({ programa, canEdit, onUpdated }: { programa: Programa; c
             <InfoField label="Valor máximo de calificación" value={programa.valor_maximo_calificacion != null ? String(programa.valor_maximo_calificacion) : null} />
           </div>
 
+          {asignaturas.length > 0 && (
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="relative w-full max-w-xs">
+                <input
+                  value={busqueda} onChange={(e) => setBusqueda(e.target.value)}
+                  placeholder="Buscar asignatura..."
+                  className="w-full text-xs bg-white border border-slate-300 rounded-lg pl-3 pr-7 py-1.5
+                             focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
+                />
+                {busqueda && (
+                  <button onClick={() => setBusqueda("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {canEdit && (
+                <button onClick={() => setEliminandoSeleccionadas(true)} disabled={filtradas.length === 0}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-600 disabled:opacity-40 disabled:cursor-not-allowed">
+                  <X className="w-3.5 h-3.5" />
+                  {seleccionadas.size > 0 ? `Eliminar seleccionadas (${seleccionadas.size})` : `Eliminar todas (${filtradas.length})`}
+                </button>
+              )}
+            </div>
+          )}
+
           {loading ? (
             <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
           ) : asignaturas.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">Este pensum aún no tiene asignaturas.</p>
+          ) : filtradas.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">Sin resultados para "{busqueda}".</p>
           ) : (
             <div className="overflow-x-auto border border-slate-200 rounded-xl">
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
+                    {canEdit && (
+                      <th className="px-3 py-2 w-8">
+                        <input type="checkbox" checked={todasFiltradasSeleccionadas} onChange={toggleSeleccionarTodas} className="accent-[#C41717]" />
+                      </th>
+                    )}
                     <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Código</th>
                     <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Asignatura</th>
                     <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Nivel</th>
@@ -764,8 +838,13 @@ function PensumSection({ programa, canEdit, onUpdated }: { programa: Programa; c
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {asignaturas.map((pa) => (
+                  {filtradas.map((pa) => (
                     <tr key={pa.id} className="hover:bg-slate-50/70">
+                      {canEdit && (
+                        <td className="px-3 py-2">
+                          <input type="checkbox" checked={seleccionadas.has(pa.id)} onChange={() => toggleSeleccionada(pa.id)} className="accent-[#C41717]" />
+                        </td>
+                      )}
                       <td className="px-3 py-2 text-slate-500 text-xs whitespace-nowrap">{String(pa.orden).padStart(2, "0")} - {programa.codigo ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-800 font-medium text-xs">{pa.asignatura_nombre}</td>
                       <td className="px-3 py-2 text-slate-500 text-xs">{pa.nivel ?? "—"}</td>
@@ -813,6 +892,20 @@ function PensumSection({ programa, canEdit, onUpdated }: { programa: Programa; c
         message={`¿Eliminar el pensum "${programa.pensum_nombre || "PENSUM"}"? Se quitarán todas sus asignaturas y prerrequisitos. Esta acción no se puede deshacer.`}
         onConfirm={confirmEliminarPensum}
         onCancel={() => setEliminandoPensum(false)}
+      />
+      <ConfirmModal
+        open={eliminandoSeleccionadas}
+        title={seleccionadas.size > 0 ? "Eliminar asignaturas seleccionadas" : "Eliminar todas las asignaturas"}
+        message={
+          seleccionadas.size > 0
+            ? `¿Quitar las ${seleccionadas.size} asignatura(s) seleccionada(s) de este pensum? Esta acción no se puede deshacer.`
+            : busqueda
+              ? `¿Quitar las ${filtradas.length} asignatura(s) que coinciden con "${busqueda}"? Esta acción no se puede deshacer.`
+              : `¿Quitar las ${filtradas.length} asignatura(s) de este pensum? Esta acción no se puede deshacer.`
+        }
+        confirmLabel={borrandoSeleccionadas ? "Eliminando..." : "Eliminar"}
+        onConfirm={confirmEliminarSeleccionadas}
+        onCancel={() => setEliminandoSeleccionadas(false)}
       />
     </div>
   );

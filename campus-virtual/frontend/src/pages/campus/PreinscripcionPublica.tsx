@@ -87,10 +87,14 @@ export default function PreinscripcionPublica() {
           className="relative z-10 w-full max-w-xl bg-white rounded-[1.75rem] shadow-[0_25px_80px_rgba(0,0,0,0.25)]
                      border border-white/80 overflow-hidden"
         >
-          <div className="px-6 sm:px-9 py-7 text-center border-b border-slate-100">
+          <div className={`px-6 sm:px-9 py-7 text-center ${enviado ? "" : "border-b border-slate-100"}`}>
             <img src={gfoLogo} alt="GFO Academy" className="h-14 w-auto object-contain mx-auto mb-3" />
-            <h1 className="text-slate-900 font-bold text-xl sm:text-2xl tracking-tight">Inscríbete a Campus Virtual</h1>
-            <p className="text-slate-500 text-sm mt-1">Completa tus datos y elige a qué te quieres inscribir.</p>
+            {!enviado && (
+              <>
+                <h1 className="text-slate-900 font-bold text-xl sm:text-2xl tracking-tight">Inscríbete a Campus Virtual</h1>
+                <p className="text-slate-500 text-sm mt-1">Completa tus datos y elige a qué te quieres inscribir.</p>
+              </>
+            )}
           </div>
 
           {enviado ? (

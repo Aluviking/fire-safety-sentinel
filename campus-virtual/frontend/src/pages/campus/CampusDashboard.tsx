@@ -187,6 +187,7 @@ function filterNavItems(items: NavItem[], canVer: (modulo: string) => boolean, v
 // — incluye también los ítems que abren un modal (ej. "Registrar
 // estudiante"), ya que handleNavigate los intercepta igual por ese mismo par.
 interface SearchResult { label: string; nav: string; sub: string }
+interface PersonaResult { id: number; nombre_completo: string; identificacion: string; tipo: "estudiante" | "docente" }
 function flattenNavItems(items: NavItem[]): SearchResult[] {
   const out: SearchResult[] = [];
   for (const item of items) {
@@ -727,7 +728,22 @@ export default function CampusDashboard() {
   };
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen]   = useState(false);
+  const [personaResults, setPersonaResults] = useState<PersonaResult[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Buscar estudiantes/docentes por nombre o cédula desde el mismo buscador
+  // del navbar — "solo escribir y ya saber si está o no registrado", sin
+  // entrar al módulo. Con debounce para no llamar al backend en cada tecla.
+  useEffect(() => {
+    const term = searchQuery.trim();
+    if (term.length < 2) { setPersonaResults([]); return; }
+    const t = setTimeout(() => {
+      apiFetch<{ personas: PersonaResult[] }>(`/personas/buscar.php?q=${encodeURIComponent(term)}`)
+        .then((d) => setPersonaResults(d.personas))
+        .catch(() => setPersonaResults([]));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
   const [modal, setModal]             = useState<string | null>(null);
   const [resumen, setResumen]         = useState<ResumenData | null>(null);
   const [resumenLoading, setResumenLoading] = useState(true);
@@ -887,10 +903,35 @@ export default function CampusDashboard() {
                              shadow-[0_8px_32px_rgba(0,0,0,0.16)] z-50 overflow-hidden"
                 >
                   <div className="max-h-72 overflow-y-auto py-1.5">
-                    {searchResults.length === 0 ? (
+                    {personaResults.length > 0 && (
+                      <>
+                        <p className="px-4 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Personas</p>
+                        {personaResults.map((p) => (
+                          <button
+                            key={`${p.tipo}-${p.id}`}
+                            onClick={() => {
+                              handleNavigate("Institucional", p.tipo === "estudiante" ? "Estudiantes › Información básica" : "Docentes › Información básica");
+                              setSearchQuery(""); setSearchOpen(false);
+                            }}
+                            className="w-full flex items-center justify-between gap-2 text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                          >
+                            <span className="truncate">{p.nombre_completo} <span className="text-slate-400 text-xs">· {p.identificacion}</span></span>
+                            <span className={`shrink-0 text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-full
+                              ${p.tipo === "estudiante" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700"}`}>
+                              {p.tipo === "estudiante" ? "Estudiante" : "Docente"}
+                            </span>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                    {searchResults.length === 0 && personaResults.length === 0 ? (
                       <p className="text-center text-xs text-slate-400 py-4">Sin resultados</p>
                     ) : (
-                      searchResults.map((r) => (
+                      <>
+                        {searchResults.length > 0 && personaResults.length > 0 && (
+                          <p className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Módulos</p>
+                        )}
+                        {searchResults.map((r) => (
                         <button
                           key={r.label}
                           onClick={() => { handleNavigate(r.nav, r.sub); setSearchQuery(""); setSearchOpen(false); }}
@@ -898,7 +939,8 @@ export default function CampusDashboard() {
                         >
                           {r.label}
                         </button>
-                      ))
+                        ))}
+                      </>
                     )}
                   </div>
                 </motion.div>
