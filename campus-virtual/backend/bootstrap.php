@@ -386,15 +386,22 @@ function require_acceso_programa(array $user, int $programaId): void
     require_permiso($user, 'academico.programas');
 }
 
-/** Mismo mecanismo que require_acceso_curso_ligero(), para el contenido de una Asignatura. */
+/** Mismo mecanismo que require_acceso_curso_ligero(), para el contenido de una Asignatura.
+ *  La asignatura se hereda del pensum de cualquier programa/curso/diplomado en el que el
+ *  estudiante esté matriculado (tabla programa_asignaturas) — mismo puente que
+ *  mis-asignaturas/list.php. Ya no depende de asignatura_estudiantes (matrícula manual
+ *  aparte por asignatura), que se quedó sin UI cuando el contenido de asignaturas pasó a
+ *  administrarse solo desde "Traer/Crear asignatura" en el pensum del programa. */
 function require_acceso_asignatura(array $user, int $asignaturaId): void
 {
     if ($user['role'] === 'estudiante') {
         if (empty($user['identificacion'])) fail('No autorizado.', 403);
         $stmt = db()->prepare(
-            'SELECT ae.id FROM asignatura_estudiantes ae
-             JOIN estudiantes e ON e.id = ae.estudiante_id
-             WHERE ae.asignatura_id = ? AND e.identificacion = ?'
+            "SELECT pa.id FROM programa_asignaturas pa
+             JOIN programas p ON p.id = pa.programa_id
+             JOIN matriculas m ON (m.programa = p.nombre OR m.programa LIKE CONCAT(p.nombre, ' - %')) AND m.estado != 'CANCELADO'
+             JOIN estudiantes e ON e.id = m.estudiante_id
+             WHERE pa.asignatura_id = ? AND e.identificacion = ?"
         );
         $stmt->execute([$asignaturaId, $user['identificacion']]);
         if (!$stmt->fetch()) fail('No autorizado.', 403);

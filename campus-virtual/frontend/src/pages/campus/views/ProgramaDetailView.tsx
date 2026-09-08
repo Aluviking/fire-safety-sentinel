@@ -3,13 +3,14 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, BookOpen, Users as UsersIcon, Plus, Loader2,
   Settings, Upload, X, Pencil, Check, ChevronUp, ChevronDown, Network, Star,
-  Megaphone, Video, Trash2, Building2,
+  Megaphone, Video, Trash2, Building2, Eye,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { SearchableSelect } from "../SearchableSelect";
 import { ConfirmModal } from "../ConfirmModal";
 import { type Programa, ProgramaFormModal } from "./ProgramasView";
+import ContenidoEditor from "../ContenidoEditor";
 // Carga diferida — trae la librería de Excel (xlsx), que solo hace falta
 // para quien de verdad abra esta pestaña, en vez de en cada carga del panel.
 const CursoEmpresasTab = lazy(() => import("./CursoEmpresasTab"));
@@ -35,6 +36,7 @@ const inputCls = "w-full text-sm bg-white border border-slate-300 rounded-xl px-
 const TABS = [
   { key: "programa", label: "Programa", icon: BookOpen },
   { key: "asignatura", label: "Asignatura", icon: BookOpen },
+  { key: "ver-contenido", label: "Ver contenido de la asignatura", icon: Eye },
   { key: "anuncios", label: "Anuncios", icon: Megaphone },
   { key: "clases", label: "Clases virtuales", icon: Video },
   { key: "estudiantes", label: "Estudiantes", icon: UsersIcon },
@@ -619,6 +621,58 @@ function CrearAsignaturaModal({ programaId, onClose, onSaved }: { programaId: nu
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+/* ── Ver (solo lectura) el contenido de las asignaturas que se trajeron a
+     este pensum — el contenido en sí solo se crea/edita desde el módulo
+     Asignaturas; esto es simplemente asomarse a verlo sin salir de aquí. ── */
+function VerContenidoAsignaturaTab({ programaId }: { programaId: number }) {
+  const [asignaturas, setAsignaturas] = useState<PensumAsignatura[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [seleccionada, setSeleccionada] = useState<PensumAsignatura | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    apiFetch<{ asignaturas: PensumAsignatura[] }>(`/programa-asignaturas/list.php?programaId=${programaId}`)
+      .then((d) => setAsignaturas(d.asignaturas)).finally(() => setLoading(false));
+  }, [programaId]);
+
+  if (seleccionada) {
+    return (
+      <div className="space-y-3">
+        <button onClick={() => setSeleccionada(null)} className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-[#C41717] transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" /> Volver a asignaturas
+        </button>
+        <ContenidoEditor
+          contentBase="/asignatura-contenido" questionsBase="/asignatura-preguntas"
+          ownerIdKey="asignaturaId" ownerId={seleccionada.asignatura_id}
+          heading={`Contenido de ${seleccionada.asignatura_nombre}`}
+          readOnly
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-slate-700">Ver contenido de la asignatura</h3>
+      {loading ? (
+        <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+      ) : asignaturas.length === 0 ? (
+        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">Este pensum aún no tiene asignaturas.</p>
+      ) : (
+        <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+          {asignaturas.map((pa) => (
+            <button key={pa.id} onClick={() => setSeleccionada(pa)}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 text-left transition-colors">
+              <span className="text-sm font-medium text-slate-800">{pa.asignatura_nombre}</span>
+              <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1275,8 +1329,9 @@ export default function ProgramaDetailView({
                 <button key={t.key} onClick={() => setTab(t.key)}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors
                               ${tab === t.key ? "bg-[#C41717]/10 text-[#C41717]" : "text-slate-600 hover:bg-slate-50"}`}>
-                  <t.icon className="w-3.5 h-3.5" /> {t.label}
-                  <ChevronRight className="w-3 h-3 ml-auto opacity-40" />
+                  <t.icon className="w-3.5 h-3.5 shrink-0" />
+                  <span className="flex-1 text-left">{t.label}</span>
+                  <ChevronRight className="w-3 h-3 shrink-0 opacity-40" />
                 </button>
               ))}
             </nav>
@@ -1284,6 +1339,7 @@ export default function ProgramaDetailView({
           <div className="flex-1 p-5 min-w-0">
             {tab === "programa" && <FichaTab programa={programa} canEdit={canEditSettings} onBack={onBack} onUpdated={onUpdated} />}
             {tab === "asignatura" && <PensumSection programa={programa} canEdit={canEditSettings} onUpdated={onUpdated} />}
+            {tab === "ver-contenido" && <VerContenidoAsignaturaTab programaId={programa.id} />}
             {tab === "anuncios" && <ProgramaAnunciosTab programaId={programa.id} />}
             {tab === "clases" && <ProgramaClasesTab programaId={programa.id} />}
             {tab === "estudiantes" && <EstudiantesTab programaId={programa.id} />}

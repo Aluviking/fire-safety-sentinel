@@ -4,10 +4,20 @@ require __DIR__ . '/../bootstrap.php';
 $user = require_auth();
 require_permiso($user, 'academico.asignaturas');
 
+// "Matriculados" cuenta estudiantes reales vía el pensum (programa_asignaturas
+// + matriculas) — ya no vía asignatura_estudiantes, que se quedó sin UI desde
+// que el contenido de asignaturas pasó a administrarse solo desde el pensum.
 $asignaturas = db()->query(
-    'SELECT a.*, (SELECT COUNT(*) FROM asignatura_estudiantes ae WHERE ae.asignatura_id = a.id) AS matriculados
+    "SELECT a.*, (
+        SELECT COUNT(DISTINCT e.id)
+        FROM programa_asignaturas pa
+        JOIN programas p ON p.id = pa.programa_id
+        JOIN matriculas m ON (m.programa = p.nombre OR m.programa LIKE CONCAT(p.nombre, ' - %')) AND m.estado != 'CANCELADO'
+        JOIN estudiantes e ON e.id = m.estudiante_id
+        WHERE pa.asignatura_id = a.id
+     ) AS matriculados
      FROM asignaturas a
-     ORDER BY a.nombre'
+     ORDER BY a.nombre"
 )->fetchAll();
 
 $pares = db()->query(

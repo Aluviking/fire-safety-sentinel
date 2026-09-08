@@ -8,15 +8,21 @@ if (empty($user['identificacion'])) {
     respond(['ok' => true, 'asignaturas' => [], 'vinculado' => false]);
 }
 
-// Igual que cursos ligeros: matricular al estudiante ya es suficiente para
-// que lo vea — no hace falta un paso aparte de "publicar".
+// Las asignaturas de un estudiante son las del pensum de cualquier programa/
+// curso/diplomado en el que esté matriculado (tabla programa_asignaturas) —
+// mismo puente que mis-programas/list.php. Ya no depende de
+// asignatura_estudiantes (matrícula manual aparte por asignatura), que se
+// quedó sin UI cuando el contenido de asignaturas pasó a administrarse solo
+// desde "Traer/Crear asignatura" en el pensum del programa.
 $stmt = db()->prepare(
-    'SELECT a.id, a.nombre, a.descripcion, a.imagen_path, a.dias_disponibles
+    "SELECT DISTINCT a.id, a.nombre, a.descripcion, a.imagen_path, a.dias_disponibles
      FROM asignaturas a
-     JOIN asignatura_estudiantes ae ON ae.asignatura_id = a.id
-     JOIN estudiantes e ON e.id = ae.estudiante_id
+     JOIN programa_asignaturas pa ON pa.asignatura_id = a.id
+     JOIN programas p ON p.id = pa.programa_id
+     JOIN matriculas m ON (m.programa = p.nombre OR m.programa LIKE CONCAT(p.nombre, ' - %')) AND m.estado != 'CANCELADO'
+     JOIN estudiantes e ON e.id = m.estudiante_id
      WHERE e.identificacion = ?
-     ORDER BY a.nombre'
+     ORDER BY a.nombre"
 );
 $stmt->execute([$user['identificacion']]);
 respond(['ok' => true, 'asignaturas' => $stmt->fetchAll(), 'vinculado' => true]);
