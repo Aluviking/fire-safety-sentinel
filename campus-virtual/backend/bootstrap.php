@@ -97,7 +97,17 @@ function crear_cuenta_acceso_automatica(
     $existe->execute([$identificacion]);
     if ($existe->fetch()) return false;
 
-    $email = ($correo && str_contains($correo, '@')) ? $correo : "{$identificacion}@{$dominioPlaceholder}";
+    $emailPlaceholder = "{$identificacion}@{$dominioPlaceholder}";
+    $email = ($correo && str_contains($correo, '@')) ? $correo : $emailPlaceholder;
+
+    // Si el correo real ya lo usa OTRA cuenta (ej. dos personas comparten
+    // correo), antes se saltaba la creación completa y esa persona quedaba
+    // sin poder entrar nunca. El correo no es lo que la identifica — el
+    // usuario es la identificación — así que se cae al correo de relleno.
+    $dupEmail = db()->prepare('SELECT id FROM users WHERE email = ?');
+    $dupEmail->execute([$email]);
+    if ($dupEmail->fetch()) $email = $emailPlaceholder;
+
     $dup = db()->prepare('SELECT id FROM users WHERE email = ? OR username = ?');
     $dup->execute([$email, $identificacion]);
     if ($dup->fetch()) return false;

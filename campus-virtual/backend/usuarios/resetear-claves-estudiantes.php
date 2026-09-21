@@ -35,9 +35,24 @@ foreach ($rows as $row) {
     $actualizados++;
 }
 
+// Estudiantes que todavía NO tienen cuenta (por ejemplo, porque su correo ya
+// lo usaba otra cuenta y antes se saltaba la creación) — se les crea ahora.
+$sinCuenta = db()->query(
+    "SELECT e.identificacion, e.nombre_completo, e.correo FROM estudiantes e
+     WHERE e.identificacion IS NOT NULL AND e.identificacion != ''
+       AND NOT EXISTS (SELECT 1 FROM users u WHERE u.identificacion = e.identificacion)"
+)->fetchAll();
+
+$creadas = 0;
+foreach ($sinCuenta as $e) {
+    if (crear_cuenta_acceso_automatica($e['identificacion'], $e['nombre_completo'], 'estudiante', $e['correo'], 'estudiantes.gfoacademy.local')) {
+        $creadas++;
+    }
+}
+
 log_trace(
     $user, 'reset_claves_estudiantes',
-    "Restableció usuario=clave=identificación para $actualizados estudiantes ($omitidos omitidos por choque de usuario)"
+    "Restableció usuario=clave=identificación para $actualizados estudiantes, creó $creadas cuentas faltantes ($omitidos omitidos por choque de usuario)"
 );
 
-respond(['ok' => true, 'actualizados' => $actualizados, 'omitidos' => $omitidos]);
+respond(['ok' => true, 'actualizados' => $actualizados, 'creadas' => $creadas, 'omitidos' => $omitidos]);

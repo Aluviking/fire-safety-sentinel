@@ -153,7 +153,7 @@ export default function UsuariosView() {
     : users;
 
   const [sincronizando, setSincronizando] = useState(false);
-  const [resultadoSync, setResultadoSync] = useState<{ actualizados: number; omitidos: number } | null>(null);
+  const [resultadoSync, setResultadoSync] = useState<{ actualizados: number; creadas: number; omitidos: number } | null>(null);
 
   // No te puedes seleccionar/eliminar a ti mismo — mismo límite que ya tenía
   // el botón de eliminar individual.
@@ -203,7 +203,7 @@ export default function UsuariosView() {
     setSincronizando(true);
     setResultadoSync(null);
     try {
-      const r = await apiFetch<{ actualizados: number; omitidos: number }>("/usuarios/resetear-claves-estudiantes.php", { method: "POST" });
+      const r = await apiFetch<{ actualizados: number; creadas: number; omitidos: number }>("/usuarios/resetear-claves-estudiantes.php", { method: "POST" });
       setResultadoSync(r);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "Error al sincronizar.");
@@ -299,7 +299,7 @@ export default function UsuariosView() {
             </button>
             {resultadoSync && (
               <p className="text-[11px] text-emerald-600 font-medium">
-                {resultadoSync.actualizados} actualizado(s){resultadoSync.omitidos > 0 && `, ${resultadoSync.omitidos} omitido(s)`}
+                {resultadoSync.actualizados} actualizado(s), {resultadoSync.creadas} creado(s){resultadoSync.omitidos > 0 && `, ${resultadoSync.omitidos} omitido(s)`}
               </p>
             )}
           </div>
