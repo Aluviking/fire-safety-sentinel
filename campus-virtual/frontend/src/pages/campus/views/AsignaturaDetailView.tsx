@@ -343,7 +343,8 @@ export default function AsignaturaDetailView({
   asignatura, onBack, onUpdated, initialTab = "contenido",
 }: { asignatura: Asignatura; onBack: () => void; onUpdated: () => void; initialTab?: TabKey }) {
   const { currentUser } = useCampusAuth();
-  const canEditSettings = currentUser?.role === "super_admin";
+  // Docente tiene edición completa en Ajustes de la asignatura, igual que Super Admin.
+  const canEditSettings = currentUser?.role === "super_admin" || currentUser?.role === "docente";
   const esDocenteDueno = currentUser?.role === "docente" &&
     (asignatura.docentes ?? []).some((d) => d.identificacion === currentUser.identificacion);
   const [tab, setTab] = useState<TabKey>(initialTab);

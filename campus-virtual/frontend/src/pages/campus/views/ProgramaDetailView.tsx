@@ -683,7 +683,8 @@ function VerContenidoAsignaturaTab({ programaId }: { programaId: number }) {
 /* ── Docentes que manejan este curso — varios, se pueden agregar/quitar ──── */
 function CursoDocentesTab({ programaId }: { programaId: number }) {
   const { currentUser } = useCampusAuth();
-  const canManage = currentUser?.role === "admin" || currentUser?.role === "super_admin";
+  // Docente tiene edición completa aquí también, igual que Super Admin.
+  const canManage = currentUser?.role === "admin" || currentUser?.role === "super_admin" || currentUser?.role === "docente";
   const [asignados, setAsignados] = useState<DocenteDelCurso[]>([]);
   const [docentes, setDocentes] = useState<DocenteOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1209,8 +1210,10 @@ function EditarMatriculaModal({ item, onClose, onSaved }: { item: MatriculaReal;
 
 function EstudiantesTab({ programaId }: { programaId: number }) {
   const { currentUser } = useCampusAuth();
-  const canManage = currentUser?.role === "admin" || currentUser?.role === "super_admin";
-  const isSuperAdmin = currentUser?.role === "super_admin";
+  const canManage = currentUser?.role === "admin" || currentUser?.role === "super_admin" || currentUser?.role === "docente";
+  // Docente tiene edición completa (igual que Super Admin) en Estudiantes
+  // dentro de Programas/Cursos/Diplomados.
+  const isSuperAdmin = currentUser?.role === "super_admin" || currentUser?.role === "docente";
   const [matriculados, setMatriculados] = useState<MatriculaReal[]>([]);
   const [loading, setLoading] = useState(true);
   const [agregando, setAgregando] = useState(false);
@@ -1496,7 +1499,9 @@ export default function ProgramaDetailView({
   programa, onBack, onUpdated,
 }: { programa: Programa; onBack: () => void; onUpdated: () => void }) {
   const { currentUser } = useCampusAuth();
-  const canEditSettings = currentUser?.role === "super_admin";
+  // Docente tiene edición completa (Pensum, Ajustes, Editar/Eliminar programa)
+  // igual que Super Admin — pedido explícito del cliente.
+  const canEditSettings = currentUser?.role === "super_admin" || currentUser?.role === "docente";
   const [tab, setTab] = useState<TabKey>("programa");
   // "Cursos para empresas" y "Docentes" solo aplican a los programas tipo
   // Curso — en Técnico/Diplomado no tiene sentido matricular empresas-cliente

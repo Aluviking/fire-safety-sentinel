@@ -249,7 +249,9 @@ export function ProgramaFormModal({
 // "Programa" (sin esta prop) excluye esos mismos para no repetirlos.
 export default function ProgramasView({ soloTipo }: { soloTipo?: "curso" } = {}) {
   const { currentUser, canVer } = useCampusAuth();
-  const isSuperAdmin = currentUser?.role === "super_admin";
+  // Docente tiene edición completa en Programas/Cursos/Diplomados, igual que
+  // Super Admin — pedido explícito del cliente (no solo lo que tiene asignado).
+  const isSuperAdmin = currentUser?.role === "super_admin" || currentUser?.role === "docente";
   const canManage = currentUser?.role === "admin" || isSuperAdmin;
   // Coordinador/Administrativo tienen "ver" en academico.programas por su rol
   // (rol_modulos_por_defecto en el backend) — deben poder entrar a la ficha

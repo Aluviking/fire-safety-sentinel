@@ -171,7 +171,8 @@ function AsignaturaForm({
 
 export default function AsignaturasView() {
   const { currentUser, canVer } = useCampusAuth();
-  const isSuperAdmin = currentUser?.role === "super_admin";
+  // Docente tiene edición completa en Asignaturas, igual que Super Admin.
+  const isSuperAdmin = currentUser?.role === "super_admin" || currentUser?.role === "docente";
   const canManage = currentUser?.role === "admin" || isSuperAdmin;
   const canViewDetail = canManage || canVer("academico.asignaturas");
   const [asignaturas, setAsignaturas] = useState<Asignatura[]>([]);
