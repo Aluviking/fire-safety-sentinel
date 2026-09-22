@@ -7,6 +7,7 @@ import { ConfirmModal } from "../ConfirmModal";
 import AsignaturaDetailView from "./AsignaturaDetailView";
 
 interface Programa { id: number; nombre: string }
+interface DocenteAsignado { id: number; nombre: string }
 interface Asignatura {
   id: number;
   nombre: string;
@@ -14,6 +15,7 @@ interface Asignatura {
   abreviacion: string | null;
   num_creditos: number | null;
   programas: Programa[];
+  docentes: DocenteAsignado[];
   matriculados: number;
   descripcion: string | null;
   imagen_path: string | null;
@@ -21,6 +23,7 @@ interface Asignatura {
   dias_disponibles: number | null;
   certificado_id: number | null;
 }
+interface DocenteOption { id: number; nombre_completo: string }
 
 const inputCls = "w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
 const PAGE_SIZE = 12;
@@ -38,8 +41,14 @@ function AsignaturaForm({
   const [abreviacion, setAbreviacion] = useState(editing?.abreviacion ?? "");
   const [numCreditos, setNumCreditos] = useState(editing?.num_creditos != null ? String(editing.num_creditos) : "");
   const [selected, setSelected] = useState<number[]>(editing?.programas.map((p) => p.id) ?? []);
+  const [docentes, setDocentes] = useState<DocenteOption[]>([]);
+  const [selectedDocentes, setSelectedDocentes] = useState<number[]>((editing?.docentes ?? []).map((d) => d.id));
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    apiFetch<{ docentes: DocenteOption[] }>("/docentes/list.php").then((d) => setDocentes(d.docentes)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setOpen(!!editing);
@@ -48,12 +57,16 @@ function AsignaturaForm({
     setAbreviacion(editing?.abreviacion ?? "");
     setNumCreditos(editing?.num_creditos != null ? String(editing.num_creditos) : "");
     setSelected(editing?.programas.map((p) => p.id) ?? []);
+    setSelectedDocentes((editing?.docentes ?? []).map((d) => d.id));
   }, [editing]);
 
-  const reset = () => { setCodigo(""); setNombre(""); setAbreviacion(""); setNumCreditos(""); setSelected([]); setError(""); };
+  const reset = () => { setCodigo(""); setNombre(""); setAbreviacion(""); setNumCreditos(""); setSelected([]); setSelectedDocentes([]); setError(""); };
 
   const toggle = (id: number) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const toggleDocente = (id: number) =>
+    setSelectedDocentes((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +76,7 @@ function AsignaturaForm({
     try {
       const payload = {
         codigo: codigo.trim() || null, nombre: nombre.trim(), abreviacion: abreviacion.trim() || null,
-        numCreditos: numCreditos ? Number(numCreditos) : null, programaIds: selected,
+        numCreditos: numCreditos ? Number(numCreditos) : null, programaIds: selected, docenteIds: selectedDocentes,
       };
       if (editing) {
         await apiFetch("/asignaturas/update.php", { method: "POST", json: { id: editing.id, ...payload } });
@@ -124,6 +137,24 @@ function AsignaturaForm({
         </div>
       </div>
 
+      <div>
+        <p className="text-[11px] font-semibold text-slate-500 mb-1.5">Docentes que la dictan (opcional, se pueden agregar varios)</p>
+        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1.5 bg-white rounded-lg border border-slate-200">
+          {docentes.length === 0 ? (
+            <p className="text-[11px] text-slate-400 px-1">No hay docentes registrados aún.</p>
+          ) : docentes.map((d) => (
+            <button key={d.id} type="button" onClick={() => toggleDocente(d.id)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                selectedDocentes.includes(d.id)
+                  ? "bg-[#C41717] border-[#C41717] text-white"
+                  : "bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300"
+              }`}>
+              {d.nombre_completo}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {error && <p className="text-[11px] text-red-500">{error}</p>}
       <div className="flex gap-2">
         <button type="submit" disabled={submitting}
@@ -179,8 +210,8 @@ export default function AsignaturasView() {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const exportar = () => {
-    const header = ["Código", "Nombre", "Abreviación", "Créditos", "Estudiantes", "Programas"];
-    const rows = filtered.map((a) => [a.codigo ?? "", a.nombre, a.abreviacion ?? "", a.num_creditos != null ? String(a.num_creditos) : "", String(a.matriculados), a.programas.map((p) => p.nombre).join("; ")]);
+    const header = ["Código", "Nombre", "Abreviación", "Créditos", "Estudiantes", "Programas", "Docentes"];
+    const rows = filtered.map((a) => [a.codigo ?? "", a.nombre, a.abreviacion ?? "", a.num_creditos != null ? String(a.num_creditos) : "", String(a.matriculados), a.programas.map((p) => p.nombre).join("; "), (a.docentes ?? []).map((d) => d.nombre).join("; ")]);
     const csv = [header, ...rows].map((r) => r.map((v) => csvEscape(v)).join(",")).join("\n");
     const blob = new Blob([String.fromCharCode(0xfeff) + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -262,12 +293,13 @@ export default function AsignaturasView() {
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Créditos</th>
                       <th className="text-center px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Estudiantes</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Programas</th>
+                      <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Docentes</th>
                       {canViewDetail && <th className="text-right px-4 py-2 text-slate-500 font-semibold text-xs tracking-wide uppercase whitespace-nowrap">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {paged.length === 0 ? (
-                      <tr><td colSpan={canViewDetail ? 7 : 6} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
+                      <tr><td colSpan={canViewDetail ? 8 : 7} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
                     ) : paged.map((a, idx) => (
                       <tr key={a.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
                         <td className="px-4 py-2 text-slate-500 text-xs font-medium whitespace-nowrap">{a.codigo ?? "—"}</td>
@@ -282,6 +314,17 @@ export default function AsignaturasView() {
                             ) : a.programas.map((p) => (
                               <span key={p.id} className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[11px] font-medium">
                                 {p.nombre}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="flex flex-wrap gap-1">
+                            {(a.docentes ?? []).length === 0 ? (
+                              <span className="text-slate-300 text-xs">—</span>
+                            ) : (a.docentes ?? []).map((d) => (
+                              <span key={d.id} className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[11px] font-medium">
+                                {d.nombre}
                               </span>
                             ))}
                           </div>

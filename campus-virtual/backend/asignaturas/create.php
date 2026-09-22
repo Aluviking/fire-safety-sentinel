@@ -34,4 +34,13 @@ if (is_array($programaIds)) {
     }
 }
 
+// Puede tener varios docentes desde el momento en que se crea.
+$docenteIds = $body['docenteIds'] ?? [];
+if (is_array($docenteIds)) {
+    $stmt = db()->prepare('INSERT IGNORE INTO asignatura_docentes (asignatura_id, docente_id) VALUES (?, ?)');
+    foreach ($docenteIds as $did) {
+        $stmt->execute([$asignaturaId, (int) $did]);
+    }
+}
+
 respond(['ok' => true, 'asignatura' => ['id' => $asignaturaId, 'nombre' => $nombre]]);

@@ -36,6 +36,7 @@ import CertificadosView from "./views/CertificadosView";
 import BancoPreguntasView from "./views/BancoPreguntasView";
 import InscritosView from "./views/InscritosView";
 import PerfilesView from "./views/PerfilesView";
+import PersonaDetalleView from "./views/PersonaDetalleView";
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
 // Sin forma fija propia (ni rounded/border/shadow/tamaño de imagen) — cada
@@ -729,6 +730,9 @@ export default function CampusDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen]   = useState(false);
   const [personaResults, setPersonaResults] = useState<PersonaResult[]>([]);
+  // Al elegir una persona en el buscador, se abre su perfil completo por
+  // encima de la navegación normal (no es un módulo más del menú).
+  const [personaAbierta, setPersonaAbierta] = useState<{ tipo: "estudiante" | "docente"; id: number } | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
   // Buscar estudiantes/docentes por nombre o cédula desde el mismo buscador
@@ -887,7 +891,7 @@ export default function CampusDashboard() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none z-10" />
             <input
               type="search"
-              placeholder="Buscar módulo..."
+              placeholder="Buscar..."
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
               onFocus={() => setSearchOpen(true)}
@@ -910,7 +914,7 @@ export default function CampusDashboard() {
                           <button
                             key={`${p.tipo}-${p.id}`}
                             onClick={() => {
-                              handleNavigate("Institucional", p.tipo === "estudiante" ? "Estudiantes › Información básica" : "Docentes › Información básica");
+                              setPersonaAbierta({ tipo: p.tipo, id: p.id });
                               setSearchQuery(""); setSearchOpen(false);
                             }}
                             className="w-full flex items-center justify-between gap-2 text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
@@ -1131,7 +1135,9 @@ export default function CampusDashboard() {
 
       {/* ── CONTENIDO PRINCIPAL ─────────────────────────────────────────────── */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 max-w-7xl w-full mx-auto">
-        {!activeNav ? (
+        {personaAbierta ? (
+          <PersonaDetalleView tipo={personaAbierta.tipo} id={personaAbierta.id} onBack={() => setPersonaAbierta(null)} />
+        ) : !activeNav ? (
           <DashboardHome user={user} onNavigate={handleNavigate} resumen={resumen} resumenLoading={resumenLoading} />
         ) : activeNav.nav === "Usuarios" ? (
           <UsuariosView />

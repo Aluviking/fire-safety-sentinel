@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, BookOpen, Layers, Plus, Trash2, Loader2,
-  Megaphone, Video, Settings, Upload, X, Check,
+  Megaphone, Video, Settings, Upload, X, Check, UserCog,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
@@ -10,10 +10,12 @@ import ContenidoEditor from "../ContenidoEditor";
 import { SearchableSelect } from "../SearchableSelect";
 
 interface Programa { id: number; nombre: string }
+interface DocenteAsignado { id: number; nombre: string }
 export interface Asignatura {
   id: number;
   nombre: string;
   programas: Programa[];
+  docentes: DocenteAsignado[];
   descripcion: string | null;
   imagen_path: string | null;
   publicado: number;
@@ -32,6 +34,7 @@ const TABS = [
   { key: "anuncios", label: "Anuncios", icon: Megaphone },
   { key: "clases", label: "Clases virtuales", icon: Video },
   { key: "programas", label: "Programas", icon: Layers },
+  { key: "docentes", label: "Docentes", icon: UserCog },
   { key: "ajustes", label: "Ajustes", icon: Settings },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
@@ -379,6 +382,22 @@ export default function AsignaturaDetailView({
                     <div key={p.id} className="flex items-center gap-2.5 px-4 py-2.5">
                       <Layers className="w-3.5 h-3.5 text-[#C41717]/50 shrink-0" />
                       <p className="text-sm font-medium text-slate-800">{p.nombre}</p>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+            {tab === "docentes" && (
+              (asignatura.docentes ?? []).length === 0 ? (
+                <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">
+                  Esta asignatura aún no tiene docentes asignados — puedes agregarlos desde "Editar" en la lista de Asignaturas.
+                </p>
+              ) : (
+                <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+                  {(asignatura.docentes ?? []).map((d) => (
+                    <div key={d.id} className="flex items-center gap-2.5 px-4 py-2.5">
+                      <UserCog className="w-3.5 h-3.5 text-[#C41717]/50 shrink-0" />
+                      <p className="text-sm font-medium text-slate-800">{d.nombre}</p>
                     </div>
                   ))}
                 </div>

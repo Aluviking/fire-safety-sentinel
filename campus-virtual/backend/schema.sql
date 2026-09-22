@@ -1215,3 +1215,29 @@ CREATE TABLE IF NOT EXISTS curso_empresa_empleados (
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (empresa_id) REFERENCES curso_empresas(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Docentes asignados a una asignatura o a un curso — varios-a-varios (una
+-- asignatura/curso puede tener más de un docente, y un docente puede estar
+-- en varias asignaturas/cursos a la vez).
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS asignatura_docentes (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  asignatura_id INT NOT NULL,
+  docente_id    INT NOT NULL,
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_asignatura_docente (asignatura_id, docente_id),
+  FOREIGN KEY (asignatura_id) REFERENCES asignaturas(id) ON DELETE CASCADE,
+  FOREIGN KEY (docente_id) REFERENCES docentes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS programa_docentes (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  programa_id INT NOT NULL,
+  docente_id  INT NOT NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_programa_docente (programa_id, docente_id),
+  FOREIGN KEY (programa_id) REFERENCES programas(id) ON DELETE CASCADE,
+  FOREIGN KEY (docente_id) REFERENCES docentes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

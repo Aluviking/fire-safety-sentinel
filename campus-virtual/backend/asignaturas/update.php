@@ -66,5 +66,23 @@ if (!empty(array_diff($idsNuevos, $idsActuales))) {
     }
 }
 
+// Mismo tipo de sincronización por diferencia, para los docentes.
+if (array_key_exists('docenteIds', $body)) {
+    $stmt = db()->prepare('SELECT docente_id FROM asignatura_docentes WHERE asignatura_id = ?');
+    $stmt->execute([$id]);
+    $docentesActuales = array_map('intval', array_column($stmt->fetchAll(), 'docente_id'));
+    $docentesNuevos   = array_map('intval', is_array($body['docenteIds']) ? $body['docenteIds'] : []);
+
+    foreach (array_diff($docentesActuales, $docentesNuevos) as $did) {
+        db()->prepare('DELETE FROM asignatura_docentes WHERE asignatura_id = ? AND docente_id = ?')->execute([$id, $did]);
+    }
+    if (!empty(array_diff($docentesNuevos, $docentesActuales))) {
+        $insert = db()->prepare('INSERT IGNORE INTO asignatura_docentes (asignatura_id, docente_id) VALUES (?, ?)');
+        foreach (array_diff($docentesNuevos, $docentesActuales) as $did) {
+            $insert->execute([$id, $did]);
+        }
+    }
+}
+
 log_trace($user, 'asignatura_update', "Editó a $nombre");
 respond(['ok' => true]);

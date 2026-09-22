@@ -29,8 +29,18 @@ foreach ($pares as $p) {
     $byAsignatura[$p['asignatura_id']][] = ['id' => $p['programa_id'], 'nombre' => $p['programa_nombre']];
 }
 
+$paresDocentes = db()->query(
+    'SELECT ad.asignatura_id, d.id AS docente_id, d.nombre_completo AS docente_nombre
+     FROM asignatura_docentes ad JOIN docentes d ON d.id = ad.docente_id'
+)->fetchAll();
+$docentesByAsignatura = [];
+foreach ($paresDocentes as $p) {
+    $docentesByAsignatura[$p['asignatura_id']][] = ['id' => $p['docente_id'], 'nombre' => $p['docente_nombre']];
+}
+
 foreach ($asignaturas as &$a) {
     $a['programas'] = $byAsignatura[$a['id']] ?? [];
+    $a['docentes'] = $docentesByAsignatura[$a['id']] ?? [];
 }
 unset($a);
 

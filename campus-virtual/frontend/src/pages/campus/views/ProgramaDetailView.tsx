@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, BookOpen, Users as UsersIcon, Plus, Loader2,
   Settings, Upload, X, Pencil, Check, ChevronUp, ChevronDown, Network, Star,
-  Megaphone, Video, Trash2, Building2, Eye,
+  Megaphone, Video, Trash2, Building2, Eye, UserCog,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
@@ -30,6 +30,8 @@ interface PensumAsignatura {
   asignatura_codigo: string | null; asignatura_nombre: string;
 }
 interface Prerequisito { id: number; prerequisito_asignatura_id: number; prerequisito_nombre: string }
+interface DocenteOption { id: number; identificacion: string; nombre_completo: string }
+interface DocenteDelCurso { id: number; docente_id: number; identificacion: string; nombre_completo: string }
 
 const inputCls = "w-full text-sm bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
 
@@ -40,6 +42,7 @@ const TABS = [
   { key: "anuncios", label: "Anuncios", icon: Megaphone },
   { key: "clases", label: "Clases virtuales", icon: Video },
   { key: "estudiantes", label: "Estudiantes", icon: UsersIcon },
+  { key: "docentes", label: "Docentes", icon: UserCog },
   { key: "empresas", label: "Cursos para empresas", icon: Building2 },
   { key: "ajustes", label: "Ajustes", icon: Settings },
 ] as const;
@@ -670,6 +673,99 @@ function VerContenidoAsignaturaTab({ programaId }: { programaId: number }) {
               <span className="text-sm font-medium text-slate-800">{pa.asignatura_nombre}</span>
               <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
             </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Docentes que manejan este curso — varios, se pueden agregar/quitar ──── */
+function CursoDocentesTab({ programaId }: { programaId: number }) {
+  const { currentUser } = useCampusAuth();
+  const canManage = currentUser?.role === "admin" || currentUser?.role === "super_admin";
+  const [asignados, setAsignados] = useState<DocenteDelCurso[]>([]);
+  const [docentes, setDocentes] = useState<DocenteOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState("");
+  const [agregando, setAgregando] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = () => {
+    setLoading(true);
+    apiFetch<{ docentes: DocenteDelCurso[] }>(`/programa-docentes/list.php?programaId=${programaId}`)
+      .then((d) => setAsignados(d.docentes)).finally(() => setLoading(false));
+  };
+  useEffect(load, [programaId]);
+
+  useEffect(() => {
+    apiFetch<{ docentes: DocenteOption[] }>("/docentes/list.php").then((d) => setDocentes(d.docentes)).catch(() => {});
+  }, []);
+
+  const asignadosIds = new Set(asignados.map((a) => a.docente_id));
+  const disponibles = docentes.filter((d) => !asignadosIds.has(d.id));
+
+  const agregar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedId) return;
+    setError("");
+    setAgregando(true);
+    try {
+      await apiFetch("/programa-docentes/create.php", { method: "POST", json: { programaId, docenteId: Number(selectedId) } });
+      setSelectedId("");
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al agregar.");
+    } finally {
+      setAgregando(false);
+    }
+  };
+
+  const quitar = async (id: number) => {
+    await apiFetch("/programa-docentes/delete.php", { method: "POST", json: { id } });
+    load();
+  };
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-slate-700">Docentes que manejan este curso ({asignados.length})</h3>
+      {canManage && (
+        <form onSubmit={agregar} className="flex gap-2">
+          <SearchableSelect
+            value={selectedId} onChange={setSelectedId}
+            options={disponibles.map((d) => ({ value: String(d.id), label: d.nombre_completo, keywords: d.identificacion }))}
+            placeholder="Seleccione docente..."
+            className="flex-1"
+          />
+          <button type="submit" disabled={agregando || !selectedId}
+            className="flex items-center gap-1.5 px-4 rounded-lg bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0">
+            <Plus className="w-3.5 h-3.5" /> Agregar
+          </button>
+        </form>
+      )}
+      {error && <p className="text-[11px] text-red-500">{error}</p>}
+
+      {loading ? (
+        <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+      ) : asignados.length === 0 ? (
+        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">Este curso aún no tiene docentes asignados.</p>
+      ) : (
+        <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+          {asignados.map((d) => (
+            <div key={d.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <UserCog className="w-3.5 h-3.5 text-[#C41717]/50 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{d.nombre_completo}</p>
+                  <p className="text-xs text-slate-400">{d.identificacion}</p>
+                </div>
+              </div>
+              {canManage && (
+                <button onClick={() => quitar(d.id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0" title="Quitar">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -1402,10 +1498,11 @@ export default function ProgramaDetailView({
   const { currentUser } = useCampusAuth();
   const canEditSettings = currentUser?.role === "super_admin";
   const [tab, setTab] = useState<TabKey>("programa");
-  // "Cursos para empresas" solo aplica a los programas tipo Curso — en
-  // Técnico/Diplomado no tiene sentido matricular empresas-cliente.
+  // "Cursos para empresas" y "Docentes" solo aplican a los programas tipo
+  // Curso — en Técnico/Diplomado no tiene sentido matricular empresas-cliente
+  // ni asignar el docente que maneja el curso.
   const esCurso = programa.nombre.toUpperCase().startsWith("CURSO");
-  const tabsVisibles = esCurso ? TABS : TABS.filter((t) => t.key !== "empresas");
+  const tabsVisibles = esCurso ? TABS : TABS.filter((t) => t.key !== "empresas" && t.key !== "docentes");
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
@@ -1436,6 +1533,7 @@ export default function ProgramaDetailView({
             {tab === "anuncios" && <ProgramaAnunciosTab programaId={programa.id} />}
             {tab === "clases" && <ProgramaClasesTab programaId={programa.id} />}
             {tab === "estudiantes" && <EstudiantesTab programaId={programa.id} />}
+            {tab === "docentes" && esCurso && <CursoDocentesTab programaId={programa.id} />}
             {tab === "empresas" && esCurso && (
               <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
                 <CursoEmpresasTab programaId={programa.id} />
