@@ -9,7 +9,7 @@ import {
   ChevronRight, LayoutDashboard, AlertCircle, Briefcase,
   Shield, TrendingUp, Clock, UserCog, ScrollText, ShieldCheck, Video, UserPlus,
 } from "lucide-react";
-import { useCampusAuth, type CampusUser } from "@/context/CampusAuthContext";
+import { useCampusAuth, type CampusUser, type Permisos } from "@/context/CampusAuthContext";
 import { apiFetch } from "@/lib/api";
 import RegistrarEstudianteModal from "./RegistrarEstudianteModal";
 import { CuentaSwitcher } from "./CuentaSwitcher";
@@ -223,6 +223,27 @@ const ROLE_LABEL: Record<string, string> = {
   administrativo: "Administrativo",
   estudiante: "Estudiante",
   equipo: "Coordinador",
+};
+
+// Vista simulada "Docente" para Super Admin — copia exacta de lo que
+// rol_modulos_por_defecto('docente') devuelve en bootstrap.php, para que el
+// selector de vista (solo visual/menú, no un cambio real de permisos — la
+// sesión sigue siendo de super_admin por debajo) muestre lo mismo que vería
+// una cuenta de docente real. Si el backend cambia esa lista, hay que
+// reflejarlo aquí también.
+const DOCENTE_PERMISOS_PREVIEW: Permisos = {
+  all: false,
+  modulos: {
+    "institucional.estudiantes":   { ver: true, editar: false },
+    "academico.evaluaciones":      { ver: true, editar: true },
+    "academico.cursos_ligeros":    { ver: true, editar: false },
+    "academico.cursos_virtuales":  { ver: true, editar: false },
+    "academico.aulas_virtuales":   { ver: true, editar: false },
+    "academico.programas":         { ver: true, editar: false },
+    "academico.asignaturas":       { ver: true, editar: false },
+    "academico.cursos":            { ver: true, editar: false },
+    "informes.consolidado_notas":  { ver: true, editar: false },
+  },
 };
 
 /* ── Quick-access cards ───────────────────────────────────────────────────── */
@@ -561,9 +582,14 @@ function ProgramasDestacados({ onNavigate }: { onNavigate: (nav: string, sub: st
 
 /* ── Dashboard Home ───────────────────────────────────────────────────────── */
 function DashboardHome({
-  user, onNavigate, resumen, resumenLoading,
-}: { user: CampusUser; onNavigate: (nav: string, sub: string) => void; resumen: ResumenData | null; resumenLoading: boolean }) {
+  user, onNavigate, resumen, resumenLoading, vistaSimulada,
+}: { user: CampusUser; onNavigate: (nav: string, sub: string) => void; resumen: ResumenData | null; resumenLoading: boolean; vistaSimulada: "docente" | null }) {
   const { canVer, permisos } = useCampusAuth();
+  // Si Super Admin activó la vista simulada de Docente, el saludo/accesos
+  // rápidos usan los permisos de vista previa en vez de los reales — es solo
+  // visual, la sesión real sigue siendo de super_admin.
+  const permisosVista = vistaSimulada === "docente" ? DOCENTE_PERMISOS_PREVIEW : permisos;
+  const canVerVista = (modulo: string) => permisosVista.all || !!permisosVista.modulos[modulo]?.ver;
   const hour     = new Date().getHours();
   const greeting = hour < 12 ? "Buenos días" : hour < 18 ? "Buenas tardes" : "Buenas noches";
   // Mismo filtro de permisos que usa el navbar (MODULO_POR_ETIQUETA) — antes
@@ -572,7 +598,7 @@ function DashboardHome({
   // o "Usuarios" para un Docente).
   const quickAccess = QUICK_ACCESS.filter(({ label }) => {
     const modulo = MODULO_POR_ETIQUETA[label];
-    return modulo ? permisos.all || canVer(modulo) : true;
+    return modulo ? canVerVista(modulo) : true;
   });
 
   return (
@@ -590,7 +616,7 @@ function DashboardHome({
                              bg-[#C41717]/10 border border-[#C41717]/20 text-[#C41717]
                              text-xs font-semibold tracking-wide">
               <span className="w-1.5 h-1.5 rounded-full bg-[#C41717] animate-pulse" />
-              {ROLE_LABEL[user.role] ?? user.role}
+              {vistaSimulada === "docente" ? "Docente (vista previa)" : (ROLE_LABEL[user.role] ?? user.role)}
             </span>
           </div>
           <div className="flex gap-3">
@@ -715,6 +741,13 @@ export default function CampusDashboard() {
   const { currentUser: user, permisos, canVer, loading, logout: authLogout, isImpersonando, volverAMiCuenta } = useCampusAuth();
   const [openMenu, setOpenMenu]       = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Selector de vista para Super Admin: le permite ver el panel como lo vería
+  // una cuenta de Docente (menú acotado), sin salir de su propia sesión ni
+  // pedir clave otra vez. Es solo una vista previa — sus permisos reales de
+  // super_admin siguen activos por debajo, esto no restringe nada de verdad,
+  // solo cambia qué se muestra. Se reinicia a "Super Admin" en cada recarga.
+  const [vistaSimulada, setVistaSimulada] = useState<"docente" | null>(null);
+  const [vistaMenuOpen, setVistaMenuOpen] = useState(false);
   // La sección activa vive en la URL (?nav=...&sub=...), no en useState — así
   // una recarga (incluso Ctrl+Shift+R) restaura exactamente dónde estabas en
   // vez de volver siempre al inicio del dashboard.
@@ -829,10 +862,17 @@ export default function CampusDashboard() {
   const hasAutoRole = user.role === "equipo" || user.role === "administrativo" || user.role === "docente";
   const hasPerfil = user.perfilId != null;
   const canEnter = isAdmin || hasAutoRole || hasPerfil;
-  const visibleNavItems = filterNavItems(NAV_ITEMS, canVer, permisos.all)
-    .filter((item) => item.label !== "Historial" || isSuperAdmin)
-    .filter((item) => item.label !== "Perfiles" || isSuperAdmin)
-    .filter((item) => item.label !== "Usuarios" || canVer("usuarios"));
+  // Si está activa la vista simulada de Docente, el MENÚ se filtra con los
+  // permisos de vista previa en vez de los reales de super_admin — el resto
+  // del panel (modales, acciones puntuales) sigue con los permisos reales,
+  // esto solo cambia qué aparece en la barra de navegación y el saludo.
+  const permisosVista = vistaSimulada === "docente" ? DOCENTE_PERMISOS_PREVIEW : permisos;
+  const canVerVista = (modulo: string) => permisosVista.all || !!permisosVista.modulos[modulo]?.ver;
+  const isSuperAdminVista = isSuperAdmin && vistaSimulada === null;
+  const visibleNavItems = filterNavItems(NAV_ITEMS, canVerVista, permisosVista.all)
+    .filter((item) => item.label !== "Historial" || isSuperAdminVista)
+    .filter((item) => item.label !== "Perfiles" || isSuperAdminVista)
+    .filter((item) => item.label !== "Usuarios" || canVerVista("usuarios"));
 
   const searchResults = searchQuery.trim()
     ? flattenNavItems(visibleNavItems).filter((r) => normalize(r.label).includes(normalize(searchQuery.trim()))).slice(0, 8)
@@ -1010,8 +1050,53 @@ export default function CampusDashboard() {
               </div>
               <div className="hidden sm:flex flex-col">
                 <span className="text-white text-xs font-semibold leading-tight">{user.nombre.split(" ")[0]}</span>
-                <span className="text-white/70 text-[10px] leading-tight">{ROLE_LABEL[user.role] ?? user.role}</span>
+                <span className="text-white/70 text-[10px] leading-tight">
+                  {vistaSimulada === "docente" ? "Docente (vista previa)" : (ROLE_LABEL[user.role] ?? user.role)}
+                </span>
               </div>
+              {/* Selector de vista — solo Super Admin. Deja ver el panel como lo
+                  vería una cuenta de Docente (menú acotado), sin salir de la
+                  sesión real ni pedir clave otra vez. Es solo visual: los
+                  permisos reales de super_admin siguen activos por debajo. */}
+              {isSuperAdmin && (
+                <div className="relative">
+                  <button
+                    onClick={() => setVistaMenuOpen((v) => !v)}
+                    title="Elegir vista"
+                    className="flex items-center gap-1 shrink-0 text-white/80 hover:text-white
+                               bg-white/10 hover:bg-white/20 rounded-lg px-2 py-1.5 transition-all"
+                  >
+                    <UserCog className="w-3.5 h-3.5" />
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  <AnimatePresence>
+                    {vistaMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setVistaMenuOpen(false)} />
+                        <motion.div
+                          initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}
+                          className="absolute top-full right-0 mt-1.5 w-52 rounded-xl bg-white border border-slate-200
+                                     shadow-[0_8px_32px_rgba(0,0,0,0.16)] z-50 overflow-hidden py-1.5"
+                        >
+                          <p className="px-3 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Elegir vista</p>
+                          <button
+                            onClick={() => { setVistaSimulada(null); setVistaMenuOpen(false); }}
+                            className={`w-full text-left px-3 py-2 text-sm transition-colors ${vistaSimulada === null ? "text-[#C41717] font-semibold bg-red-50" : "text-slate-600 hover:bg-slate-50"}`}
+                          >
+                            Super Admin (real)
+                          </button>
+                          <button
+                            onClick={() => { setVistaSimulada("docente"); setVistaMenuOpen(false); }}
+                            className={`w-full text-left px-3 py-2 text-sm transition-colors ${vistaSimulada === "docente" ? "text-[#C41717] font-semibold bg-red-50" : "text-slate-600 hover:bg-slate-50"}`}
+                          >
+                            Docente (vista previa)
+                          </button>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
               <CuentaSwitcher />
               <button
                 onClick={logout}
@@ -1151,7 +1236,7 @@ export default function CampusDashboard() {
         {personaAbierta ? (
           <PersonaDetalleView tipo={personaAbierta.tipo} id={personaAbierta.id} onBack={() => setPersonaAbierta(null)} />
         ) : !activeNav ? (
-          <DashboardHome user={user} onNavigate={handleNavigate} resumen={resumen} resumenLoading={resumenLoading} />
+          <DashboardHome user={user} onNavigate={handleNavigate} resumen={resumen} resumenLoading={resumenLoading} vistaSimulada={vistaSimulada} />
         ) : activeNav.nav === "Usuarios" ? (
           <UsuariosView />
         ) : activeNav.nav === "Perfiles" && isSuperAdmin ? (
