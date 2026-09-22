@@ -711,7 +711,7 @@ function DashboardHome({
 /* ══ MAIN COMPONENT ═════════════════════════════════════════════════════════ */
 export default function CampusDashboard() {
   const navigate = useNavigate();
-  const { currentUser: user, permisos, canVer, loading, logout: authLogout } = useCampusAuth();
+  const { currentUser: user, permisos, canVer, loading, logout: authLogout, isImpersonando, volverAMiCuenta } = useCampusAuth();
   const [openMenu, setOpenMenu]       = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // La sección activa vive en la URL (?nav=...&sub=...), no en useState — así
@@ -873,6 +873,17 @@ export default function CampusDashboard() {
 
   return (
     <div className="h-screen overflow-hidden bg-[#F1F5F9] flex flex-col">
+      {isImpersonando && (
+        <div className="shrink-0 bg-amber-400 text-amber-950 text-xs font-semibold flex items-center justify-center gap-2 py-1.5 px-4">
+          <span>Estás viendo como {user?.nombre} ({user?.role}).</span>
+          <button
+            onClick={() => { volverAMiCuenta(); navigate("/dashboard", { replace: true }); }}
+            className="underline hover:no-underline"
+          >
+            Volver a mi cuenta
+          </button>
+        </div>
+      )}
 
       {/* ── TOPBAR ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-[#C41717] border-b border-[#A81212] shadow-sm">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { UserPlus, Trash2, Users as UsersIcon, Pencil, KeyRound, Check, X as XIcon, Search, RefreshCw } from "lucide-react";
+import { UserPlus, Trash2, Users as UsersIcon, Pencil, KeyRound, Check, X as XIcon, Search, RefreshCw, Eye } from "lucide-react";
 import { useCampusAuth, type Role } from "@/context/CampusAuthContext";
 import { apiFetch } from "@/lib/api";
 import { ResetPasswordModal } from "../ResetPasswordModal";
@@ -131,7 +131,7 @@ function CreateUserForm({ isSuperAdmin }: { isSuperAdmin: boolean }) {
 
 /* ══ Vista principal ═════════════════════════════════════════════════════════ */
 export default function UsuariosView() {
-  const { currentUser, users, changeRole, deleteUser, updateUser, resetPassword, assignPerfil, logout } = useCampusAuth();
+  const { currentUser, users, changeRole, deleteUser, updateUser, resetPassword, assignPerfil, logout, verComo } = useCampusAuth();
   const navigate = useNavigate();
   const isSuperAdmin = currentUser?.role === "super_admin";
   const [perfiles, setPerfiles] = useState<Perfil[]>([]);
@@ -225,6 +225,18 @@ export default function UsuariosView() {
     if (!window.confirm(`¿Eliminar a "${nombre}"? Esta acción no se puede deshacer.`)) return;
     const res = await deleteUser(id);
     if (!res.ok) window.alert(res.error ?? "Error al eliminar el usuario.");
+  };
+
+  const [verComoLoading, setVerComoLoading] = useState<string | null>(null);
+  const handleVerComo = async (id: string) => {
+    setVerComoLoading(id);
+    try {
+      const res = await verComo(id);
+      if (!res.ok) { window.alert(res.error ?? "Error al entrar a esa cuenta."); return; }
+      navigate(res.role === "estudiante" ? "/estudiante" : "/dashboard", { replace: true });
+    } finally {
+      setVerComoLoading(null);
+    }
   };
 
   const startEdit = (u: { id: string; nombre: string; email: string; username: string; identificacion?: string | null }) => {
@@ -417,6 +429,16 @@ export default function UsuariosView() {
                         placeholder="Sin perfil (permisos automáticos del rol)"
                         className="shrink-0 w-48"
                       />
+                    )}
+                    {isSuperAdmin && u.id !== currentUser?.id && (
+                      <button
+                        onClick={() => handleVerComo(u.id)}
+                        disabled={verComoLoading === u.id}
+                        className="shrink-0 text-slate-400 hover:text-emerald-600 transition-colors disabled:opacity-50"
+                        title={`Ver como ${u.nombre}`}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
                     )}
                     {isSuperAdmin && (
                       <button

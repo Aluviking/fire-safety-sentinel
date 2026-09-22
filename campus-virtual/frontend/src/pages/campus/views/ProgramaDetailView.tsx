@@ -1502,7 +1502,9 @@ export default function ProgramaDetailView({
   // Curso — en Técnico/Diplomado no tiene sentido matricular empresas-cliente
   // ni asignar el docente que maneja el curso.
   const esCurso = programa.nombre.toUpperCase().startsWith("CURSO");
-  const tabsVisibles = esCurso ? TABS : TABS.filter((t) => t.key !== "empresas" && t.key !== "docentes");
+  // "Docentes" ya aplica a cualquier tipo (Programa/Diplomado/Curso) — solo
+  // "Cursos para empresas" sigue siendo exclusivo de Curso.
+  const tabsVisibles = esCurso ? TABS : TABS.filter((t) => t.key !== "empresas");
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
@@ -1533,7 +1535,7 @@ export default function ProgramaDetailView({
             {tab === "anuncios" && <ProgramaAnunciosTab programaId={programa.id} />}
             {tab === "clases" && <ProgramaClasesTab programaId={programa.id} />}
             {tab === "estudiantes" && <EstudiantesTab programaId={programa.id} />}
-            {tab === "docentes" && esCurso && <CursoDocentesTab programaId={programa.id} />}
+            {tab === "docentes" && <CursoDocentesTab programaId={programa.id} />}
             {tab === "empresas" && esCurso && (
               <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
                 <CursoEmpresasTab programaId={programa.id} />

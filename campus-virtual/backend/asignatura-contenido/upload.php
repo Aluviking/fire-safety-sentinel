@@ -2,7 +2,6 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
 
@@ -13,6 +12,7 @@ $stmt = db()->prepare('SELECT * FROM asignatura_contenido WHERE id = ?');
 $stmt->execute([$id]);
 $item = $stmt->fetch();
 if (!$item) fail('Recurso no encontrado.', 404);
+require_gestion_asignatura($user, (int) $item['asignatura_id']);
 
 if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) fail('Archivo inválido.');
 

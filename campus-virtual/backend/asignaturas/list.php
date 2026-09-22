@@ -7,8 +7,8 @@ require_permiso($user, 'academico.asignaturas');
 // "Matriculados" cuenta estudiantes reales vía el pensum (programa_asignaturas
 // + matriculas) — ya no vía asignatura_estudiantes, que se quedó sin UI desde
 // que el contenido de asignaturas pasó a administrarse solo desde el pensum.
-$asignaturas = db()->query(
-    "SELECT a.*, (
+// Un docente solo ve SUS asignaturas asignadas (asignatura_docentes).
+$sql = "SELECT a.*, (
         SELECT COUNT(DISTINCT e.id)
         FROM programa_asignaturas pa
         JOIN programas p ON p.id = pa.programa_id
@@ -16,9 +16,19 @@ $asignaturas = db()->query(
         JOIN estudiantes e ON e.id = m.estudiante_id
         WHERE pa.asignatura_id = a.id
      ) AS matriculados
-     FROM asignaturas a
-     ORDER BY a.nombre"
-)->fetchAll();
+     FROM asignaturas a";
+$params = [];
+if ($user['role'] === 'docente') {
+    $sql .= ' WHERE EXISTS (
+        SELECT 1 FROM asignatura_docentes ad JOIN docentes d ON d.id = ad.docente_id
+        WHERE ad.asignatura_id = a.id AND d.identificacion = ?
+    )';
+    $params[] = $user['identificacion'] ?? '';
+}
+$sql .= ' ORDER BY a.nombre';
+$stmt = db()->prepare($sql);
+$stmt->execute($params);
+$asignaturas = $stmt->fetchAll();
 
 $pares = db()->query(
     'SELECT pa.asignatura_id, p.id AS programa_id, p.nombre AS programa_nombre
@@ -30,12 +40,14 @@ foreach ($pares as $p) {
 }
 
 $paresDocentes = db()->query(
-    'SELECT ad.asignatura_id, d.id AS docente_id, d.nombre_completo AS docente_nombre
+    'SELECT ad.asignatura_id, d.id AS docente_id, d.nombre_completo AS docente_nombre, d.identificacion AS docente_identificacion
      FROM asignatura_docentes ad JOIN docentes d ON d.id = ad.docente_id'
 )->fetchAll();
 $docentesByAsignatura = [];
 foreach ($paresDocentes as $p) {
-    $docentesByAsignatura[$p['asignatura_id']][] = ['id' => $p['docente_id'], 'nombre' => $p['docente_nombre']];
+    $docentesByAsignatura[$p['asignatura_id']][] = [
+        'id' => $p['docente_id'], 'nombre' => $p['docente_nombre'], 'identificacion' => $p['docente_identificacion'],
+    ];
 }
 
 foreach ($asignaturas as &$a) {

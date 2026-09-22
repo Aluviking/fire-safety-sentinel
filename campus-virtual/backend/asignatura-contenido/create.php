@@ -2,7 +2,6 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
 
@@ -10,6 +9,7 @@ $body         = json_body();
 $asignaturaId = (int) ($body['asignaturaId'] ?? 0);
 $titulo       = trim($body['titulo'] ?? '');
 if ($asignaturaId === 0 || $titulo === '') fail('El título es requerido.');
+require_gestion_asignatura($user, $asignaturaId);
 
 $stmt = db()->prepare('SELECT COALESCE(MAX(orden), -1) + 1 FROM asignatura_contenido WHERE asignatura_id = ?');
 $stmt->execute([$asignaturaId]);

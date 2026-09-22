@@ -10,7 +10,7 @@ import ContenidoEditor from "../ContenidoEditor";
 import { SearchableSelect } from "../SearchableSelect";
 
 interface Programa { id: number; nombre: string }
-interface DocenteAsignado { id: number; nombre: string }
+interface DocenteAsignado { id: number; nombre: string; identificacion: string }
 export interface Asignatura {
   id: number;
   nombre: string;
@@ -344,6 +344,8 @@ export default function AsignaturaDetailView({
 }: { asignatura: Asignatura; onBack: () => void; onUpdated: () => void; initialTab?: TabKey }) {
   const { currentUser } = useCampusAuth();
   const canEditSettings = currentUser?.role === "super_admin";
+  const esDocenteDueno = currentUser?.role === "docente" &&
+    (asignatura.docentes ?? []).some((d) => d.identificacion === currentUser.identificacion);
   const [tab, setTab] = useState<TabKey>(initialTab);
 
   return (
@@ -369,7 +371,7 @@ export default function AsignaturaDetailView({
           </div>
           <div className="flex-1 p-5 min-w-0">
             {tab === "contenido" && (
-              <ContenidoEditor contentBase="/asignatura-contenido" questionsBase="/asignatura-preguntas" ownerIdKey="asignaturaId" ownerId={asignatura.id} />
+              <ContenidoEditor contentBase="/asignatura-contenido" questionsBase="/asignatura-preguntas" ownerIdKey="asignaturaId" ownerId={asignatura.id} esDueno={esDocenteDueno} />
             )}
             {tab === "anuncios" && <AnunciosTab asignaturaId={asignatura.id} />}
             {tab === "clases" && <ClasesTab asignaturaId={asignatura.id} />}

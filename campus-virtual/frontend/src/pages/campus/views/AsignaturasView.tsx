@@ -7,7 +7,7 @@ import { ConfirmModal } from "../ConfirmModal";
 import AsignaturaDetailView from "./AsignaturaDetailView";
 
 interface Programa { id: number; nombre: string }
-interface DocenteAsignado { id: number; nombre: string }
+interface DocenteAsignado { id: number; nombre: string; identificacion: string }
 interface Asignatura {
   id: number;
   nombre: string;
@@ -263,7 +263,7 @@ export default function AsignaturasView() {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="h-[3px] bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/30" />
         <div className="p-3 sm:p-4 space-y-3">
-          <AsignaturaForm editing={editing} programas={programas} onDone={() => setEditing(null)} onCreated={load} />
+          {isSuperAdmin && <AsignaturaForm editing={editing} programas={programas} onDone={() => setEditing(null)} onCreated={load} />}
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[220px]">

@@ -2,7 +2,6 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
 
@@ -12,6 +11,12 @@ $texto         = trim($body['texto'] ?? '');
 $tipoRespuesta = $body['tipoRespuesta'] ?? 'unica';
 $opciones      = $body['opciones'] ?? [];
 if ($contenidoId === 0 || $texto === '') fail('El texto de la pregunta es requerido.');
+
+$contenido = db()->prepare('SELECT asignatura_id FROM asignatura_contenido WHERE id = ?');
+$contenido->execute([$contenidoId]);
+$asignaturaId = $contenido->fetchColumn();
+if ($asignaturaId === false) fail('Contenido no encontrado.', 404);
+require_gestion_asignatura($user, (int) $asignaturaId);
 
 if ($tipoRespuesta === 'asociacion') {
     if (!is_array($opciones) || count($opciones) < 2) fail('Agrega al menos 2 pares para relacionar.');

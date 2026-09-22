@@ -800,13 +800,18 @@ function RecursoViewer({
 /* ── Contenido del curso (componente exportado, reutilizado por Cursos
    ligeros y Plantillas — cada uno pasa su propio par de endpoints) ───────── */
 export default function ContenidoEditor({
-  contentBase, questionsBase, ownerIdKey, ownerId, heading = "Contenido del curso", addLabel = "Agregar recurso", readOnly = false,
-}: { contentBase: string; questionsBase: string; ownerIdKey: string; ownerId: number; heading?: string; addLabel?: string; readOnly?: boolean }) {
+  contentBase, questionsBase, ownerIdKey, ownerId, heading = "Contenido del curso", addLabel = "Agregar recurso", readOnly = false, esDueno = false,
+}: {
+  contentBase: string; questionsBase: string; ownerIdKey: string; ownerId: number; heading?: string; addLabel?: string;
+  readOnly?: boolean;
+  /** El docente dueño de esta asignatura/curso (asignatura_docentes / programa_docentes) también puede editar, igual que Admin. */
+  esDueno?: boolean;
+}) {
   const { currentUser } = useCampusAuth();
   // `readOnly` fuerza solo-lectura sin importar el rol — se usa cuando esta
   // misma asignatura se ve "de prestado" desde el pensum de un programa/curso
   // (ahí el contenido solo se puede crear/editar desde el módulo Asignaturas).
-  const canEdit = !readOnly && (currentUser?.role === "admin" || currentUser?.role === "super_admin");
+  const canEdit = !readOnly && (currentUser?.role === "admin" || currentUser?.role === "super_admin" || (currentUser?.role === "docente" && esDueno));
   const api: ApiCtx = { contentBase, questionsBase, ownerIdKey, ownerId };
   const [items, setItems] = useState<Contenido[]>([]);
   const [loading, setLoading] = useState(true);

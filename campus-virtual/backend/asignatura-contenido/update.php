@@ -2,7 +2,6 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
 
@@ -10,6 +9,12 @@ $body   = json_body();
 $id     = (int) ($body['id'] ?? 0);
 $titulo = trim($body['titulo'] ?? '');
 if ($id === 0 || $titulo === '') fail('El título es requerido.');
+
+$actual = db()->prepare('SELECT asignatura_id FROM asignatura_contenido WHERE id = ?');
+$actual->execute([$id]);
+$asignaturaId = $actual->fetchColumn();
+if ($asignaturaId === false) fail('Recurso no encontrado.', 404);
+require_gestion_asignatura($user, (int) $asignaturaId);
 
 db()->prepare(
     'UPDATE asignatura_contenido SET titulo = ?, modulo = ?, descripcion = ?, contenido_texto = ?, url_externa = ?,

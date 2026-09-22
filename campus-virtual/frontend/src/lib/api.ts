@@ -5,6 +5,9 @@ const API_BASE =
   (import.meta.env.DEV ? "https://siso.com.co/campus-api" : "/campus-api");
 
 const TOKEN_KEY = "campus_token";
+// Guarda la sesión REAL del Super Admin mientras usa "Ver como" — así puede
+// volver a su propia cuenta sin tener que loguearse de nuevo.
+const BACKUP_TOKEN_KEY = "campus_backup_token";
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -13,6 +16,15 @@ export function getToken(): string | null {
 export function setToken(token: string | null) {
   if (token) localStorage.setItem(TOKEN_KEY, token);
   else localStorage.removeItem(TOKEN_KEY);
+}
+
+export function getBackupToken(): string | null {
+  return localStorage.getItem(BACKUP_TOKEN_KEY);
+}
+
+export function setBackupToken(token: string | null) {
+  if (token) localStorage.setItem(BACKUP_TOKEN_KEY, token);
+  else localStorage.removeItem(BACKUP_TOKEN_KEY);
 }
 
 interface ApiOptions extends Omit<RequestInit, "body"> {

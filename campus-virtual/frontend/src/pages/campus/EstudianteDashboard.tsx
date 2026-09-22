@@ -127,7 +127,7 @@ function SectionHeader({ icon: Icon, label, count }: { icon: React.ElementType; 
 }
 
 export default function EstudianteDashboard() {
-  const { currentUser: user, loading: authLoading, logout } = useCampusAuth();
+  const { currentUser: user, loading: authLoading, logout, isImpersonando, volverAMiCuenta } = useCampusAuth();
   const navigate = useNavigate();
   const [cursos, setCursos] = useState<CursoLigero[]>([]);
   const [programas, setProgramas] = useState<Programa[]>([]);
@@ -186,6 +186,17 @@ export default function EstudianteDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F1F5F9] flex flex-col">
+      {isImpersonando && (
+        <div className="shrink-0 bg-amber-400 text-amber-950 text-xs font-semibold flex items-center justify-center gap-2 py-1.5 px-4">
+          <span>Estás viendo como {user.nombre} (estudiante).</span>
+          <button
+            onClick={() => { volverAMiCuenta(); navigate("/dashboard", { replace: true }); }}
+            className="underline hover:no-underline"
+          >
+            Volver a mi cuenta
+          </button>
+        </div>
+      )}
       <header className="sticky top-0 z-40 bg-[#C41717] border-b border-[#A81212] shadow-sm">
         <div className="flex items-center gap-3 px-4 sm:px-6 h-14 max-w-6xl mx-auto w-full">
           <div className="rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden shrink-0" style={{ padding: "4px 10px" }}>

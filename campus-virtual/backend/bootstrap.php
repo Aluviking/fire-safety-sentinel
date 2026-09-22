@@ -243,16 +243,22 @@ function rol_modulos_por_defecto(string $role): ?array
     // Docente — mismo panel administrativo (antes tenía uno aparte, muy
     // limitado, solo lectura de nombres). Alcance calcado del menú real que
     // Q10 le muestra a un docente: Estudiantes (sin Docentes/Administrativos),
-    // Evaluaciones, Cursos ligeros/virtuales, Aulas virtuales, Informes. Ver
-    // solamente — crear/editar/eliminar sigue siendo exclusivo de Super
-    // Admin en todos lados, igual que para equipo/administrativo. Además,
-    // list.php de cursos/cursos-ligeros filtra por docente_identificacion
-    // cuando el rol es docente, para que solo vea SUS propios cursos.
+    // Evaluaciones, Cursos ligeros/virtuales, Aulas virtuales, Informes, y
+    // ahora también Programas/Asignaturas/Crear curso — el docente entra a
+    // esos módulos igual que Super Admin, pero SOLO ve lo que tiene asignado
+    // (asignatura_docentes / programa_docentes), scoping real aplicado en
+    // programas/list.php y asignaturas/list.php. Crear/editar/eliminar
+    // sigue siendo exclusivo de Super Admin en TODO lo estructural (crear
+    // programa, borrar asignatura, etc.) — la única excepción, además de
+    // calificar evaluaciones, es que dentro de SU PROPIA asignatura/curso el
+    // docente sí puede cargar contenido, anuncios y clases virtuales (mismo
+    // candado de dueño que evaluaciones, ver require_gestion_asignatura() y
+    // require_gestion_programa()).
     if ($role === 'docente') {
         $modulos = $ver([
             'institucional.estudiantes',
             'academico.evaluaciones', 'academico.cursos_ligeros', 'academico.cursos_virtuales',
-            'academico.aulas_virtuales',
+            'academico.aulas_virtuales', 'academico.programas', 'academico.asignaturas', 'academico.cursos',
             'informes.consolidado_notas',
         ]);
         // Única excepción a "editar es solo Super Admin": el docente sí puede
@@ -418,6 +424,44 @@ function require_acceso_asignatura(array $user, int $asignaturaId): void
         return;
     }
     require_permiso($user, 'academico.asignaturas');
+}
+
+/**
+ * Puerta de GESTIÓN (crear/editar/borrar contenido, anuncios, clases) de una
+ * asignatura puntual — no de solo verla. Admin/Super Admin siempre pasan; un
+ * docente pasa SOLO si esa asignatura está entre las suyas (asignatura_docentes),
+ * para que pueda cargar el material de lo que da clase sin poder tocar lo de
+ * los demás docentes.
+ */
+function require_gestion_asignatura(array $user, int $asignaturaId): void
+{
+    if (in_array($user['role'], ['admin', 'super_admin'], true)) return;
+    if ($user['role'] === 'docente' && !empty($user['identificacion'])) {
+        $stmt = db()->prepare(
+            'SELECT ad.id FROM asignatura_docentes ad
+             JOIN docentes d ON d.id = ad.docente_id
+             WHERE ad.asignatura_id = ? AND d.identificacion = ?'
+        );
+        $stmt->execute([$asignaturaId, $user['identificacion']]);
+        if ($stmt->fetch()) return;
+    }
+    fail('No autorizado.', 403);
+}
+
+/** Igual que require_gestion_asignatura(), pero para un Programa/Curso (programa_docentes). */
+function require_gestion_programa(array $user, int $programaId): void
+{
+    if (in_array($user['role'], ['admin', 'super_admin'], true)) return;
+    if ($user['role'] === 'docente' && !empty($user['identificacion'])) {
+        $stmt = db()->prepare(
+            'SELECT pd.id FROM programa_docentes pd
+             JOIN docentes d ON d.id = pd.docente_id
+             WHERE pd.programa_id = ? AND d.identificacion = ?'
+        );
+        $stmt->execute([$programaId, $user['identificacion']]);
+        if ($stmt->fetch()) return;
+    }
+    fail('No autorizado.', 403);
 }
 
 /** Mismo mecanismo que require_acceso_curso_ligero(), para el contenido de un Curso. */

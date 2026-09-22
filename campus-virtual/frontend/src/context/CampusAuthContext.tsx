@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-import { apiFetch, setToken, getToken } from "@/lib/api";
+import { apiFetch, setToken, getToken, setBackupToken, getBackupToken } from "@/lib/api";
 
 export type Role = "super_admin" | "admin" | "docente" | "administrativo" | "estudiante" | "equipo";
 
@@ -35,6 +35,9 @@ interface CampusAuthContextType {
   assignPerfil: (userId: string, perfilId: number | null) => Promise<{ ok: boolean; error?: string }>;
   canVer: (modulo: string) => boolean;
   canEditar: (modulo: string) => boolean;
+  verComo: (userId: string) => Promise<{ ok: boolean; role?: Role; error?: string }>;
+  volverAMiCuenta: () => Promise<void>;
+  isImpersonando: boolean;
 }
 
 const CampusAuthContext = createContext<CampusAuthContextType | undefined>(undefined);
@@ -55,6 +58,7 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
   const [permisos, setPermisos]       = useState<Permisos>(DEFAULT_PERMISOS);
   const [loading, setLoading]         = useState(true);
   const [users, setUsers]             = useState<CampusUser[]>([]);
+  const [isImpersonando, setIsImpersonando] = useState(!!getBackupToken());
 
   const loadUsers = useCallback(async (role: Role) => {
     if (role !== "admin" && role !== "super_admin") return;
@@ -104,9 +108,53 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try { await apiFetch("/auth/logout.php", { method: "POST" }); } catch { /* best-effort */ }
     setToken(null);
+    setBackupToken(null);
+    setIsImpersonando(false);
     setCurrentUser(null);
     setPermisos(DEFAULT_PERMISOS);
     setUsers([]);
+  };
+
+  // "Ver como" — guarda la sesión real (solo si no había ya una guardada, para
+  // no perderla si se encadena un "ver como" dentro de otro "ver como") y
+  // entra con una sesión nueva de la cuenta elegida.
+  const verComo: CampusAuthContextType["verComo"] = async (userId) => {
+    try {
+      const data = await apiFetch<{ token: string; user: unknown }>("/usuarios/ver-como.php", {
+        method: "POST", json: { userId },
+      });
+      if (!getBackupToken()) setBackupToken(getToken());
+      const user = mapUserRow(data.user);
+      setToken(data.token);
+      setCurrentUser(user);
+      setIsImpersonando(true);
+      try {
+        const me = await apiFetch<{ user: unknown; permisos?: Permisos }>("/auth/me.php");
+        setPermisos(me.permisos ?? DEFAULT_PERMISOS);
+      } catch { setPermisos(DEFAULT_PERMISOS); }
+      return { ok: true, role: user.role };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
+  const volverAMiCuenta = async () => {
+    const backup = getBackupToken();
+    if (!backup) return;
+    setToken(backup);
+    setBackupToken(null);
+    setIsImpersonando(false);
+    try {
+      const data = await apiFetch<{ user: unknown; permisos?: Permisos }>("/auth/me.php");
+      const user = mapUserRow(data.user);
+      setCurrentUser(user);
+      setPermisos(data.permisos ?? DEFAULT_PERMISOS);
+      await loadUsers(user.role);
+    } catch {
+      setToken(null);
+      setCurrentUser(null);
+      setPermisos(DEFAULT_PERMISOS);
+    }
   };
 
   const createUser: CampusAuthContextType["createUser"] = async (data) => {
@@ -175,7 +223,7 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
   return (
     <CampusAuthContext.Provider value={{
       currentUser, permisos, loading, users, login, logout, createUser, deleteUser, updateUser, resetPassword,
-      changeRole, assignPerfil, canVer, canEditar,
+      changeRole, assignPerfil, canVer, canEditar, verComo, volverAMiCuenta, isImpersonando,
     }}>
       {children}
     </CampusAuthContext.Provider>
