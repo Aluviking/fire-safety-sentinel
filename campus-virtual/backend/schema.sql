@@ -1241,3 +1241,22 @@ CREATE TABLE IF NOT EXISTS programa_docentes (
   FOREIGN KEY (programa_id) REFERENCES programas(id) ON DELETE CASCADE,
   FOREIGN KEY (docente_id) REFERENCES docentes(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Cuentas vinculadas — cuando una misma persona real tiene varias cuentas de
+-- acceso (ej. Fernando: super_admin y docente), un Super Admin las conecta a
+-- propósito desde Usuarios. Una vez vinculadas, cualquiera de las dos puede
+-- saltar a la otra desde su propio panel sin volver a pedir clave. Se guarda
+-- una fila por cada dirección del par para que la consulta "mis cuentas
+-- vinculadas" sea directa.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS usuarios_vinculados (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  user_id    VARCHAR(40) NOT NULL,
+  vinculado_a_user_id VARCHAR(40) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_vinculo (user_id, vinculado_a_user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (vinculado_a_user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

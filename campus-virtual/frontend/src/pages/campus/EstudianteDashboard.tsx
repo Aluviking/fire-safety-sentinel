@@ -9,6 +9,7 @@ import gfoLogo from "@/assets/gfo-academy-logo.jpeg";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { apiFetch, apiImage } from "@/lib/api";
 import ContenidoEditor from "./ContenidoEditor";
+import { CuentaSwitcher } from "./CuentaSwitcher";
 
 interface CursoLigero {
   id: number;
@@ -206,6 +207,7 @@ export default function EstudianteDashboard() {
             <p className="text-white text-sm font-semibold leading-tight truncate">{user.nombre}</p>
             <p className="text-white/70 text-[11px] leading-tight">Estudiante</p>
           </div>
+          <CuentaSwitcher />
           <button onClick={handleLogout} title="Cerrar sesión"
             className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-all shrink-0">
             <LogOut className="w-4 h-4" />

@@ -20,6 +20,8 @@ export interface Permisos {
   modulos: Record<string, { ver: boolean; editar: boolean }>;
 }
 
+export interface CuentaVinculada { id: string; nombre: string; role: Role; username: string }
+
 interface CampusAuthContextType {
   currentUser: CampusUser | null;
   permisos: Permisos;
@@ -38,6 +40,8 @@ interface CampusAuthContextType {
   verComo: (userId: string) => Promise<{ ok: boolean; role?: Role; error?: string }>;
   volverAMiCuenta: () => Promise<void>;
   isImpersonando: boolean;
+  cuentasVinculadas: CuentaVinculada[];
+  cambiarCuenta: (userId: string) => Promise<{ ok: boolean; role?: Role; error?: string }>;
 }
 
 const CampusAuthContext = createContext<CampusAuthContextType | undefined>(undefined);
@@ -59,6 +63,7 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading]         = useState(true);
   const [users, setUsers]             = useState<CampusUser[]>([]);
   const [isImpersonando, setIsImpersonando] = useState(!!getBackupToken());
+  const [cuentasVinculadas, setCuentasVinculadas] = useState<CuentaVinculada[]>([]);
 
   const loadUsers = useCallback(async (role: Role) => {
     if (role !== "admin" && role !== "super_admin") return;
@@ -70,6 +75,18 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Cualquier rol puede tener cuentas vinculadas (ej. Fernando: docente ↔
+  // super_admin) — esto alimenta el selector "Cambiar de cuenta" que se ve
+  // en todos los paneles, no solo en Usuarios.
+  const loadCuentasVinculadas = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ cuentas: CuentaVinculada[] }>("/usuarios/mis-cuentas-vinculadas.php");
+      setCuentasVinculadas(data.cuentas);
+    } catch {
+      setCuentasVinculadas([]);
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
       if (!getToken()) { setLoading(false); return; }
@@ -78,7 +95,7 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
         const user = mapUserRow(data.user);
         setCurrentUser(user);
         setPermisos(data.permisos ?? DEFAULT_PERMISOS);
-        await loadUsers(user.role);
+        await Promise.all([loadUsers(user.role), loadCuentasVinculadas()]);
       } catch {
         setToken(null);
       } finally {
@@ -98,7 +115,7 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
       setToken(data.token);
       setCurrentUser(user);
       setPermisos(data.permisos ?? DEFAULT_PERMISOS);
-      await loadUsers(user.role);
+      await Promise.all([loadUsers(user.role), loadCuentasVinculadas()]);
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : "Error." };
@@ -113,6 +130,7 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
     setCurrentUser(null);
     setPermisos(DEFAULT_PERMISOS);
     setUsers([]);
+    setCuentasVinculadas([]);
   };
 
   // "Ver como" — guarda la sesión real (solo si no había ya una guardada, para
@@ -132,6 +150,7 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
         const me = await apiFetch<{ user: unknown; permisos?: Permisos }>("/auth/me.php");
         setPermisos(me.permisos ?? DEFAULT_PERMISOS);
       } catch { setPermisos(DEFAULT_PERMISOS); }
+      await loadCuentasVinculadas();
       return { ok: true, role: user.role };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : "Error." };
@@ -149,11 +168,35 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
       const user = mapUserRow(data.user);
       setCurrentUser(user);
       setPermisos(data.permisos ?? DEFAULT_PERMISOS);
-      await loadUsers(user.role);
+      await Promise.all([loadUsers(user.role), loadCuentasVinculadas()]);
     } catch {
       setToken(null);
       setCurrentUser(null);
       setPermisos(DEFAULT_PERMISOS);
+    }
+  };
+
+  // Salto directo entre cuentas ya vinculadas — cualquier rol puede usarlo,
+  // no solo Super Admin (a diferencia de verComo). No hay "volver" con backup
+  // token aquí: al cambiar, la cuenta anterior simplemente vuelve a aparecer
+  // en el selector de la cuenta nueva, así que cambiarse de regreso es igual
+  // de directo.
+  const cambiarCuenta: CampusAuthContextType["cambiarCuenta"] = async (userId) => {
+    try {
+      const data = await apiFetch<{ token: string; user: unknown }>("/usuarios/cambiar-cuenta.php", {
+        method: "POST", json: { userId },
+      });
+      const user = mapUserRow(data.user);
+      setToken(data.token);
+      setCurrentUser(user);
+      try {
+        const me = await apiFetch<{ user: unknown; permisos?: Permisos }>("/auth/me.php");
+        setPermisos(me.permisos ?? DEFAULT_PERMISOS);
+      } catch { setPermisos(DEFAULT_PERMISOS); }
+      await Promise.all([loadUsers(user.role), loadCuentasVinculadas()]);
+      return { ok: true, role: user.role };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
     }
   };
 
@@ -224,6 +267,7 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
     <CampusAuthContext.Provider value={{
       currentUser, permisos, loading, users, login, logout, createUser, deleteUser, updateUser, resetPassword,
       changeRole, assignPerfil, canVer, canEditar, verComo, volverAMiCuenta, isImpersonando,
+      cuentasVinculadas, cambiarCuenta,
     }}>
       {children}
     </CampusAuthContext.Provider>

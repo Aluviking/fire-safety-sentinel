@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { UserPlus, Trash2, Users as UsersIcon, Pencil, KeyRound, Check, X as XIcon, Search, RefreshCw, Eye } from "lucide-react";
+import { UserPlus, Trash2, Users as UsersIcon, Pencil, KeyRound, Check, X as XIcon, Search, RefreshCw, Eye, Link2 } from "lucide-react";
 import { useCampusAuth, type Role } from "@/context/CampusAuthContext";
 import { apiFetch } from "@/lib/api";
 import { ResetPasswordModal } from "../ResetPasswordModal";
@@ -129,6 +129,64 @@ function CreateUserForm({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   );
 }
 
+/* ─── Vincular esta cuenta con otra ("misma persona") ────────────────────── */
+function VincularCuentaModal({
+  user, todosLosUsuarios, onClose, onSaved,
+}: { user: { id: string; nombre: string }; todosLosUsuarios: { id: string; nombre: string; role: Role }[]; onClose: () => void; onSaved: () => void }) {
+  const [otroUserId, setOtroUserId] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const opciones = todosLosUsuarios.filter((u) => u.id !== user.id);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!otroUserId) { setError("Selecciona la otra cuenta."); return; }
+    setSubmitting(true);
+    try {
+      await apiFetch("/usuarios/vincular.php", { method: "POST", json: { userIdA: user.id, userIdB: otroUserId } });
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al vincular.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <p className="text-slate-800 font-bold text-[15px]">Vincular cuenta de {user.nombre}</p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+        </div>
+        <form onSubmit={submit} className="px-5 py-4 space-y-3">
+          <p className="text-xs text-slate-500">
+            Elige la otra cuenta que pertenece a la misma persona. Después, cualquiera de las dos va a poder saltar directo a la otra desde su propio panel, sin volver a pedir clave.
+          </p>
+          <SearchableSelect
+            value={otroUserId} onChange={setOtroUserId}
+            options={opciones.map((u) => ({ value: u.id, label: `${u.nombre} (${u.role})` }))}
+            placeholder="Seleccione la otra cuenta..."
+          />
+          {error && <p className="text-[11px] text-red-500">{error}</p>}
+          <div className="flex gap-2 pt-1">
+            <button type="submit" disabled={submitting}
+              className="flex-1 text-xs font-semibold bg-[#C41717] hover:bg-[#B01313] text-white rounded-lg py-2 disabled:opacity-60 transition-colors">
+              {submitting ? "Vinculando..." : "Vincular"}
+            </button>
+            <button type="button" onClick={onClose} className="text-xs font-medium text-slate-500 hover:text-slate-700 px-3">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 /* ══ Vista principal ═════════════════════════════════════════════════════════ */
 export default function UsuariosView() {
   const { currentUser, users, changeRole, deleteUser, updateUser, resetPassword, assignPerfil, logout, verComo } = useCampusAuth();
@@ -213,6 +271,7 @@ export default function UsuariosView() {
   };
 
   const [resettingUser, setResettingUser] = useState<{ id: string; nombre: string } | null>(null);
+  const [vinculandoUser, setVinculandoUser] = useState<{ id: string; nombre: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNombre, setEditNombre] = useState("");
   const [editEmail, setEditEmail] = useState("");
@@ -430,6 +489,15 @@ export default function UsuariosView() {
                         className="shrink-0 w-48"
                       />
                     )}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => setVinculandoUser({ id: u.id, nombre: u.nombre })}
+                        className="shrink-0 text-slate-400 hover:text-blue-600 transition-colors"
+                        title={`Vincular la cuenta de ${u.nombre} con otra (misma persona)`}
+                      >
+                        <Link2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     {isSuperAdmin && u.id !== currentUser?.id && (
                       <button
                         onClick={() => handleVerComo(u.id)}
@@ -486,6 +554,14 @@ export default function UsuariosView() {
         onConfirm={confirmResetPassword}
         onCancel={() => setResettingUser(null)}
       />
+      {vinculandoUser && (
+        <VincularCuentaModal
+          user={vinculandoUser}
+          todosLosUsuarios={users}
+          onClose={() => setVinculandoUser(null)}
+          onSaved={() => window.alert("Cuentas vinculadas. Ya se pueden cambiar entre sí sin pedir clave.")}
+        />
+      )}
       <ConfirmModal
         open={eliminandoSeleccionados}
         title={seleccionados.size > 0 ? "Eliminar usuarios seleccionados" : "Eliminar todos los usuarios"}

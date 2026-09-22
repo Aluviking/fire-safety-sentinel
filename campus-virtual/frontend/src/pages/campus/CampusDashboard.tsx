@@ -12,6 +12,7 @@ import {
 import { useCampusAuth, type CampusUser } from "@/context/CampusAuthContext";
 import { apiFetch } from "@/lib/api";
 import RegistrarEstudianteModal from "./RegistrarEstudianteModal";
+import { CuentaSwitcher } from "./CuentaSwitcher";
 import RegistrarPersonalModal from "./RegistrarPersonalModal";
 import RegistrarCodeudorModal from "./RegistrarCodeudorModal";
 import InformacionBasicaView from "./views/InformacionBasicaView";
@@ -1011,6 +1012,7 @@ export default function CampusDashboard() {
                 <span className="text-white text-xs font-semibold leading-tight">{user.nombre.split(" ")[0]}</span>
                 <span className="text-white/70 text-[10px] leading-tight">{ROLE_LABEL[user.role] ?? user.role}</span>
               </div>
+              <CuentaSwitcher />
               <button
                 onClick={logout}
                 title="Cerrar sesión"
