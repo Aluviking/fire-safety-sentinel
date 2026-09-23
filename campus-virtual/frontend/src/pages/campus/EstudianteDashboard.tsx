@@ -34,6 +34,7 @@ interface Asignatura {
   descripcion: string | null;
   imagen_path: string | null;
   dias_disponibles: number | null;
+  docentes?: { id: number; nombre: string }[];
 }
 interface CursoVirtual {
   id: number;
@@ -272,13 +273,20 @@ export default function EstudianteDashboard() {
                       accent={accentFor(a.nombre)}
                       onClick={() => setActivo({ nombre: a.nombre, contentBase: "/asignatura-contenido", questionsBase: "/asignatura-preguntas", ownerIdKey: "asignaturaId", ownerId: a.id })}
                       footer={
-                        a.dias_disponibles != null ? (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                            <Clock className="w-3 h-3 text-slate-400" /> {a.dias_disponibles} días disponibles
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-slate-300">Sin fecha límite</span>
-                        )
+                        <div className="space-y-1.5">
+                          {a.docentes && a.docentes.length > 0 && (
+                            <p className="flex items-center gap-1.5 text-[11px] text-slate-500 truncate">
+                              <User className="w-3 h-3 text-slate-400 shrink-0" /> {a.docentes.map((d) => d.nombre).join(", ")}
+                            </p>
+                          )}
+                          {a.dias_disponibles != null ? (
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                              <Clock className="w-3 h-3 text-slate-400" /> {a.dias_disponibles} días disponibles
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-300">Sin fecha límite</span>
+                          )}
+                        </div>
                       }
                     />
                   ))}
