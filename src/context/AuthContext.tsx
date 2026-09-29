@@ -71,6 +71,7 @@ interface AuthContextType {
   deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>;
   updateUser: (userId: string, data: { nombre: string; email: string; username: string }) => Promise<{ ok: boolean; error?: string }>;
   resetPassword: (userId: string, newPassword: string) => Promise<{ ok: boolean; error?: string }>;
+  changeMyPassword: (currentPassword: string, newPassword: string) => Promise<{ ok: boolean; error?: string }>;
   deleteCompany: (companyId: string) => Promise<{ ok: boolean; error?: string }>;
   uploadAvatar: (userId: string, file: File) => Promise<{ ok: boolean; error?: string }>;
   uploadAd: (file: File) => Promise<{ ok: boolean; error?: string }>;
@@ -342,6 +343,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Autoservicio — cualquier usuario (incluido un Admin como Fernando) cambia
+  // su propia contraseña sin depender de un Super Admin, a diferencia de
+  // resetPassword (que exige rol Admin/Super Admin y actúa sobre OTRO usuario).
+  const changeMyPassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      await apiFetch("/users/change-my-password.php", { method: "POST", json: { currentPassword, newPassword } });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
   const deleteCompany = async (companyId: string) => {
     try {
       await apiFetch("/companies/delete.php", { method: "POST", json: { id: companyId } });
@@ -407,7 +420,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentUser, loading, users, companies, permissions, trace,
       progress, progressTotal, progressByPhase, progressTotalByPhase, loadProgress,
       login, logout, register, createUser, createCompany, updateCompany, uploadCompanyPhoto,
-      deleteUser, updateUser, resetPassword, deleteCompany, changeRole,
+      deleteUser, updateUser, resetPassword, changeMyPassword, deleteCompany, changeRole,
       assignEmpresa, upsertPermission, getPermission, addTrace, uploadAvatar, uploadAd,
       refreshTrace: loadTrace,
     }}>

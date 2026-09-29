@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LogOut, ChevronRight, ShieldCheck, Building2, Users, Shield, ScrollText, Megaphone } from "lucide-react";
+import { LogOut, ChevronRight, ShieldCheck, Building2, Users, Shield, ScrollText, Megaphone, KeyRound } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import sisoLogo from "@/assets/siso-logo.png";
+import { ChangeMyPasswordModal } from "./ChangeMyPasswordModal";
 
 interface Crumb {
   label: string;
@@ -35,6 +37,7 @@ export function PortalTopNav({ crumbs, navItems }: { crumbs: Crumb[]; navItems?:
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [changingPassword, setChangingPassword] = useState(false);
 
   return (
     <div className="sticky top-0 z-40 px-3 sm:px-6 pt-4 pb-3 bg-slate-50/80 backdrop-blur-sm">
@@ -91,6 +94,14 @@ export function PortalTopNav({ crumbs, navItems }: { crumbs: Crumb[]; navItems?:
               {currentUser?.nombre}
             </span>
             <button
+              onClick={() => setChangingPassword(true)}
+              className="flex items-center justify-center w-8 h-8 rounded-full text-slate-400
+                         hover:text-[hsl(43_78%_65%)] hover:bg-[hsl(43_78%_50%/0.12)] transition-all"
+              title="Cambiar mi contraseña"
+            >
+              <KeyRound className="w-4 h-4" />
+            </button>
+            <button
               onClick={() => { logout(); navigate("/portal"); }}
               className="flex items-center justify-center w-8 h-8 rounded-full text-slate-400
                          hover:text-red-400 hover:bg-red-500/10 transition-all"
@@ -124,6 +135,7 @@ export function PortalTopNav({ crumbs, navItems }: { crumbs: Crumb[]; navItems?:
           </div>
         )}
       </div>
+      <ChangeMyPasswordModal open={changingPassword} onClose={() => setChangingPassword(false)} />
     </div>
   );
 }
