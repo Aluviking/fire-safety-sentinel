@@ -32,6 +32,34 @@ interface FolderRow {
   parent_folder_id: number | null;
 }
 
+// Orden numérico "natural" por el prefijo del nombre (ej. "1.9 Gestión..."
+// antes que "1.10 Otra cosa..."; comparar como texto pondría "1.10" antes de
+// "1.9"). Las carpetas sin prefijo numérico (creadas sueltas) quedan al final,
+// en orden alfabético — nunca se pierden, solo no tienen de qué número colgarse.
+function ordenNumerico(nombre: string): number[] | null {
+  const m = nombre.match(/^\s*(\d+(?:\.\d+)*)/);
+  if (!m) return null;
+  return m[1].split(".").map(Number);
+}
+function compararCarpetas(a: FolderRow, b: FolderRow): number {
+  const na = ordenNumerico(a.folder_name);
+  const nb = ordenNumerico(b.folder_name);
+  if (na && nb) {
+    const len = Math.max(na.length, nb.length);
+    for (let i = 0; i < len; i++) {
+      const diff = (na[i] ?? 0) - (nb[i] ?? 0);
+      if (diff !== 0) return diff;
+    }
+    return 0;
+  }
+  if (na && !nb) return -1;
+  if (!na && nb) return 1;
+  return a.folder_name.localeCompare(b.folder_name, "es");
+}
+function ordenarCarpetas(folders: FolderRow[]): FolderRow[] {
+  return [...folders].sort(compararCarpetas);
+}
+
 interface UploadQueueItem {
   name: string;
   status: "uploading" | "done" | "error";
@@ -643,7 +671,7 @@ function PhvaActivePanel({
   onDeleteFolder: (id: number) => void;
   onRenameFolder: (id: number, newName: string) => Promise<{ ok: boolean; error?: string }>;
 }) {
-  const topFolders = folders.filter((f) => f.parent_folder_id === null);
+  const topFolders = ordenarCarpetas(folders.filter((f) => f.parent_folder_id === null));
 
   return (
     <motion.div
@@ -681,7 +709,7 @@ function PhvaActivePanel({
             canDeleteFolderPerm={canDeleteFolderPerm}
             onDeleteFolder={onDeleteFolder}
             onRenameFolder={onRenameFolder}
-            subfolders={folders.filter((sf) => sf.parent_folder_id === f.id)}
+            subfolders={ordenarCarpetas(folders.filter((sf) => sf.parent_folder_id === f.id))}
             onCreateSubfolder={onCreateSubfolder}
           />
         ))}
