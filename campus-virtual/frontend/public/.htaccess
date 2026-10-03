@@ -6,3 +6,12 @@
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /campus-virtual/index.html [L]
 </IfModule>
+
+<IfModule mod_mime.c>
+  # Hostinger no trae mapeado el tipo MIME de .mjs por defecto y lo sirve
+  # como text/plain — los navegadores RECHAZAN cargar un Worker/módulo JS
+  # servido así (bloqueo de seguridad del propio navegador, no de nuestro
+  # código). El build ya evita generar archivos .mjs por esto mismo, pero
+  # se deja este mapeo como respaldo por si algún día aparece alguno.
+  AddType text/javascript .mjs
+</IfModule>
