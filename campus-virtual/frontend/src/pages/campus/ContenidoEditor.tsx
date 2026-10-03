@@ -4,10 +4,19 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Plus, X, Trash2, Loader2, Upload, ChevronRight, FileText, File as FileIcon,
   Video, Music, ClipboardCheck, ListChecks, Link as LinkIcon, MessageSquare, Import,
-  CheckCircle2, Circle, Square, CheckSquare, Download, Pencil, Lock, Unlock,
+  CheckCircle2, Circle, Square, CheckSquare, Download, Pencil, Lock, Unlock, AlertCircle,
 } from "lucide-react";
+import { Document, Page, pdfjs } from "react-pdf";
+import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { apiFetch, apiImage, apiDownload } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
+
+// Visor de PDF embebido en la propia app (pdf.js), en vez de un <iframe> con
+// el visor nativo del navegador — en Android/Chrome móvil el visor nativo no
+// se puede mostrar dentro de un iframe y aparece "contenido bloqueado"
+// (confirmado en campo). Renderizando el PDF nosotros mismos, se ve igual en
+// cualquier dispositivo, sin depender de qué visor traiga cada navegador.
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
 
 export interface Contenido {
   id: number; titulo: string; modulo: string | null; tipo: string;
@@ -680,6 +689,58 @@ function CuestionarioViewer({
   );
 }
 
+/* ── Visor de PDF embebido (pdf.js), con ancho responsivo y scroll continuo
+   por todas las páginas — funciona igual en computador y en celular. */
+function PdfViewer({ url, titulo }: { url: string; titulo: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w) setWidth(Math.min(w, 900));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-8 text-slate-400 text-sm">
+        <AlertCircle className="w-6 h-6" />
+        No se pudo mostrar la vista previa de este PDF. Descárgalo con el botón de abajo.
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} role="document" aria-label={titulo} className="w-full rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+      <Document
+        file={url}
+        loading={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}
+        onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+        onLoadError={() => setError(true)}
+      >
+        {width > 0 && Array.from({ length: numPages ?? 0 }, (_, i) => (
+          <Page
+            key={i}
+            pageNumber={i + 1}
+            width={width}
+            renderTextLayer={false}
+            renderAnnotationLayer={false}
+            className="[&_canvas]:mx-auto [&_canvas]:max-w-full border-b border-slate-200 last:border-b-0"
+            loading=""
+          />
+        ))}
+      </Document>
+    </div>
+  );
+}
+
 /* ── Visor de un recurso ya creado ────────────────────────────────────────── */
 function RecursoViewer({
   api, item, canEdit, onBack, onDeleted,
@@ -756,18 +817,14 @@ function RecursoViewer({
                 <img src={fileUrl} alt="" className="max-w-full rounded-xl border border-slate-200" />
               ) : isPdf ? (
                 <div className="space-y-2">
-                  <iframe src={fileUrl} className="w-full h-[65vh] rounded-xl border border-slate-200" title={full.titulo} />
-                  {/* Respaldo para celular: muchos navegadores móviles (Chrome
-                      Android en particular) no pueden mostrar un PDF dentro de
-                      un iframe y en su lugar muestran "contenido bloqueado" —
-                      no es un archivo dañado ni algo bloqueado de verdad, es
-                      una limitación del navegador. Este botón deja ver/descargar
-                      el PDF igual, sin depender de que el iframe funcione. */}
+                  <div className="max-h-[70vh] overflow-y-auto rounded-xl">
+                    <PdfViewer url={fileUrl} titulo={full.titulo} />
+                  </div>
                   <button
                     onClick={() => apiDownload(`${api.contentBase}/archivo.php?id=${full.id}`, `${full.titulo}.${ext}`)}
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 hover:border-[#C41717]/30 transition-colors"
                   >
-                    <Download className="w-4 h-4" /> ¿No ves el documento arriba? Descárgalo aquí
+                    <Download className="w-4 h-4" /> Descargar archivo (.{ext})
                   </button>
                 </div>
               ) : (
