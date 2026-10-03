@@ -7,7 +7,7 @@ import {
   CheckCircle2, Circle, Square, CheckSquare, Download, Pencil, Lock, Unlock, AlertCircle,
 } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
-import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import * as pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs";
 import { apiFetch, apiImage, apiDownload } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 
@@ -16,7 +16,19 @@ import { useCampusAuth } from "@/context/CampusAuthContext";
 // se puede mostrar dentro de un iframe y aparece "contenido bloqueado"
 // (confirmado en campo). Renderizando el PDF nosotros mismos, se ve igual en
 // cualquier dispositivo, sin depender de qué visor traiga cada navegador.
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
+//
+// El worker de pdf.js NO se carga como archivo aparte (antes: pdf.worker.min.mjs
+// pedido por separado con `new Worker(url)`) — ese enfoque dependía de que el
+// hosting sirviera ese archivo con el Content-Type correcto Y de que la política
+// de seguridad (CSP) del sitio permitiera crear ese Worker, dos cosas fuera de
+// nuestro control que fallaron en producción (Hostinger + la CSP existente del
+// dominio). En vez de perseguir esa configuración, se registra el worker
+// directamente en el hilo principal (globalThis.pdfjsWorker) — pdf.js lo detecta
+// solo y nunca intenta pedir ni crear un Worker aparte. Un PDF grande puede tardar
+// un poco más en procesarse (corre en el mismo hilo que la UI), pero deja de
+// depender de configuración de servidor o de CSP que no controlamos del todo.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).pdfjsWorker = pdfjsWorker;
 
 export interface Contenido {
   id: number; titulo: string; modulo: string | null; tipo: string;
