@@ -30,8 +30,12 @@
   # script-src/frame-src/connect-src son para el reCAPTCHA real del login de
   # Campus Virtual (Recaptcha.tsx) — sin esto el script de Google se bloquea
   # silenciosamente y el checkbox nunca aparece, dejando el login sin poder
-  # enviarse (recaptchaToken nunca se llena).
-  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; frame-src 'self' blob: https://www.google.com; connect-src 'self' https://api.open-meteo.com https://www.google.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+  # enviarse (recaptchaToken nunca se llena). 'blob:' en connect-src es para
+  # el visor de PDF embebido de Campus Virtual (pdf.js, ContenidoEditor.tsx):
+  # internamente hace fetch() sobre el blob: del archivo ya descargado para
+  # leerlo — sin esto el navegador bloquea esa conexión (consola: "violates
+  # ... connect-src") y el PDF nunca se puede mostrar, en ningún dispositivo.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; frame-src 'self' blob: https://www.google.com; connect-src 'self' blob: https://api.open-meteo.com https://www.google.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
 
   # Oculta la firma de versión del servidor
   Header unset X-Powered-By
