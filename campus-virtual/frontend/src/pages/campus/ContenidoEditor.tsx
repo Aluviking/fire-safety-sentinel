@@ -755,7 +755,21 @@ function RecursoViewer({
               ) : isImg ? (
                 <img src={fileUrl} alt="" className="max-w-full rounded-xl border border-slate-200" />
               ) : isPdf ? (
-                <iframe src={fileUrl} className="w-full h-[65vh] rounded-xl border border-slate-200" title={full.titulo} />
+                <div className="space-y-2">
+                  <iframe src={fileUrl} className="w-full h-[65vh] rounded-xl border border-slate-200" title={full.titulo} />
+                  {/* Respaldo para celular: muchos navegadores móviles (Chrome
+                      Android en particular) no pueden mostrar un PDF dentro de
+                      un iframe y en su lugar muestran "contenido bloqueado" —
+                      no es un archivo dañado ni algo bloqueado de verdad, es
+                      una limitación del navegador. Este botón deja ver/descargar
+                      el PDF igual, sin depender de que el iframe funcione. */}
+                  <button
+                    onClick={() => apiDownload(`${api.contentBase}/archivo.php?id=${full.id}`, `${full.titulo}.${ext}`)}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 hover:border-[#C41717]/30 transition-colors"
+                  >
+                    <Download className="w-4 h-4" /> ¿No ves el documento arriba? Descárgalo aquí
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => apiDownload(`${api.contentBase}/archivo.php?id=${full.id}`, `${full.titulo}.${ext}`)}
