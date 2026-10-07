@@ -39,7 +39,11 @@ interface PensumAsignatura {
 }
 interface Prerequisito { id: number; prerequisito_asignatura_id: number; prerequisito_nombre: string }
 interface DocenteOption { id: number; identificacion: string; nombre_completo: string }
-interface DocenteDelCurso { id: number; docente_id: number; identificacion: string; nombre_completo: string }
+interface DocenteDelCurso {
+  id: number; docente_id: number; identificacion: string; nombre_completo: string;
+  // Solo presente cuando viene de una asignatura del pensum — null = asignado directo al programa.
+  origen_nombre?: string | null;
+}
 
 const inputCls = "w-full text-sm bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
 
@@ -56,7 +60,12 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
-interface Anuncio { id: number; titulo: string; mensaje: string | null; importancia: string; created_at: string }
+interface Anuncio {
+  id: number; titulo: string; mensaje: string | null; importancia: string; created_at: string;
+  // Solo presentes cuando viene de una asignatura del pensum — null = publicado directo aquí.
+  origen_nombre?: string | null;
+  origen_api_base?: string | null;
+}
 
 /* ── Anuncios del programa ─────────────────────────────────────────────────── */
 function ProgramaAnunciosTab({ programaId }: { programaId: number }) {
@@ -82,8 +91,8 @@ function ProgramaAnunciosTab({ programaId }: { programaId: number }) {
     load();
   };
 
-  const remove = async (id: number) => {
-    await apiFetch("/programa-anuncios/delete.php", { method: "POST", json: { id } });
+  const remove = async (a: Anuncio) => {
+    await apiFetch(`${a.origen_api_base ?? "/programa-anuncios"}/delete.php`, { method: "POST", json: { id: a.id } });
     load();
   };
 
@@ -115,13 +124,18 @@ function ProgramaAnunciosTab({ programaId }: { programaId: number }) {
       ) : (
         <div className="space-y-2">
           {items.map((a) => (
-            <div key={a.id} className="p-3.5 rounded-xl border border-slate-200 group">
+            <div key={`${a.origen_api_base ?? "programa"}-${a.id}`} className="p-3.5 rounded-xl border border-slate-200 group">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-slate-800">{a.titulo}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-slate-800">{a.titulo}</p>
+                    {a.origen_nombre && (
+                      <span className="inline-block px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-medium">Asignatura: {a.origen_nombre}</span>
+                    )}
+                  </div>
                   {a.mensaje && <p className="text-xs text-slate-500 mt-0.5">{a.mensaje}</p>}
                 </div>
-                <button onClick={() => remove(a.id)} className="text-slate-300 group-hover:text-red-500 transition-colors shrink-0">
+                <button onClick={() => remove(a)} className="text-slate-300 group-hover:text-red-500 transition-colors shrink-0">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -672,15 +686,20 @@ function CursoDocentesTab({ programaId }: { programaId: number }) {
       ) : (
         <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
           {asignados.map((d) => (
-            <div key={d.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+            <div key={`${d.origen_nombre ?? "programa"}-${d.id}`} className="flex items-center justify-between gap-3 px-3.5 py-2.5">
               <div className="flex items-center gap-2.5 min-w-0">
                 <UserCog className="w-3.5 h-3.5 text-[#C41717]/50 shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{d.nombre_completo}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium text-slate-800 truncate">{d.nombre_completo}</p>
+                    {d.origen_nombre && (
+                      <span className="inline-block px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-medium shrink-0">Asignatura: {d.origen_nombre}</span>
+                    )}
+                  </div>
                   <p className="text-xs text-slate-400">{d.identificacion}</p>
                 </div>
               </div>
-              {canManage && (
+              {canManage && !d.origen_nombre && (
                 <button onClick={() => quitar(d.id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0" title="Quitar">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
