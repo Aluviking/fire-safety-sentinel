@@ -34,4 +34,15 @@ return [
     // clave de sitio (esa es pública y va en el frontend). Se usa para
     // verificar el token contra la API de Google en cada intento de login.
     'recaptcha_secret' => 'CAMBIA_tu_secret_key_de_recaptcha',
+
+    // App "Server-to-Server OAuth" de Zoom (marketplace.zoom.us > Develop >
+    // Build App) — para que "Clases virtuales" pueda crear la reunión de
+    // verdad con grabación automática en la nube. zoom_webhook_secret es el
+    // "Secret Token" de la sección "Event Subscriptions" de esa misma app
+    // (webhook configurado hacia campus-api/zoom/webhook.php), NO el Client
+    // Secret — son dos valores distintos.
+    'zoom_account_id'     => 'CAMBIA_tu_account_id',
+    'zoom_client_id'      => 'CAMBIA_tu_client_id',
+    'zoom_client_secret'  => 'CAMBIA_tu_client_secret',
+    'zoom_webhook_secret' => 'CAMBIA_tu_secret_token_del_webhook',
 ];

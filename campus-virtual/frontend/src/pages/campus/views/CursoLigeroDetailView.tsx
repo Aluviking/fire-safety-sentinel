@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Megaphone, BookOpen, Video, Users as UsersIcon, Settings,
-  Plus, X, Trash2, Loader2, Upload, ChevronRight, Check,
+  Plus, Trash2, Loader2, Upload, ChevronRight, Check,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import ContenidoEditor from "../ContenidoEditor";
 import { SearchableSelect } from "../SearchableSelect";
+import { ClasesVirtualesTab } from "../ClasesVirtualesTab";
 
 interface CursoLigero {
   id: number;
@@ -28,9 +29,7 @@ interface Inscripcion {
   progreso: number; tiempo_total_minutos: number; promedio_final: string | null;
   ultimo_acceso: string | null; estado_acceso: string;
 }
-interface Clase { id: number; titulo: string; aula_recurso_id: number | null; aula_nombre: string | null; fecha_inicio: string; fecha_fin: string | null }
 interface Estudiante { identificacion: string; nombre_completo: string }
-interface AulaRecurso { id: number; nombre: string }
 interface Certificado { id: number; nombre: string }
 
 const TABS = [
@@ -113,227 +112,6 @@ function AnunciosTab({ cursoId }: { cursoId: number }) {
               </div>
             </div>
           ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Clases virtuales ─────────────────────────────────────────────────────── */
-function ClasesTab({ cursoId }: { cursoId: number }) {
-  const [clases, setClases] = useState<Clase[]>([]);
-  const [aulas, setAulas] = useState<AulaRecurso[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [subtab, setSubtab] = useState<"proximas" | "anteriores">("proximas");
-  const [creating, setCreating] = useState(false);
-  const [titulo, setTitulo] = useState("");
-  const [aulaId, setAulaId] = useState("");
-  const [fechaInicio, setFechaInicio] = useState("");
-  const [fechaFin, setFechaFin] = useState("");
-
-  const load = () => {
-    setLoading(true);
-    Promise.all([
-      apiFetch<{ clases: Clase[] }>(`/curso-ligero-clases/list.php?cursoLigeroId=${cursoId}`),
-      apiFetch<{ aulas: AulaRecurso[] }>("/aulas-recursos/list.php"),
-    ]).then(([c, a]) => { setClases(c.clases); setAulas(a.aulas); }).finally(() => setLoading(false));
-  };
-  useEffect(load, [cursoId]);
-
-  const add = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!titulo.trim() || !fechaInicio) return;
-    await apiFetch("/curso-ligero-clases/create.php", {
-      method: "POST",
-      json: { cursoLigeroId: cursoId, titulo: titulo.trim(), aulaRecursoId: aulaId ? Number(aulaId) : null, fechaInicio, fechaFin: fechaFin || null },
-    });
-    setTitulo(""); setAulaId(""); setFechaInicio(""); setFechaFin(""); setCreating(false);
-    load();
-  };
-
-  const remove = async (id: number) => {
-    await apiFetch("/curso-ligero-clases/delete.php", { method: "POST", json: { id } });
-    load();
-  };
-
-  const now = new Date();
-  const filtered = clases.filter((c) => (subtab === "proximas" ? new Date(c.fecha_inicio) >= now : new Date(c.fecha_inicio) < now));
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1">
-          <button onClick={() => setSubtab("proximas")} className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${subtab === "proximas" ? "bg-[#C41717]/10 text-[#C41717]" : "text-slate-500"}`}>Próximas clases</button>
-          <button onClick={() => setSubtab("anteriores")} className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${subtab === "anteriores" ? "bg-[#C41717]/10 text-[#C41717]" : "text-slate-500"}`}>Clases anteriores</button>
-        </div>
-        <button onClick={() => setCreating((v) => !v)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
-          <Plus className="w-3.5 h-3.5" /> Programar clase
-        </button>
-      </div>
-      {creating && (
-        <form onSubmit={add} className="space-y-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
-          <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título de la clase" className={inputCls} />
-          <SearchableSelect
-            value={aulaId} onChange={setAulaId}
-            options={aulas.map((a) => ({ value: String(a.id), label: a.nombre }))}
-            placeholder="Aula virtual (opcional)..."
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <input value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} type="datetime-local" className={inputCls} />
-            <input value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} type="datetime-local" className={inputCls} />
-          </div>
-          <button type="submit" className="px-4 py-2 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold">Programar</button>
-        </form>
-      )}
-      {loading ? (
-        <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
-      ) : filtered.length === 0 ? (
-        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">No hay registros.</p>
-      ) : (
-        <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-          {filtered.map((c) => (
-            <div key={c.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 group">
-              <div>
-                <p className="text-sm text-slate-800 font-medium">{c.titulo}</p>
-                <p className="text-xs text-slate-400">{c.aula_nombre ?? "Sin aula"} · {new Date(c.fecha_inicio).toLocaleString("es-CO")}</p>
-              </div>
-              <button onClick={() => remove(c.id)} className="text-slate-300 group-hover:text-red-500 transition-colors">
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Usuarios (roster) ────────────────────────────────────────────────────── */
-function UsuariosTab({ cursoId }: { cursoId: number }) {
-  const [inscripciones, setInscripciones] = useState<Inscripcion[]>([]);
-  const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
-  const [selectedId, setSelectedId] = useState("");
-
-  const load = () => {
-    setLoading(true);
-    Promise.all([
-      apiFetch<{ inscripciones: Inscripcion[] }>(`/curso-ligero-inscripciones/list.php?cursoLigeroId=${cursoId}`),
-      apiFetch<{ estudiantes: Estudiante[] }>("/estudiantes/list.php"),
-    ]).then(([i, e]) => { setInscripciones(i.inscripciones); setEstudiantes(e.estudiantes); }).finally(() => setLoading(false));
-  };
-  useEffect(load, [cursoId]);
-
-  const add = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedId) return;
-    try {
-      await apiFetch("/curso-ligero-inscripciones/create.php", { method: "POST", json: { cursoLigeroId: cursoId, estudianteIdentificacion: selectedId } });
-      setSelectedId(""); setAdding(false);
-      load();
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : "Error al inscribir.");
-    }
-  };
-
-  const save = async (id: number, field: string, value: string) => {
-    const insc = inscripciones.find((i) => i.id === id);
-    if (!insc) return;
-    await apiFetch("/curso-ligero-inscripciones/update.php", {
-      method: "POST",
-      json: {
-        id, progreso: insc.progreso, tiempoTotalMinutos: insc.tiempo_total_minutos,
-        promedioFinal: insc.promedio_final, ultimoAcceso: insc.ultimo_acceso, estadoAcceso: insc.estado_acceso,
-        [field]: value,
-      },
-    });
-    load();
-  };
-
-  const remove = async (id: number) => {
-    await apiFetch("/curso-ligero-inscripciones/delete.php", { method: "POST", json: { id } });
-    load();
-  };
-
-  const inscritos = new Set(inscripciones.map((i) => i.estudiante_identificacion));
-  const disponibles = estudiantes.filter((e) => !inscritos.has(e.identificacion));
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">Usuarios ({inscripciones.length})</h3>
-        <button onClick={() => setAdding((v) => !v)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
-          <Plus className="w-3.5 h-3.5" /> Agregar estudiantes
-        </button>
-      </div>
-      <p className="text-[11px] text-slate-400">
-        Progreso, tiempo total, promedio y último acceso son informativos — no hay una plataforma de consumo real
-        para el estudiante todavía, así que se editan a mano si quieres reflejar un dato real.
-      </p>
-      {adding && (
-        <form onSubmit={add} className="flex gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
-          <SearchableSelect
-            value={selectedId} onChange={setSelectedId}
-            options={disponibles.map((e) => ({ value: e.identificacion, label: e.nombre_completo }))}
-            placeholder="Seleccione estudiante..."
-            className="flex-1"
-          />
-          <button type="submit" className="px-4 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold">Inscribir</button>
-        </form>
-      )}
-      {loading ? (
-        <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
-      ) : inscripciones.length === 0 ? (
-        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">Aún no hay estudiantes inscritos.</p>
-      ) : (
-        <div className="overflow-x-auto border border-slate-200 rounded-xl">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estudiante</th>
-                <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Progreso %</th>
-                <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Tiempo (min)</th>
-                <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Promedio</th>
-                <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Último acceso</th>
-                <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estado</th>
-                <th className="text-right px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {inscripciones.map((i) => (
-                <tr key={i.id} className="hover:bg-slate-50/70">
-                  <td className="px-3 py-2 text-slate-800 font-medium text-xs whitespace-nowrap">{i.nombre_completo ?? i.estudiante_identificacion}</td>
-                  <td className="px-2 py-2 w-20">
-                    <input defaultValue={i.progreso} onBlur={(e) => save(i.id, "progreso", e.target.value)} type="number" min={0} max={100}
-                      className="w-full text-center text-xs bg-transparent border border-transparent hover:border-slate-200 focus:border-[#C41717]/40 rounded-md py-1 focus:outline-none" />
-                  </td>
-                  <td className="px-2 py-2 w-20">
-                    <input defaultValue={i.tiempo_total_minutos} onBlur={(e) => save(i.id, "tiempoTotalMinutos", e.target.value)} type="number" min={0}
-                      className="w-full text-center text-xs bg-transparent border border-transparent hover:border-slate-200 focus:border-[#C41717]/40 rounded-md py-1 focus:outline-none" />
-                  </td>
-                  <td className="px-2 py-2 w-20">
-                    <input defaultValue={i.promedio_final ?? ""} onBlur={(e) => save(i.id, "promedioFinal", e.target.value)} type="number" step="0.1" min={0} max={5}
-                      className="w-full text-center text-xs bg-transparent border border-transparent hover:border-slate-200 focus:border-[#C41717]/40 rounded-md py-1 focus:outline-none" />
-                  </td>
-                  <td className="px-2 py-2 w-32">
-                    <input defaultValue={i.ultimo_acceso ?? ""} onBlur={(e) => save(i.id, "ultimoAcceso", e.target.value)} type="date"
-                      className="w-full text-center text-[11px] bg-transparent border border-transparent hover:border-slate-200 focus:border-[#C41717]/40 rounded-md py-1 focus:outline-none" />
-                  </td>
-                  <td className="px-2 py-2">
-                    <select defaultValue={i.estado_acceso} onChange={(e) => save(i.id, "estadoAcceso", e.target.value)}
-                      className="w-full text-center text-xs bg-transparent border border-transparent hover:border-slate-200 rounded-md py-1 cursor-pointer focus:outline-none">
-                      <option value="Activo">Activo</option>
-                      <option value="Bloqueado">Bloqueado</option>
-                    </select>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <button onClick={() => remove(i.id)} className="text-slate-300 hover:text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
     </div>
@@ -511,7 +289,7 @@ export default function CursoLigeroDetailView({ curso, onBack, onUpdated }: { cu
               />
             )}
             {tab === "anuncios" && <AnunciosTab cursoId={curso.id} />}
-            {tab === "clases" && <ClasesTab cursoId={curso.id} />}
+            {tab === "clases" && <ClasesVirtualesTab parentId={curso.id} apiBase="/curso-ligero-clases" paramName="cursoLigeroId" />}
             {tab === "usuarios" && <UsuariosTab cursoId={curso.id} />}
             {tab === "ajustes" && <AjustesTab curso={curso} canEdit={canEditSettings} onUpdated={onUpdated} />}
           </div>

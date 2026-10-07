@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, BookOpen, Users as UsersIcon, Plus, Trash2, Loader2,
-  Megaphone, Video, Settings, Upload, X, Check,
+  Megaphone, Video, Settings, Upload, Check,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import ContenidoEditor from "../ContenidoEditor";
 import { SearchableSelect } from "../SearchableSelect";
+import { ClasesVirtualesTab } from "../ClasesVirtualesTab";
 
 export interface Curso {
   id: number;
@@ -33,8 +34,6 @@ export interface Curso {
 interface EstudianteOption { id: number; identificacion: string; nombre_completo: string }
 interface Matricula { id: number; estudiante_id: number; identificacion: string; nombre_completo: string }
 interface Anuncio { id: number; titulo: string; mensaje: string | null; importancia: string; created_at: string }
-interface AulaRecurso { id: number; nombre: string }
-interface Clase { id: number; titulo: string; aula_recurso_id: number | null; aula_nombre: string | null; fecha_inicio: string; fecha_fin: string | null }
 interface Certificado { id: number; nombre: string }
 
 const inputCls = "w-full text-sm bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
@@ -207,106 +206,6 @@ function AnunciosTab({ cursoId }: { cursoId: number }) {
   );
 }
 
-/* ── Clases virtuales ─────────────────────────────────────────────────────── */
-function ClasesTab({ cursoId }: { cursoId: number }) {
-  const [clases, setClases] = useState<Clase[]>([]);
-  const [aulas, setAulas] = useState<AulaRecurso[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [subtab, setSubtab] = useState<"proximas" | "anteriores">("proximas");
-  const [creating, setCreating] = useState(false);
-  const [titulo, setTitulo] = useState("");
-  const [aulaId, setAulaId] = useState("");
-  const [fechaInicio, setFechaInicio] = useState("");
-  const [fechaFin, setFechaFin] = useState("");
-
-  const load = () => {
-    setLoading(true);
-    Promise.all([
-      apiFetch<{ clases: Clase[] }>(`/curso-clases/list.php?cursoId=${cursoId}`),
-      apiFetch<{ aulas: AulaRecurso[] }>("/aulas-recursos/list.php"),
-    ]).then(([c, a]) => { setClases(c.clases); setAulas(a.aulas); }).finally(() => setLoading(false));
-  };
-  useEffect(load, [cursoId]);
-
-  const add = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!titulo.trim() || !fechaInicio) return;
-    await apiFetch("/curso-clases/create.php", {
-      method: "POST",
-      json: { cursoId, titulo: titulo.trim(), aulaRecursoId: aulaId ? Number(aulaId) : null, fechaInicio, fechaFin: fechaFin || null },
-    });
-    setTitulo(""); setAulaId(""); setFechaInicio(""); setFechaFin(""); setCreating(false);
-    load();
-  };
-
-  const remove = async (id: number) => {
-    await apiFetch("/curso-clases/delete.php", { method: "POST", json: { id } });
-    load();
-  };
-
-  const now = new Date();
-  const filtered = clases.filter((c) => (subtab === "proximas" ? new Date(c.fecha_inicio) >= now : new Date(c.fecha_inicio) < now));
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1">
-          <button onClick={() => setSubtab("proximas")} className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${subtab === "proximas" ? "bg-[#C41717]/10 text-[#C41717]" : "text-slate-500"}`}>Próximas clases</button>
-          <button onClick={() => setSubtab("anteriores")} className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${subtab === "anteriores" ? "bg-[#C41717]/10 text-[#C41717]" : "text-slate-500"}`}>Clases anteriores</button>
-        </div>
-        <button onClick={() => setCreating((v) => !v)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
-          <Plus className="w-3.5 h-3.5" /> Programar clase
-        </button>
-      </div>
-      {creating && (
-        <form onSubmit={add} className="space-y-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
-          <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título de la clase" className={inputCls} />
-          <SearchableSelect
-            value={aulaId} onChange={setAulaId}
-            options={aulas.map((a) => ({ value: String(a.id), label: a.nombre }))}
-            placeholder="Aula virtual (opcional)..."
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <input value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} type="datetime-local" className={inputCls} />
-            <input value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} type="datetime-local" className={inputCls} />
-          </div>
-          <button type="submit" className="px-4 py-2 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold">Programar</button>
-        </form>
-      )}
-      {loading ? (
-        <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
-      ) : filtered.length === 0 ? (
-        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">No hay registros.</p>
-      ) : (
-        <div className="overflow-x-auto border border-slate-200 rounded-xl">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Clase</th>
-                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Aula</th>
-                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Inicio</th>
-                <th className="text-right px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50/70">
-                  <td className="px-3 py-2 text-slate-800 font-medium text-xs whitespace-nowrap">{c.titulo}</td>
-                  <td className="px-3 py-2 text-slate-500 text-xs">{c.aula_nombre ?? "—"}</td>
-                  <td className="px-3 py-2 text-slate-500 text-xs whitespace-nowrap">{new Date(c.fecha_inicio).toLocaleString("es-CO")}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button onClick={() => remove(c.id)} className="text-slate-300 hover:text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ── Ajustes ──────────────────────────────────────────────────────────────── */
 function AjustesTab({ curso, canEdit, onUpdated }: { curso: Curso; canEdit: boolean; onUpdated: () => void }) {
   const [descripcion, setDescripcion] = useState(curso.descripcion ?? "");
@@ -469,7 +368,7 @@ export default function CursoDetailView({
               />
             )}
             {tab === "anuncios" && <AnunciosTab cursoId={curso.id} />}
-            {tab === "clases" && <ClasesTab cursoId={curso.id} />}
+            {tab === "clases" && <ClasesVirtualesTab parentId={curso.id} apiBase="/curso-clases" paramName="cursoId" />}
             {tab === "estudiantes" && <EstudiantesTab cursoId={curso.id} />}
             {tab === "ajustes" && <AjustesTab curso={curso} canEdit={canEditSettings} onUpdated={onUpdated} />}
           </div>

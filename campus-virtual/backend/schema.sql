@@ -1260,3 +1260,36 @@ CREATE TABLE IF NOT EXISTS usuarios_vinculados (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (vinculado_a_user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Fase: Clases virtuales con Zoom — al programar una clase, la app puede
+-- crear la reunión de verdad en Zoom (Server-to-Server OAuth, credenciales
+-- fijas en config.php — no requiere que nadie "conecte su cuenta" como con
+-- Google) con grabación automática en la nube activada. Cuando Zoom termina
+-- de procesar la grabación, avisa solo (webhook, ver zoom/webhook.php) y el
+-- link queda guardado en `grabacion_url` para que el estudiante la pueda ver
+-- de nuevo. Las 4 tablas de clases virtuales reciben los mismos 2 campos
+-- nuevos. Todos NULL-ables porque una clase también se puede seguir
+-- creando con un link pegado a mano, sin pasar por Zoom.
+-- ══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE asignatura_clases_virtuales
+  ADD COLUMN link_reunion    VARCHAR(500) NULL,
+  ADD COLUMN zoom_meeting_id VARCHAR(50)  NULL,
+  ADD COLUMN grabacion_url   VARCHAR(500) NULL;
+
+ALTER TABLE curso_clases_virtuales
+  ADD COLUMN link_reunion    VARCHAR(500) NULL,
+  ADD COLUMN zoom_meeting_id VARCHAR(50)  NULL,
+  ADD COLUMN grabacion_url   VARCHAR(500) NULL;
+
+ALTER TABLE curso_ligero_clases_virtuales
+  ADD COLUMN link_reunion    VARCHAR(500) NULL,
+  ADD COLUMN zoom_meeting_id VARCHAR(50)  NULL,
+  ADD COLUMN grabacion_url   VARCHAR(500) NULL;
+
+ALTER TABLE programa_clases_virtuales
+  ADD COLUMN link_reunion    VARCHAR(500) NULL,
+  ADD COLUMN zoom_meeting_id VARCHAR(50)  NULL,
+  ADD COLUMN grabacion_url   VARCHAR(500) NULL;
