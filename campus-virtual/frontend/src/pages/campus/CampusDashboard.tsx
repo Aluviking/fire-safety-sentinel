@@ -278,16 +278,25 @@ interface ResumenData {
 
 /* ── NavDropdown (tema claro) ─────────────────────────────────────────────── */
 function NavDropdown({
-  item, isOpen, onToggle, onSelect,
+  item, isOpen, onToggle, onOpen, onClose, onSelect,
 }: {
   item: NavItem;
   isOpen: boolean;
   onToggle: () => void;
+  onOpen: () => void;
+  onClose: () => void;
   onSelect: (nav: string, sub: string) => void;
 }) {
   const ref     = useRef<HTMLDivElement>(null);
   const [hoveredSub, setHoveredSub] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mismo patrón "hover-intent" que ya usan los submenús (abrir de una,
+  // cerrar con un pequeño retraso) — para que el primer nivel del navbar
+  // (Institucional, Académico...) reaccione al pasar el mouse igual que los
+  // demás niveles, en vez de solo abrir con clic.
+  const menuTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openOnHover  = () => { if (menuTimerRef.current) clearTimeout(menuTimerRef.current); onOpen(); };
+  const closeOnHover = () => { menuTimerRef.current = setTimeout(onClose, 150); };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -304,7 +313,7 @@ function NavDropdown({
   const keepFlyout  = () => { if (timerRef.current) clearTimeout(timerRef.current); };
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative" onMouseEnter={openOnHover} onMouseLeave={closeOnHover}>
       <button
         onClick={onToggle}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
@@ -761,6 +770,12 @@ export default function CampusDashboard() {
     ? { nav: searchParams.get("nav") as string, sub: searchParams.get("sub") ?? "" }
     : null;
   const setActiveNav = (next: { nav: string; sub: string } | null) => {
+    // El perfil completo de una persona (por buscador o por clic en
+    // Estudiantes/Docentes) se renderiza por encima de todo el contenido —
+    // sin esto, cualquier clic del navbar quedaba "sin efecto" mientras ese
+    // perfil estuviera abierto, porque activeNav sí cambiaba pero nunca se
+    // llegaba a pintar (había que darle "Volver" primero para liberar la vista).
+    setPersonaAbierta(null);
     if (!next) { setSearchParams({}, { replace: true }); return; }
     const params: Record<string, string> = { nav: next.nav };
     if (next.sub) params.sub = next.sub;
@@ -1052,6 +1067,8 @@ export default function CampusDashboard() {
                   item={item}
                   isOpen={openMenu === item.label}
                   onToggle={() => toggleMenu(item.label)}
+                  onOpen={() => setOpenMenu(item.label)}
+                  onClose={() => setOpenMenu((prev) => (prev === item.label ? null : prev))}
                   onSelect={handleNavigate}
                 />
               ) : (
