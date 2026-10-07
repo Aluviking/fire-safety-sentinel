@@ -24,18 +24,21 @@ $anuncios = db()->query(
      ORDER BY created_at DESC LIMIT 8"
 )->fetchAll();
 
-// Próximas clases virtuales agendadas, mismas 4 familias.
+// Próximas clases virtuales agendadas, mismas 4 familias. origen_id es el id
+// del programa/asignatura/curso/curso-ligero dueño — el front lo usa para
+// armar un acceso directo al módulo exacto (evita ir paso a paso para, por
+// ejemplo, eliminar la reunión).
 $clases = db()->query(
-    "(SELECT 'Programa' AS origen, p.nombre AS origen_nombre, c.titulo, c.fecha_inicio, c.fecha_fin
+    "(SELECT 'Programa' AS origen, p.nombre AS origen_nombre, p.id AS origen_id, c.titulo, c.fecha_inicio, c.fecha_fin
       FROM programa_clases_virtuales c JOIN programas p ON p.id = c.programa_id WHERE c.fecha_inicio >= NOW())
      UNION ALL
-     (SELECT 'Asignatura', asg.nombre, c.titulo, c.fecha_inicio, c.fecha_fin
+     (SELECT 'Asignatura', asg.nombre, asg.id, c.titulo, c.fecha_inicio, c.fecha_fin
       FROM asignatura_clases_virtuales c JOIN asignaturas asg ON asg.id = c.asignatura_id WHERE c.fecha_inicio >= NOW())
      UNION ALL
-     (SELECT 'Curso', cu.codigo_nombre, c.titulo, c.fecha_inicio, c.fecha_fin
+     (SELECT 'Curso', cu.codigo_nombre, cu.id, c.titulo, c.fecha_inicio, c.fecha_fin
       FROM curso_clases_virtuales c JOIN cursos cu ON cu.id = c.curso_id WHERE c.fecha_inicio >= NOW())
      UNION ALL
-     (SELECT 'Curso ligero', cl.nombre, c.titulo, c.fecha_inicio, c.fecha_fin
+     (SELECT 'Curso ligero', cl.nombre, cl.id, c.titulo, c.fecha_inicio, c.fecha_fin
       FROM curso_ligero_clases_virtuales c JOIN cursos_ligeros cl ON cl.id = c.curso_ligero_id WHERE c.fecha_inicio >= NOW())
      ORDER BY fecha_inicio ASC LIMIT 8"
 )->fetchAll();

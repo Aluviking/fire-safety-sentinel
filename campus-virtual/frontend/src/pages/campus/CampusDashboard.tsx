@@ -265,7 +265,7 @@ const QUICK_ACCESS = [
 
 /* ── Datos reales del panel de inicio (anuncios/clases/auditoría/contadores) ── */
 interface AnuncioReciente { origen: string; origen_nombre: string; titulo: string; mensaje: string | null; importancia: string; created_at: string }
-interface ClaseProxima { origen: string; origen_nombre: string; titulo: string; fecha_inicio: string; fecha_fin: string | null }
+interface ClaseProxima { origen: string; origen_nombre: string; origen_id: number; titulo: string; fecha_inicio: string; fecha_fin: string | null }
 interface AuditoriaReciente { id: number; user_name: string; action: string; detail: string | null; created_at: string }
 interface PreinscripcionReciente { id: number; nombres: string; apellidos: string; tipo_interes: string; item_nombre: string; created_at: string }
 interface ResumenData {
@@ -582,8 +582,8 @@ function ProgramasDestacados({ onNavigate }: { onNavigate: (nav: string, sub: st
 
 /* ── Dashboard Home ───────────────────────────────────────────────────────── */
 function DashboardHome({
-  user, onNavigate, resumen, resumenLoading, vistaSimulada,
-}: { user: CampusUser; onNavigate: (nav: string, sub: string) => void; resumen: ResumenData | null; resumenLoading: boolean; vistaSimulada: "docente" | null }) {
+  user, onNavigate, resumen, resumenLoading, vistaSimulada, onGoToClase,
+}: { user: CampusUser; onNavigate: (nav: string, sub: string) => void; resumen: ResumenData | null; resumenLoading: boolean; vistaSimulada: "docente" | null; onGoToClase: (c: ClaseProxima) => void }) {
   const { canVer, permisos } = useCampusAuth();
   // Si Super Admin activó la vista simulada de Docente, el saludo/accesos
   // rápidos usan los permisos de vista previa en vez de los reales — es solo
@@ -711,7 +711,11 @@ function DashboardHome({
               resumen!.clases.map((c, i) => {
                 const d = new Date(c.fecha_inicio);
                 return (
-                  <div key={`${c.origen}-${c.titulo}-${i}`} className="flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
+                  <button
+                    key={`${c.origen}-${c.titulo}-${i}`}
+                    onClick={() => onGoToClase(c)}
+                    className="w-full flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors text-left"
+                  >
                     <div className="flex flex-col items-center shrink-0 w-10">
                       <span className="text-[#C41717]/70 text-[10px] font-bold">{d.toLocaleDateString("es-CO", { day: "numeric", month: "short" })}</span>
                       <span className="text-slate-400 text-[9px]">{d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })}</span>
@@ -722,7 +726,8 @@ function DashboardHome({
                         {c.origen}: {c.origen_nombre}
                       </span>
                     </div>
-                  </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0 mt-1" />
+                  </button>
                 );
               })
             )}
@@ -845,6 +850,40 @@ export default function CampusDashboard() {
       return;
     }
     setActiveNav({ nav, sub });
+    setMobileMenuOpen(false);
+    setOpenMenu(null);
+  };
+
+  // Acceso directo desde "Próximas clases virtuales" al módulo exacto donde
+  // se creó esa reunión (con su pestaña "Clases virtuales" ya abierta) — sin
+  // esto, para borrar una reunión tocaba navegar paso a paso hasta encontrarla.
+  const handleGoToClase = (c: ClaseProxima) => {
+    let sub = "";
+    let idParam = "";
+    let tabParam = "";
+    if (c.origen === "Programa") {
+      // Misma regla que ProgramasView usa para distinguir "programa" de
+      // "curso" (diplomado) dentro de la misma tabla `programas`.
+      const esCurso = c.origen_nombre.toUpperCase().startsWith("CURSO");
+      sub = esCurso ? "Estructuración › Crear curso" : "Estructuración › Crear programa";
+      idParam = "programaId";
+      tabParam = "programaTab";
+    } else if (c.origen === "Asignatura") {
+      sub = "Estructuración › Crear asignatura";
+      idParam = "asignaturaId";
+      tabParam = "asignaturaTab";
+    } else if (c.origen === "Curso") {
+      sub = "Educación virtual › Cursos virtuales";
+      idParam = "cursoId";
+      tabParam = "cursoTab";
+    } else if (c.origen === "Curso ligero") {
+      sub = "Educación virtual › Cursos ligeros";
+      idParam = "cursoLigeroId";
+      tabParam = "cursoLigeroTab";
+    } else {
+      return;
+    }
+    setSearchParams({ nav: "Académico", sub, [idParam]: String(c.origen_id), [tabParam]: "clases" }, { replace: true });
     setMobileMenuOpen(false);
     setOpenMenu(null);
   };
@@ -1236,7 +1275,7 @@ export default function CampusDashboard() {
         {personaAbierta ? (
           <PersonaDetalleView tipo={personaAbierta.tipo} id={personaAbierta.id} onBack={() => setPersonaAbierta(null)} />
         ) : !activeNav ? (
-          <DashboardHome user={user} onNavigate={handleNavigate} resumen={resumen} resumenLoading={resumenLoading} vistaSimulada={vistaSimulada} />
+          <DashboardHome user={user} onNavigate={handleNavigate} resumen={resumen} resumenLoading={resumenLoading} vistaSimulada={vistaSimulada} onGoToClase={handleGoToClase} />
         ) : activeNav.nav === "Usuarios" ? (
           <UsuariosView />
         ) : activeNav.nav === "Perfiles" && isSuperAdmin ? (
