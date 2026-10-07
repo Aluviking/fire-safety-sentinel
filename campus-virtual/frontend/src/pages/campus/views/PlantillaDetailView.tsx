@@ -1,9 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, BookOpen, Settings, Upload, ChevronRight } from "lucide-react";
+import { ArrowLeft, BookOpen, Settings, Upload, ChevronRight, Loader2 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
-import ContenidoEditor from "../ContenidoEditor";
+// Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
+// ~1.7MB) desde que se le quitó la dependencia de un Worker aparte. Si se
+// importa de una, cada plantilla tiene que bajar y ejecutar ese bloque
+// completo antes de poder mostrar nada, aunque nadie vaya a ver contenido.
+const ContenidoEditor = lazy(() => import("../ContenidoEditor"));
 
 interface Plantilla {
   id: number;
@@ -145,7 +149,9 @@ export default function PlantillaDetailView({ plantilla, onBack, onUpdated }: { 
           </div>
           <div className="flex-1 p-5 min-w-0">
             {tab === "contenido" && (
-              <ContenidoEditor contentBase="/plantilla-contenido" questionsBase="/plantilla-preguntas" ownerIdKey="plantillaId" ownerId={plantilla.id} />
+              <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
+                <ContenidoEditor contentBase="/plantilla-contenido" questionsBase="/plantilla-preguntas" ownerIdKey="plantillaId" ownerId={plantilla.id} />
+              </Suspense>
             )}
             {tab === "ajustes" && <AjustesTab plantilla={plantilla} canEdit={canEditSettings} onUpdated={onUpdated} />}
           </div>

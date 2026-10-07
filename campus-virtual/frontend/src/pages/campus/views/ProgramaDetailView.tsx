@@ -10,8 +10,14 @@ import { useCampusAuth } from "@/context/CampusAuthContext";
 import { SearchableSelect } from "../SearchableSelect";
 import { ConfirmModal } from "../ConfirmModal";
 import { type Programa, ProgramaFormModal } from "./ProgramasView";
-import ContenidoEditor from "../ContenidoEditor";
 import { ClasesVirtualesTab } from "../ClasesVirtualesTab";
+// Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
+// ~1.7MB) desde que se le quitó la dependencia de un Worker aparte (ver
+// commit de Zoom/PDF). Si se importa de una aquí arriba, CADA vista de
+// programa tiene que bajar y ejecutar ese bloque completo antes de poder
+// mostrar nada — aunque nadie vaya a ver contenido. Con carga diferida, ese
+// peso solo se baja cuando alguien de verdad abre la pestaña de contenido.
+const ContenidoEditor = lazy(() => import("../ContenidoEditor"));
 // Carga diferida — trae la librería de Excel (xlsx), que solo hace falta
 // para quien de verdad abra esta pestaña, en vez de en cada carga del panel.
 const CursoEmpresasTab = lazy(() => import("./CursoEmpresasTab"));
@@ -549,12 +555,14 @@ function VerContenidoAsignaturaTab({ programaId }: { programaId: number }) {
         <button onClick={() => setSeleccionada(null)} className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-[#C41717] transition-colors">
           <ArrowLeft className="w-3.5 h-3.5" /> Volver a asignaturas
         </button>
-        <ContenidoEditor
-          contentBase="/asignatura-contenido" questionsBase="/asignatura-preguntas"
-          ownerIdKey="asignaturaId" ownerId={seleccionada.asignatura_id}
-          heading={`Contenido de ${seleccionada.asignatura_nombre}`}
-          readOnly
-        />
+        <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
+          <ContenidoEditor
+            contentBase="/asignatura-contenido" questionsBase="/asignatura-preguntas"
+            ownerIdKey="asignaturaId" ownerId={seleccionada.asignatura_id}
+            heading={`Contenido de ${seleccionada.asignatura_nombre}`}
+            readOnly
+          />
+        </Suspense>
       </div>
     );
   }

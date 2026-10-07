@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Megaphone, BookOpen, Video, Users as UsersIcon, Settings,
@@ -6,9 +6,13 @@ import {
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
-import ContenidoEditor from "../ContenidoEditor";
 import { SearchableSelect } from "../SearchableSelect";
 import { ClasesVirtualesTab } from "../ClasesVirtualesTab";
+// Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
+// ~1.7MB) desde que se le quitó la dependencia de un Worker aparte. Si se
+// importa de una, CADA curso ligero tiene que bajar y ejecutar ese bloque
+// completo antes de poder mostrar nada, aunque nadie vaya a ver contenido.
+const ContenidoEditor = lazy(() => import("../ContenidoEditor"));
 
 interface CursoLigero {
   id: number;
@@ -283,10 +287,12 @@ export default function CursoLigeroDetailView({ curso, onBack, onUpdated }: { cu
           </div>
           <div className="flex-1 p-5 min-w-0">
             {tab === "contenido" && (
-              <ContenidoEditor
-                contentBase="/curso-ligero-contenido" questionsBase="/curso-ligero-preguntas" ownerIdKey="cursoLigeroId" ownerId={curso.id}
-                addLabel="Agregar curso"
-              />
+              <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
+                <ContenidoEditor
+                  contentBase="/curso-ligero-contenido" questionsBase="/curso-ligero-preguntas" ownerIdKey="cursoLigeroId" ownerId={curso.id}
+                  addLabel="Agregar curso"
+                />
+              </Suspense>
             )}
             {tab === "anuncios" && <AnunciosTab cursoId={curso.id} />}
             {tab === "clases" && <ClasesVirtualesTab parentId={curso.id} apiBase="/curso-ligero-clases" paramName="cursoLigeroId" />}

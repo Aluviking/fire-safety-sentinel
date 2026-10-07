@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, BookOpen, Users as UsersIcon, Plus, Trash2, Loader2,
@@ -6,9 +6,13 @@ import {
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
-import ContenidoEditor from "../ContenidoEditor";
 import { SearchableSelect } from "../SearchableSelect";
 import { ClasesVirtualesTab } from "../ClasesVirtualesTab";
+// Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
+// ~1.7MB) desde que se le quitó la dependencia de un Worker aparte. Si se
+// importa de una, CADA curso tiene que bajar y ejecutar ese bloque completo
+// antes de poder mostrar nada, aunque nadie vaya a ver contenido.
+const ContenidoEditor = lazy(() => import("../ContenidoEditor"));
 
 export interface Curso {
   id: number;
@@ -362,10 +366,12 @@ export default function CursoDetailView({
           </div>
           <div className="flex-1 p-5 min-w-0">
             {tab === "contenido" && (
-              <ContenidoEditor
-                contentBase="/curso-contenido" questionsBase="/curso-preguntas" ownerIdKey="cursoId" ownerId={curso.id}
-                heading="Contenido del curso" addLabel="Agregar curso"
-              />
+              <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
+                <ContenidoEditor
+                  contentBase="/curso-contenido" questionsBase="/curso-preguntas" ownerIdKey="cursoId" ownerId={curso.id}
+                  heading="Contenido del curso" addLabel="Agregar curso"
+                />
+              </Suspense>
             )}
             {tab === "anuncios" && <AnunciosTab cursoId={curso.id} />}
             {tab === "clases" && <ClasesVirtualesTab parentId={curso.id} apiBase="/curso-clases" paramName="cursoId" />}

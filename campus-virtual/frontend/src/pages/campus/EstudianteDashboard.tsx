@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -8,8 +8,12 @@ import {
 import gfoLogo from "@/assets/gfo-academy-logo.jpeg";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { apiFetch, apiImage } from "@/lib/api";
-import ContenidoEditor from "./ContenidoEditor";
 import { CuentaSwitcher } from "./CuentaSwitcher";
+// Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
+// ~1.7MB) desde que se le quitó la dependencia de un Worker aparte. Si se
+// importa de una, CADA estudiante tiene que bajar y ejecutar ese bloque
+// completo apenas entra a su panel, aunque no vaya a ver ningún contenido.
+const ContenidoEditor = lazy(() => import("./ContenidoEditor"));
 
 interface CursoLigero {
   id: number;
@@ -231,12 +235,14 @@ export default function EstudianteDashboard() {
                 </div>
                 <h1 className="text-slate-900 font-bold text-lg leading-snug">{activo.nombre}</h1>
               </div>
-              <ContenidoEditor
-                contentBase={activo.contentBase}
-                questionsBase={activo.questionsBase}
-                ownerIdKey={activo.ownerIdKey}
-                ownerId={activo.ownerId}
-              />
+              <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
+                <ContenidoEditor
+                  contentBase={activo.contentBase}
+                  questionsBase={activo.questionsBase}
+                  ownerIdKey={activo.ownerIdKey}
+                  ownerId={activo.ownerId}
+                />
+              </Suspense>
             </div>
           </motion.div>
         ) : programaAbierto ? (

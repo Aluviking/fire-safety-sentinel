@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, BookOpen, Layers, Plus, Trash2, Loader2,
@@ -6,9 +6,13 @@ import {
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
-import ContenidoEditor from "../ContenidoEditor";
 import { SearchableSelect } from "../SearchableSelect";
 import { ClasesVirtualesTab } from "../ClasesVirtualesTab";
+// Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
+// ~1.7MB) desde que se le quitó la dependencia de un Worker aparte. Si se
+// importa de una, CADA asignatura tiene que bajar y ejecutar ese bloque
+// completo antes de poder mostrar nada, aunque nadie vaya a ver contenido.
+const ContenidoEditor = lazy(() => import("../ContenidoEditor"));
 
 interface Programa { id: number; nombre: string }
 interface DocenteAsignado { id: number; nombre: string; identificacion: string }
@@ -271,7 +275,9 @@ export default function AsignaturaDetailView({
           </div>
           <div className="flex-1 p-5 min-w-0">
             {tab === "contenido" && (
-              <ContenidoEditor contentBase="/asignatura-contenido" questionsBase="/asignatura-preguntas" ownerIdKey="asignaturaId" ownerId={asignatura.id} esDueno={esDocenteDueno} />
+              <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
+                <ContenidoEditor contentBase="/asignatura-contenido" questionsBase="/asignatura-preguntas" ownerIdKey="asignaturaId" ownerId={asignatura.id} esDueno={esDocenteDueno} />
+              </Suspense>
             )}
             {tab === "anuncios" && <AnunciosTab asignaturaId={asignatura.id} />}
             {tab === "clases" && <ClasesVirtualesTab parentId={asignatura.id} apiBase="/asignatura-clases" paramName="asignaturaId" />}
