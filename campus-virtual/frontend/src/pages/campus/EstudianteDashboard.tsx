@@ -202,6 +202,7 @@ export default function EstudianteDashboard() {
     let endpoint: string | null = null;
     if (activo.ownerIdKey === "cursoId") endpoint = `/mis-cursos-virtuales/clases.php?cursoId=${activo.ownerId}`;
     else if (activo.ownerIdKey === "cursoLigeroId") endpoint = `/mis-cursos-ligeros/clases.php?cursoLigeroId=${activo.ownerId}`;
+    else if (activo.ownerIdKey === "asignaturaId") endpoint = `/mis-asignaturas/clases.php?asignaturaId=${activo.ownerId}`;
     if (!endpoint) { setClasesActivo([]); return; }
     apiFetch<{ clases: ClaseVirtualEstudiante[] }>(endpoint)
       .then((d) => setClasesActivo(d.clases))
