@@ -162,7 +162,7 @@ function VincularCuentaModal({
         <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <p className="text-slate-800 font-bold text-[15px]">Vincular cuenta de {user.nombre}</p>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><XIcon className="w-4 h-4" /></button>
         </div>
         <form onSubmit={submit} className="px-5 py-4 space-y-3">
           <p className="text-xs text-slate-500">

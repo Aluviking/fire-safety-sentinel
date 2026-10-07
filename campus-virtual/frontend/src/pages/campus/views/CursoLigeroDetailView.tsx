@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Megaphone, BookOpen, Video, Users as UsersIcon, Settings,
-  Plus, Trash2, Loader2, Upload, ChevronRight, Check,
+  Plus, Trash2, Loader2, Upload, ChevronRight, Check, X,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
