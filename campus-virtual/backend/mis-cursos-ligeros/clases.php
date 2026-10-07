@@ -1,0 +1,24 @@
+<?php
+require __DIR__ . '/../bootstrap.php';
+
+// Las clases virtuales (con su link de Zoom y, apenas quede lista, la
+// grabación) de UN curso ligero en el que el estudiante está matriculado —
+// mismo candado de acceso que mis-programas/clases.php, aquí vía
+// require_acceso_curso_ligero().
+
+$user = require_auth();
+if ($user['role'] !== 'estudiante') fail('No autorizado.', 403);
+
+$cursoLigeroId = (int) ($_GET['cursoLigeroId'] ?? 0);
+if ($cursoLigeroId === 0) fail('cursoLigeroId requerido.');
+
+require_acceso_curso_ligero($user, $cursoLigeroId);
+
+$stmt = db()->prepare(
+    'SELECT id, titulo, fecha_inicio, fecha_fin, link_reunion, grabacion_url
+     FROM curso_ligero_clases_virtuales
+     WHERE curso_ligero_id = ?
+     ORDER BY fecha_inicio'
+);
+$stmt->execute([$cursoLigeroId]);
+respond(['ok' => true, 'clases' => $stmt->fetchAll()]);

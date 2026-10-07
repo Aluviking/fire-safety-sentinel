@@ -157,6 +157,10 @@ export default function EstudianteDashboard() {
   const [asignaturasPrograma, setAsignaturasPrograma] = useState<Asignatura[]>([]);
   const [loadingAsignaturas, setLoadingAsignaturas] = useState(false);
   const [clasesPrograma, setClasesPrograma] = useState<ClaseVirtualEstudiante[]>([]);
+  // Cursos virtuales/ligeros no tienen pantalla intermedia como un programa
+  // (se entra directo al contenido) — sus clases en vivo se muestran arriba
+  // del contenido, dentro de la vista `activo`.
+  const [clasesActivo, setClasesActivo] = useState<ClaseVirtualEstudiante[]>([]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -192,6 +196,17 @@ export default function EstudianteDashboard() {
       .then((d) => setClasesPrograma(d.clases))
       .catch(() => setClasesPrograma([]));
   }, [programaAbierto]);
+
+  useEffect(() => {
+    if (!activo) { setClasesActivo([]); return; }
+    let endpoint: string | null = null;
+    if (activo.ownerIdKey === "cursoId") endpoint = `/mis-cursos-virtuales/clases.php?cursoId=${activo.ownerId}`;
+    else if (activo.ownerIdKey === "cursoLigeroId") endpoint = `/mis-cursos-ligeros/clases.php?cursoLigeroId=${activo.ownerId}`;
+    if (!endpoint) { setClasesActivo([]); return; }
+    apiFetch<{ clases: ClaseVirtualEstudiante[] }>(endpoint)
+      .then((d) => setClasesActivo(d.clases))
+      .catch(() => setClasesActivo([]));
+  }, [activo]);
 
   const handleLogout = () => { logout(); navigate("/", { replace: true }); };
 
@@ -247,6 +262,41 @@ export default function EstudianteDashboard() {
                 </div>
                 <h1 className="text-slate-900 font-bold text-lg leading-snug">{activo.nombre}</h1>
               </div>
+              {clasesActivo.length > 0 && (
+                <div className="mb-6 space-y-2">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                    <Video className="w-3.5 h-3.5 text-[#C41717]/60" /> Clases en vivo
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {clasesActivo.map((c) => (
+                      <div key={c.id} className="bg-slate-50 rounded-xl border border-slate-200 p-3.5 flex flex-col gap-1.5">
+                        <p className="text-slate-800 font-semibold text-sm leading-tight truncate">{c.titulo}</p>
+                        <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                          <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                          {new Date(c.fecha_inicio).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {c.link_reunion && (
+                            <a href={c.link_reunion} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#C41717] hover:bg-[#A81212] rounded-lg px-3 py-1.5 transition-colors">
+                              <Video className="w-3.5 h-3.5" /> Unirse
+                            </a>
+                          )}
+                          {c.grabacion_url && (
+                            <a href={c.grabacion_url} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#C41717] bg-[#C41717]/8 hover:bg-[#C41717]/15 rounded-lg px-3 py-1.5 transition-colors">
+                              <PlayCircle className="w-3.5 h-3.5" /> Ver grabación
+                            </a>
+                          )}
+                          {!c.link_reunion && !c.grabacion_url && (
+                            <span className="text-[11px] text-slate-300">Sin link disponible todavía</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
                 <ContenidoEditor
                   contentBase={activo.contentBase}
