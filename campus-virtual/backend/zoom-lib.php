@@ -62,6 +62,14 @@ function zoom_crear_clase_virtual(string $titulo, string $fechaInicio, ?string $
         'settings'   => [
             'auto_recording'    => 'cloud',
             'join_before_host'  => true,
+            // Sin esto, la reunión puede heredar la sala de espera activada
+            // por defecto en la cuenta de Zoom — y si el docente que dicta
+            // la clase no es el "host" real (cuenta única conectada), nadie
+            // puede entrar hasta que alguien con esos permisos lo admita a
+            // mano. Lo apagamos explícito para que cualquiera con el link
+            // (docente o estudiante) entre directo, sin depender de que el
+            // host esté pendiente de esa reunión puntual.
+            'waiting_room'      => false,
         ],
     ];
 

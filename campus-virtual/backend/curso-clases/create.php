@@ -3,7 +3,9 @@ require __DIR__ . '/../bootstrap.php';
 require __DIR__ . '/../zoom-lib.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
+// Docente tiene edición completa en Cursos, igual que Super Admin — mismo
+// pedido explícito del cliente ya aplicado en Programas/Asignaturas.
+require_role($user, ['admin', 'super_admin', 'docente']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
 

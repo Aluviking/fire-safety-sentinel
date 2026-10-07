@@ -3,7 +3,7 @@ require __DIR__ . '/../bootstrap.php';
 require __DIR__ . '/../zoom-lib.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
+require_role($user, ['admin', 'super_admin', 'docente']);
 
 $body = json_body();
 $id   = (int) ($body['id'] ?? 0);
