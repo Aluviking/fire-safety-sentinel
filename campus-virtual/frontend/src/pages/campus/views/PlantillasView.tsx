@@ -6,6 +6,7 @@ import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
 import { SearchableSelect } from "../SearchableSelect";
 import PlantillaDetailView from "./PlantillaDetailView";
+import { useUrlState } from "../useUrlState";
 
 interface Asignatura { id: number; nombre: string }
 interface Plantilla {
@@ -134,7 +135,10 @@ export default function PlantillasView() {
 
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Plantilla | null>(null);
-  const [viewing, setViewing] = useState<Plantilla | null>(null);
+  // El id de la plantilla abierta vive en la URL (?plantillaId=...), no en
+  // useState — así Ctrl+Shift+R te deja en la misma plantilla.
+  const [plantillaIdParam, setPlantillaIdParam] = useUrlState("plantillaId");
+  const viewing = plantillaIdParam ? (plantillas.find((p) => p.id === Number(plantillaIdParam)) ?? null) : null;
   const [deleting, setDeleting] = useState<Plantilla | null>(null);
 
   const load = () => {
@@ -181,11 +185,8 @@ export default function PlantillasView() {
   if (viewing) {
     return (
       <PlantillaDetailView
-        plantilla={viewing} onBack={() => setViewing(null)}
-        onUpdated={() => { load(); apiFetch<{ plantillas: Plantilla[] }>("/plantillas/list.php").then((d) => {
-          const fresh = d.plantillas.find((p) => p.id === viewing.id);
-          if (fresh) setViewing(fresh);
-        }); }}
+        plantilla={viewing} onBack={() => setPlantillaIdParam(null)}
+        onUpdated={load}
       />
     );
   }
@@ -278,7 +279,7 @@ export default function PlantillasView() {
                         </td>
                         <td className="px-4 py-2">
                           <div className="flex items-center justify-end gap-2.5">
-                            <button onClick={() => setViewing(p)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver plantilla">
+                            <button onClick={() => setPlantillaIdParam(String(p.id))} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver plantilla">
                               <Eye className="w-3.5 h-3.5" />
                             </button>
                             {isSuperAdmin && (

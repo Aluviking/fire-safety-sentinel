@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
 import CursoDetailView, { type Curso } from "./CursoDetailView";
+import { useUrlState } from "../useUrlState";
 
 interface Programa { id: number; nombre: string }
 interface Asignatura { id: number; nombre: string }
@@ -74,7 +75,10 @@ export default function CursosVirtualesView() {
   const [estados, setEstados] = useState<Set<Estado>>(new Set(["Pendiente", "En progreso"]));
   const [page, setPage] = useState(1);
 
-  const [viewing, setViewing] = useState<Curso | null>(null);
+  // El id del curso abierto vive en la URL (?cursoId=...), no en useState —
+  // así Ctrl+Shift+R te deja en el mismo curso.
+  const [cursoIdParam, setCursoIdParam] = useUrlState("cursoId");
+  const viewing = cursoIdParam ? (cursos.find((c) => c.id === Number(cursoIdParam)) ?? null) : null;
   const [deleting, setDeleting] = useState<Curso | null>(null);
 
   const load = () => {
@@ -149,11 +153,8 @@ export default function CursosVirtualesView() {
     return (
       <CursoDetailView
         curso={viewing}
-        onBack={() => { setViewing(null); load(); }}
-        onUpdated={() => { load(); apiFetch<{ cursos: Curso[] }>("/cursos/list.php").then((d) => {
-          const fresh = d.cursos.find((c) => c.id === viewing.id);
-          if (fresh) setViewing(fresh);
-        }); }}
+        onBack={() => { setCursoIdParam(null); load(); }}
+        onUpdated={load}
       />
     );
   }
@@ -258,7 +259,7 @@ export default function CursosVirtualesView() {
                           </td>
                           <td className="px-4 py-2">
                             <div className="flex items-center justify-end gap-2.5">
-                              <button onClick={() => setViewing(c)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver curso">
+                              <button onClick={() => setCursoIdParam(String(c.id))} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver curso">
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
                               {isSuperAdmin && (

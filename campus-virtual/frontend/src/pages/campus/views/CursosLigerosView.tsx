@@ -6,6 +6,7 @@ import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
 import { SearchableSelect } from "../SearchableSelect";
 import CursoLigeroDetailView from "./CursoLigeroDetailView";
+import { useUrlState } from "../useUrlState";
 
 interface Docente { identificacion: string; nombre_completo: string }
 interface CursoLigero {
@@ -164,7 +165,10 @@ export default function CursosLigerosView() {
   const [error, setError]       = useState("");
   const [editing, setEditing]   = useState<CursoLigero | null>(null);
   const [deleting, setDeleting] = useState<CursoLigero | null>(null);
-  const [viewing, setViewing]   = useState<CursoLigero | null>(null);
+  // El id del curso ligero abierto vive en la URL (?cursoLigeroId=...), no
+  // en useState — así Ctrl+Shift+R te deja en el mismo curso.
+  const [cursoIdParam, setCursoIdParam] = useUrlState("cursoLigeroId");
+  const viewing = cursoIdParam ? (cursos.find((c) => c.id === Number(cursoIdParam)) ?? null) : null;
   const canManage = currentUser?.role === "admin" || isSuperAdmin;
   const canViewDetail = canManage || canVer("academico.cursos_ligeros");
 
@@ -250,11 +254,8 @@ export default function CursosLigerosView() {
     return (
       <CursoLigeroDetailView
         curso={viewing}
-        onBack={() => setViewing(null)}
-        onUpdated={() => { load(); apiFetch<{ cursosLigeros: CursoLigero[] }>("/cursos-ligeros/list.php").then((d) => {
-          const fresh = d.cursosLigeros.find((c) => c.id === viewing.id);
-          if (fresh) setViewing(fresh);
-        }); }}
+        onBack={() => setCursoIdParam(null)}
+        onUpdated={load}
       />
     );
   }
@@ -367,7 +368,7 @@ export default function CursosLigerosView() {
                         {canViewDetail && (
                           <td className="px-4 py-2">
                             <div className="flex items-center justify-end gap-2.5">
-                              <button onClick={() => setViewing(c)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver curso">
+                              <button onClick={() => setCursoIdParam(String(c.id))} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver curso">
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
                               {isSuperAdmin && (

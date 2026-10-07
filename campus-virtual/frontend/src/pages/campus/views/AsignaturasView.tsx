@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
 import AsignaturaDetailView from "./AsignaturaDetailView";
+import { useUrlState } from "../useUrlState";
 
 interface Programa { id: number; nombre: string }
 interface DocenteAsignado { id: number; nombre: string; identificacion: string }
@@ -181,7 +182,10 @@ export default function AsignaturasView() {
   const [error, setError]             = useState("");
   const [editing, setEditing]         = useState<Asignatura | null>(null);
   const [deleting, setDeleting]       = useState<Asignatura | null>(null);
-  const [viewing, setViewing]         = useState<Asignatura | null>(null);
+  // El id de la asignatura abierta vive en la URL (?asignaturaId=...), no en
+  // useState — así Ctrl+Shift+R te deja en la misma asignatura.
+  const [asignaturaIdParam, setAsignaturaIdParam] = useUrlState("asignaturaId");
+  const viewing = asignaturaIdParam ? (asignaturas.find((a) => a.id === Number(asignaturaIdParam)) ?? null) : null;
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -240,11 +244,8 @@ export default function AsignaturasView() {
     return (
       <AsignaturaDetailView
         asignatura={viewing}
-        onBack={() => { setViewing(null); load(); }}
-        onUpdated={() => { load(); apiFetch<{ asignaturas: Asignatura[] }>("/asignaturas/list.php").then((d) => {
-          const fresh = d.asignaturas.find((a) => a.id === viewing.id);
-          if (fresh) setViewing(fresh);
-        }); }}
+        onBack={() => { setAsignaturaIdParam(null); load(); }}
+        onUpdated={load}
       />
     );
   }
@@ -333,7 +334,7 @@ export default function AsignaturasView() {
                         {canViewDetail && (
                           <td className="px-4 py-2">
                             <div className="flex items-center justify-end gap-2.5">
-                              <button onClick={() => setViewing(a)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver asignatura">
+                              <button onClick={() => setAsignaturaIdParam(String(a.id))} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Ver asignatura">
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
                               {isSuperAdmin && (

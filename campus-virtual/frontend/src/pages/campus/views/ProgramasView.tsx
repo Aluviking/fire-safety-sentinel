@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
 import ProgramaDetailView from "./ProgramaDetailView";
+import { useUrlState } from "../useUrlState";
 
 export interface Programa {
   id: number;
@@ -262,7 +263,11 @@ export default function ProgramasView({ soloTipo }: { soloTipo?: "curso" } = {})
   const [error, setError]         = useState("");
   const [formTarget, setFormTarget] = useState<Programa | "new" | null>(null);
   const [deleting, setDeleting]   = useState<Programa | null>(null);
-  const [viewing, setViewing]     = useState<Programa | null>(null);
+  // El id del programa abierto vive en la URL (?programaId=...), no en
+  // useState — así Ctrl+Shift+R (recarga forzada) te deja exactamente en el
+  // mismo programa en vez de mandarte de vuelta a la lista.
+  const [programaIdParam, setProgramaIdParam] = useUrlState("programaId");
+  const viewing = programaIdParam ? (programas.find((p) => p.id === Number(programaIdParam)) ?? null) : null;
 
   const [search, setSearch] = useState("");
   const [busquedaAvanzada, setBusquedaAvanzada] = useState(false);
@@ -336,11 +341,8 @@ export default function ProgramasView({ soloTipo }: { soloTipo?: "curso" } = {})
     return (
       <ProgramaDetailView
         programa={viewing}
-        onBack={() => { setViewing(null); load(); }}
-        onUpdated={() => { load(); apiFetch<{ programas: Programa[] }>("/programas/list.php").then((d) => {
-          const fresh = d.programas.find((p) => p.id === viewing.id);
-          if (fresh) setViewing(fresh);
-        }); }}
+        onBack={() => { setProgramaIdParam(null); load(); }}
+        onUpdated={load}
       />
     );
   }
@@ -426,7 +428,7 @@ export default function ProgramasView({ soloTipo }: { soloTipo?: "curso" } = {})
                         <td className="px-4 py-2 text-slate-500 text-xs font-medium">{p.codigo ?? "—"}</td>
                         <td className="px-4 py-2 text-[13px]">
                           {canViewDetail ? (
-                            <button onClick={() => setViewing(p)} className="text-[#C41717] hover:text-[#B01313] font-medium text-left transition-colors">
+                            <button onClick={() => setProgramaIdParam(String(p.id))} className="text-[#C41717] hover:text-[#B01313] font-medium text-left transition-colors">
                               {p.nombre}
                             </button>
                           ) : (

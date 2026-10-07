@@ -8,6 +8,7 @@ import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { SearchableSelect } from "../SearchableSelect";
 import { ClasesVirtualesTab } from "../ClasesVirtualesTab";
+import { useUrlState } from "../useUrlState";
 // Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
 // ~1.7MB) desde que se le quitó la dependencia de un Worker aparte. Si se
 // importa de una, CADA curso ligero tiene que bajar y ejecutar ese bloque
@@ -394,7 +395,11 @@ function AjustesTab({ curso, canEdit, onUpdated }: { curso: CursoLigero; canEdit
 export default function CursoLigeroDetailView({ curso, onBack, onUpdated }: { curso: CursoLigero; onBack: () => void; onUpdated: () => void }) {
   const { currentUser } = useCampusAuth();
   const canEditSettings = currentUser?.role === "super_admin";
-  const [tab, setTab] = useState<TabKey>("contenido");
+  // La pestaña activa vive en la URL (?cursoLigeroTab=...), no en useState —
+  // así Ctrl+Shift+R te deja en la misma pestaña.
+  const [tabParam, setTabParam] = useUrlState("cursoLigeroTab", "contenido");
+  const tab = (TABS.some((t) => t.key === tabParam) ? tabParam : "contenido") as TabKey;
+  const setTab = (next: TabKey) => setTabParam(next);
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>

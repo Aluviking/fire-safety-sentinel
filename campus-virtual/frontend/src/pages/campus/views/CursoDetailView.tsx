@@ -8,6 +8,7 @@ import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { SearchableSelect } from "../SearchableSelect";
 import { ClasesVirtualesTab } from "../ClasesVirtualesTab";
+import { useUrlState } from "../useUrlState";
 // Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
 // ~1.7MB) desde que se le quitó la dependencia de un Worker aparte. Si se
 // importa de una, CADA curso tiene que bajar y ejecutar ese bloque completo
@@ -341,7 +342,11 @@ export default function CursoDetailView({
 }: { curso: Curso; onBack: () => void; onUpdated: () => void; initialTab?: TabKey }) {
   const { currentUser } = useCampusAuth();
   const canEditSettings = currentUser?.role === "super_admin";
-  const [tab, setTab] = useState<TabKey>(initialTab);
+  // La pestaña activa vive en la URL (?cursoTab=...), no en useState — así
+  // Ctrl+Shift+R te deja en la misma pestaña.
+  const [tabParam, setTabParam] = useUrlState("cursoTab", initialTab);
+  const tab = (TABS.some((t) => t.key === tabParam) ? tabParam : initialTab) as TabKey;
+  const setTab = (next: TabKey) => setTabParam(next);
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>

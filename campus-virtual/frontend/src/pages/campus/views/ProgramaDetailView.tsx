@@ -9,6 +9,7 @@ import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { SearchableSelect } from "../SearchableSelect";
 import { ConfirmModal } from "../ConfirmModal";
+import { useUrlState } from "../useUrlState";
 import { type Programa, ProgramaFormModal } from "./ProgramasView";
 import { ClasesVirtualesTab } from "../ClasesVirtualesTab";
 // Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
@@ -1420,7 +1421,12 @@ export default function ProgramaDetailView({
   // Docente tiene edición completa (Pensum, Ajustes, Editar/Eliminar programa)
   // igual que Super Admin — pedido explícito del cliente.
   const canEditSettings = currentUser?.role === "super_admin" || currentUser?.role === "docente";
-  const [tab, setTab] = useState<TabKey>("programa");
+  // La pestaña activa vive en la URL (?programaTab=...), no en useState —
+  // así Ctrl+Shift+R (recarga forzada) te deja en la misma pestaña en vez de
+  // devolverte siempre a "Programa".
+  const [tabParam, setTabParam] = useUrlState("programaTab", "programa");
+  const tab = (TABS.some((t) => t.key === tabParam) ? tabParam : "programa") as TabKey;
+  const setTab = (next: TabKey) => setTabParam(next);
   // "Cursos para empresas" y "Docentes" solo aplican a los programas tipo
   // Curso — en Técnico/Diplomado no tiene sentido matricular empresas-cliente
   // ni asignar el docente que maneja el curso.

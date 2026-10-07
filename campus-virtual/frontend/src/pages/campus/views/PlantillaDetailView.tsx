@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, BookOpen, Settings, Upload, ChevronRight, Loader2 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
+import { useUrlState } from "../useUrlState";
 // Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
 // ~1.7MB) desde que se le quitó la dependencia de un Worker aparte. Si se
 // importa de una, cada plantilla tiene que bajar y ejecutar ese bloque
@@ -123,7 +124,11 @@ function AjustesTab({ plantilla, canEdit, onUpdated }: { plantilla: Plantilla; c
 export default function PlantillaDetailView({ plantilla, onBack, onUpdated }: { plantilla: Plantilla; onBack: () => void; onUpdated: () => void }) {
   const { currentUser } = useCampusAuth();
   const canEditSettings = currentUser?.role === "super_admin";
-  const [tab, setTab] = useState<TabKey>("contenido");
+  // La pestaña activa vive en la URL (?plantillaTab=...), no en useState —
+  // así Ctrl+Shift+R te deja en la misma pestaña.
+  const [tabParam, setTabParam] = useUrlState("plantillaTab", "contenido");
+  const tab = (TABS.some((t) => t.key === tabParam) ? tabParam : "contenido") as TabKey;
+  const setTab = (next: TabKey) => setTabParam(next);
   const titulo = plantilla.nombre || plantilla.asignatura || "Plantilla";
 
   return (
