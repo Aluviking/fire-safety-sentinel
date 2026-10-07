@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, BookOpen, Layers, Plus, Trash2, Loader2,
-  Megaphone, Video, Settings, Upload, Check, UserCog,
+  Megaphone, Video, Settings, Upload, Check, UserCog, Users,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
@@ -39,6 +39,7 @@ const TABS = [
   { key: "clases", label: "Clases virtuales", icon: Video },
   { key: "programas", label: "Programas", icon: Layers },
   { key: "docentes", label: "Docentes", icon: UserCog },
+  { key: "estudiantes", label: "Estudiantes", icon: Users },
   { key: "ajustes", label: "Ajustes", icon: Settings },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
@@ -112,6 +113,60 @@ function AnunciosTab({ asignaturaId }: { asignaturaId: number }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface EstudianteDeAsignatura {
+  id: number; estudiante_id: number; estado: string | null; identificacion: string; nombre_completo: string; programa_nombre: string;
+}
+
+/* ── Estudiantes — heredan el acceso por estar matriculados en un programa
+     que trae esta asignatura en su pensum (no es matrícula aparte) ───────── */
+function EstudiantesTab({ asignaturaId }: { asignaturaId: number }) {
+  const [items, setItems] = useState<EstudianteDeAsignatura[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    apiFetch<{ matriculados: EstudianteDeAsignatura[] }>(`/asignatura-estudiantes/list.php?asignaturaId=${asignaturaId}`)
+      .then((d) => setItems(d.matriculados))
+      .finally(() => setLoading(false));
+  }, [asignaturaId]);
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-slate-700">Estudiantes con acceso a esta asignatura ({items.length})</h3>
+      {loading ? (
+        <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+      ) : items.length === 0 ? (
+        <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">
+          Aún no hay estudiantes matriculados en un programa que traiga esta asignatura en su pensum.
+        </p>
+      ) : (
+        <div className="overflow-x-auto border border-slate-200 rounded-xl">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estudiante</th>
+                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Identificación</th>
+                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Programa</th>
+                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {items.map((e) => (
+                <tr key={e.id} className="hover:bg-slate-50/70">
+                  <td className="px-3 py-2 text-slate-800 font-medium text-xs whitespace-nowrap">{e.nombre_completo}</td>
+                  <td className="px-3 py-2 text-slate-600 text-xs font-mono">{e.identificacion}</td>
+                  <td className="px-3 py-2 text-slate-500 text-xs">{e.programa_nombre}</td>
+                  <td className="px-3 py-2 text-slate-500 text-xs">{e.estado ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
@@ -316,6 +371,7 @@ export default function AsignaturaDetailView({
                 </div>
               )
             )}
+            {tab === "estudiantes" && <EstudiantesTab asignaturaId={asignatura.id} />}
             {tab === "ajustes" && <AjustesTab asignatura={asignatura} canEdit={canEditSettings} onUpdated={onUpdated} />}
           </div>
         </div>

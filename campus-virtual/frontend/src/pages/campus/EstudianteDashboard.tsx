@@ -56,6 +56,15 @@ interface ClaseVirtualEstudiante {
   link_reunion: string | null;
   grabacion_url: string | null;
 }
+interface ClaseProximaEstudiante {
+  origen: "Programa" | "Asignatura" | "Curso" | "Curso ligero";
+  origen_nombre: string;
+  titulo: string;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  link_reunion: string | null;
+  grabacion_url: string | null;
+}
 type Activo = { nombre: string; contentBase: string; questionsBase: string; ownerIdKey: string; ownerId: number };
 
 const CATEGORIA_COLOR: Record<string, string> = {
@@ -149,6 +158,10 @@ export default function EstudianteDashboard() {
   const [vinculado, setVinculado] = useState(true);
   const [loading, setLoading] = useState(true);
   const [activo, setActivo] = useState<Activo | null>(null);
+  // Próximas clases en vivo de TODO lo suyo junto (programas, asignaturas,
+  // cursos y cursos ligeros) — se muestran de entrada en el panel principal,
+  // sin que tenga que entrar primero a cada card para encontrarlas.
+  const [clasesProximas, setClasesProximas] = useState<ClaseProximaEstudiante[]>([]);
 
   // Un programa/curso/diplomado abierto muestra SUS asignaturas adentro (no
   // una lista suelta de todas mezcladas) — así se ve organizado por dónde
@@ -183,6 +196,10 @@ export default function EstudianteDashboard() {
         setVinculado(c.vinculado && p.vinculado && cv.vinculado);
       })
       .finally(() => setLoading(false));
+
+    apiFetch<{ clases: ClaseProximaEstudiante[] }>("/mis-clases/proximas.php")
+      .then((d) => setClasesProximas(d.clases))
+      .catch(() => setClasesProximas([]));
   }, [user]);
 
   useEffect(() => {
@@ -426,6 +443,35 @@ export default function EstudianteDashboard() {
                 )}
               </div>
             </div>
+
+            {clasesProximas.length > 0 && (
+              <div>
+                <SectionHeader icon={Video} label="Próximas clases en vivo" count={clasesProximas.length} />
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {clasesProximas.map((c, i) => (
+                    <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-[#C41717]/8 border border-[#C41717]/20 flex items-center justify-center shrink-0">
+                          <Video className="w-4 h-4 text-[#C41717]" />
+                        </div>
+                        <p className="text-slate-800 font-semibold text-sm leading-tight truncate">{c.titulo}</p>
+                      </div>
+                      <p className="text-[11px] text-slate-400">{c.origen}: {c.origen_nombre}</p>
+                      <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                        {new Date(c.fecha_inicio).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}
+                      </p>
+                      {c.link_reunion && (
+                        <a href={c.link_reunion} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-[#C41717] hover:bg-[#A81212] rounded-lg px-3 py-1.5 transition-colors mt-1">
+                          <Video className="w-3.5 h-3.5" /> Unirse
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {loading ? (
               <div className="flex items-center justify-center py-16 text-slate-400 gap-2 text-sm">
