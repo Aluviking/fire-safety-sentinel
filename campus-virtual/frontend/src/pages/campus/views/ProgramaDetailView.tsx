@@ -132,6 +132,15 @@ function ProgramaAnunciosTab({ programaId }: { programaId: number }) {
   );
 }
 
+function InfoField({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold text-slate-500 mb-1">{label}:</p>
+      <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 truncate">{value || "—"}</div>
+    </div>
+  );
+}
+
 /* ── Traer una asignatura existente al pensum de este programa — se muestra
      el catálogo completo, incluidas las que ya están en este mismo pensum
      (el backend avisa "ya está asignada" si se intenta repetir), porque el
