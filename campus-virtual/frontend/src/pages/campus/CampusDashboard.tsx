@@ -1283,9 +1283,9 @@ export default function CampusDashboard() {
         ) : activeNav.nav === "Historial" && isSuperAdmin ? (
           <HistorialView />
         ) : activeNav.sub === "Estudiantes › Información básica" ? (
-          <InformacionBasicaView />
+          <InformacionBasicaView onVerPersona={(id) => setPersonaAbierta({ tipo: "estudiante", id })} />
         ) : activeNav.sub === "Docentes › Información básica" ? (
-          <PersonalInfoView tipo="docente" />
+          <PersonalInfoView tipo="docente" onVerPersona={(id) => setPersonaAbierta({ tipo: "docente", id })} />
         ) : activeNav.sub === "Administrativos › Información básica" ? (
           <PersonalInfoView tipo="administrativo" />
         ) : activeNav.sub === "Inscritos" ? (

@@ -77,8 +77,14 @@ function Pagination({
   );
 }
 
+interface Props {
+  // Mismo perfil completo al que lleva el buscador del navbar — se pasa solo
+  // cuando quien renderiza esta vista sabe abrirlo (CampusDashboard).
+  onVerPersona?: (id: number) => void;
+}
+
 /* ══ Vista principal ═════════════════════════════════════════════════════════ */
-export default function InformacionBasicaView() {
+export default function InformacionBasicaView({ onVerPersona }: Props) {
   const { currentUser } = useCampusAuth();
   const isSuperAdmin = currentUser?.role === "super_admin";
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
@@ -199,7 +205,11 @@ export default function InformacionBasicaView() {
                       pageData.map((est, idx) => {
                         const ultima = est.matriculas[0];
                         return (
-                          <tr key={est.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
+                          <tr
+                            key={est.id}
+                            onClick={() => onVerPersona?.(est.id)}
+                            className={`transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""} ${onVerPersona ? "hover:bg-[#C41717]/5 cursor-pointer" : "hover:bg-slate-50/70"}`}
+                          >
                             <td className="px-4 py-2">
                               <span className="text-slate-800 font-medium">{est.nombre_completo}</span>
                             </td>
@@ -219,10 +229,10 @@ export default function InformacionBasicaView() {
                             {isSuperAdmin && (
                               <td className="px-4 py-2">
                                 <div className="flex items-center justify-end gap-2.5">
-                                  <button onClick={() => setEditing(est)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
+                                  <button onClick={(e) => { e.stopPropagation(); setEditing(est); }} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
                                     <Pencil className="w-3.5 h-3.5" />
                                   </button>
-                                  <button onClick={() => setDeleting({ id: est.id, nombre: est.nombre_completo })} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
+                                  <button onClick={(e) => { e.stopPropagation(); setDeleting({ id: est.id, nombre: est.nombre_completo }); }} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
                                 </div>

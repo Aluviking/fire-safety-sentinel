@@ -52,6 +52,9 @@ function Pagination({
 
 interface Props {
   tipo: "docente" | "administrativo";
+  // Mismo perfil completo al que lleva el buscador del navbar — solo aplica
+  // a docentes (PersonaDetalleView no tiene vista para administrativos).
+  onVerPersona?: (id: number) => void;
 }
 
 const CONFIG = {
@@ -62,7 +65,8 @@ const CONFIG = {
 const DELETE_ENDPOINT = { docente: "/docentes/delete.php", administrativo: "/administrativos/delete.php" } as const;
 const TIPO_LABEL_ES = { docente: "docente", administrativo: "administrativo" } as const;
 
-export default function PersonalInfoView({ tipo }: Props) {
+export default function PersonalInfoView({ tipo, onVerPersona }: Props) {
+  const puedeVerPersona = tipo === "docente" ? onVerPersona : undefined;
   const { endpoint, key, titulo } = CONFIG[tipo];
   const { currentUser } = useCampusAuth();
   const isSuperAdmin = currentUser?.role === "super_admin";
@@ -180,7 +184,11 @@ export default function PersonalInfoView({ tipo }: Props) {
                       <tr><td colSpan={isSuperAdmin ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
                     ) : (
                       pageData.map((p, idx) => (
-                        <tr key={p.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
+                        <tr
+                          key={p.id}
+                          onClick={() => puedeVerPersona?.(p.id)}
+                          className={`transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""} ${puedeVerPersona ? "hover:bg-[#C41717]/5 cursor-pointer" : "hover:bg-slate-50/70"}`}
+                        >
                           <td className="px-4 py-2 text-slate-800 font-medium">{p.nombre_completo}</td>
                           <td className="px-4 py-2 text-slate-600 font-mono text-[13px]">{p.identificacion}</td>
                           <td className="px-4 py-2 text-slate-500 text-xs">{p.celular ?? "—"}{p.correo ? ` · ${p.correo}` : ""}</td>
@@ -193,10 +201,10 @@ export default function PersonalInfoView({ tipo }: Props) {
                           {isSuperAdmin && (
                             <td className="px-4 py-2">
                               <div className="flex items-center justify-end gap-2.5">
-                                <button onClick={() => setEditing(p)} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
+                                <button onClick={(e) => { e.stopPropagation(); setEditing(p); }} className="text-slate-400 hover:text-[#C41717] transition-colors" title="Editar">
                                   <Pencil className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => setDeleting({ id: p.id, nombre: p.nombre_completo })} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
+                                <button onClick={(e) => { e.stopPropagation(); setDeleting({ id: p.id, nombre: p.nombre_completo }); }} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
