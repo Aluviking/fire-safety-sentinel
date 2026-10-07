@@ -29,6 +29,7 @@ import ConsolidadoNotasView from "./views/ConsolidadoNotasView";
 import CarteraGeneralView from "./views/CarteraGeneralView";
 import GestionFinancieraView from "./views/GestionFinancieraView";
 import HistorialView from "./views/HistorialView";
+import HistorialDocenteView from "./views/HistorialDocenteView";
 import SalasVirtualesView from "./views/SalasVirtualesView";
 import CursosLigerosView from "./views/CursosLigerosView";
 import CursosVirtualesView from "./views/CursosVirtualesView";
@@ -923,8 +924,12 @@ export default function CampusDashboard() {
   const permisosVista = vistaSimulada === "docente" ? DOCENTE_PERMISOS_PREVIEW : permisos;
   const canVerVista = (modulo: string) => permisosVista.all || !!permisosVista.modulos[modulo]?.ver;
   const isSuperAdminVista = isSuperAdmin && vistaSimulada === null;
+  // Docente sí tiene Historial — pero el propio, filtrado a sus
+  // programas/asignaturas/cursos (ver HistorialDocenteView), nunca la
+  // auditoría administrativa completa que ve Super Admin.
+  const isDocenteReal = user.role === "docente";
   const visibleNavItems = filterNavItems(NAV_ITEMS, canVerVista, permisosVista.all)
-    .filter((item) => item.label !== "Historial" || isSuperAdminVista)
+    .filter((item) => item.label !== "Historial" || isSuperAdminVista || isDocenteReal)
     .filter((item) => item.label !== "Perfiles" || isSuperAdminVista)
     .filter((item) => item.label !== "Usuarios" || canVerVista("usuarios"));
 
@@ -1299,6 +1304,8 @@ export default function CampusDashboard() {
           <PerfilesView />
         ) : activeNav.nav === "Historial" && isSuperAdmin ? (
           <HistorialView />
+        ) : activeNav.nav === "Historial" && isDocenteReal ? (
+          <HistorialDocenteView />
         ) : activeNav.sub === "Estudiantes › Información básica" ? (
           <InformacionBasicaView onVerPersona={(id) => setPersonaAbierta({ tipo: "estudiante", id })} />
         ) : activeNav.sub === "Docentes › Información básica" ? (

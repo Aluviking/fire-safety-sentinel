@@ -58,14 +58,22 @@ if ($user['role'] === 'super_admin') {
 
 // Preinscripciones pendientes (formulario público de inscripción) — se
 // muestran en la campana igual que anuncios/auditoría, con su propio link
-// directo al módulo "Inscritos".
-$preinscripciones = db()->query(
-    "SELECT id, nombres, apellidos, tipo_interes, item_nombre, created_at
-     FROM preinscripciones WHERE estado = 'Pendiente' ORDER BY created_at DESC LIMIT 8"
-)->fetchAll();
-$preinscripcionesPendientesCount = (int) db()->query(
-    "SELECT COUNT(*) FROM preinscripciones WHERE estado = 'Pendiente'"
-)->fetchColumn();
+// directo al módulo "Inscritos". Es información de matrícula/admisiones, no
+// algo que le incumba a un Docente — mismo candado que ya protege el módulo
+// "Inscritos" en sí (institucional.inscritos), para que la campana no
+// muestre algo a lo que ese usuario no tiene acceso real.
+$preinscripciones = [];
+$preinscripcionesPendientesCount = 0;
+$permisos = user_permisos($user);
+if ($permisos['all'] || (($permisos['modulos']['institucional.inscritos']['ver'] ?? false) === true)) {
+    $preinscripciones = db()->query(
+        "SELECT id, nombres, apellidos, tipo_interes, item_nombre, created_at
+         FROM preinscripciones WHERE estado = 'Pendiente' ORDER BY created_at DESC LIMIT 8"
+    )->fetchAll();
+    $preinscripcionesPendientesCount = (int) db()->query(
+        "SELECT COUNT(*) FROM preinscripciones WHERE estado = 'Pendiente'"
+    )->fetchColumn();
+}
 
 // Contadores reales para las tarjetas del encabezado (nada decorativo).
 $totalCursos = (int) db()->query('SELECT COUNT(*) FROM cursos')->fetchColumn();
