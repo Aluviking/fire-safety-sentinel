@@ -13,6 +13,11 @@ export interface ClaseVirtual {
   link_reunion: string | null;
   zoom_meeting_id: string | null;
   grabacion_url: string | null;
+  // Solo presentes cuando esta fila en realidad viene de otro nivel (ej. una
+  // asignatura del pensum, vista desde el programa que la contiene) — null
+  // para las clases creadas directamente aquí.
+  origen_nombre?: string | null;
+  origen_api_base?: string | null;
 }
 interface AulaRecurso { id: number; nombre: string }
 interface ZoomStatus { configurado: boolean }
@@ -98,13 +103,14 @@ export function ClasesVirtualesTab({
     }
   };
 
-  const remove = async (id: number) => {
-    await apiFetch(`${apiBase}/delete.php`, { method: "POST", json: { id } });
+  const remove = async (c: ClaseVirtual) => {
+    await apiFetch(`${c.origen_api_base ?? apiBase}/delete.php`, { method: "POST", json: { id: c.id } });
     load();
   };
 
   const now = new Date();
   const filtered = clases.filter((c) => (subtab === "proximas" ? new Date(c.fecha_inicio) >= now : new Date(c.fecha_inicio) < now));
+  const hayOrigenMixto = clases.some((c) => c.origen_nombre);
 
   return (
     <div className="space-y-3">
@@ -174,6 +180,7 @@ export function ClasesVirtualesTab({
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Clase</th>
+                {hayOrigenMixto && <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Origen</th>}
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Aula</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Inicio</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Reunión</th>
@@ -183,8 +190,17 @@ export function ClasesVirtualesTab({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50/70">
+                <tr key={`${c.origen_api_base ?? apiBase}-${c.id}`} className="hover:bg-slate-50/70">
                   <td className="px-3 py-2 text-slate-800 font-medium text-xs whitespace-nowrap">{c.titulo}</td>
+                  {hayOrigenMixto && (
+                    <td className="px-3 py-2 text-xs whitespace-nowrap">
+                      {c.origen_nombre ? (
+                        <span className="inline-block px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-medium">Asignatura: {c.origen_nombre}</span>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-3 py-2 text-slate-500 text-xs">{c.aula_nombre ?? "—"}</td>
                   <td className="px-3 py-2 text-slate-500 text-xs whitespace-nowrap">{new Date(c.fecha_inicio).toLocaleString("es-CO")}</td>
                   <td className="px-3 py-2 text-xs">
@@ -208,7 +224,7 @@ export function ClasesVirtualesTab({
                     )}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <button onClick={() => remove(c.id)} className="text-slate-300 hover:text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => remove(c)} className="text-slate-300 hover:text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
                   </td>
                 </tr>
               ))}
