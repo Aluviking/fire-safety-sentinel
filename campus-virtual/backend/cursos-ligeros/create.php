@@ -2,7 +2,10 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['admin', 'super_admin']);
+// Docente tiene edicion completa en Cursos/Cursos ligeros, igual que
+// Super Admin -- mismo pedido explicito del cliente ya aplicado en
+// Programas/Asignaturas.
+require_role($user, ['admin', 'super_admin', 'docente']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
 

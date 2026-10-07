@@ -61,7 +61,8 @@ function Dropdown({
 
 export default function CursosVirtualesView() {
   const { currentUser } = useCampusAuth();
-  const isSuperAdmin = currentUser?.role === "super_admin";
+  // Docente tiene edición completa en Cursos virtuales, igual que Super Admin.
+  const isSuperAdmin = currentUser?.role === "super_admin" || currentUser?.role === "docente";
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [programas, setProgramas] = useState<Programa[]>([]);
   const [asignaturas, setAsignaturas] = useState<Asignatura[]>([]);

@@ -394,7 +394,8 @@ function AjustesTab({ curso, canEdit, onUpdated }: { curso: CursoLigero; canEdit
 /* ══ Vista principal ═════════════════════════════════════════════════════════ */
 export default function CursoLigeroDetailView({ curso, onBack, onUpdated }: { curso: CursoLigero; onBack: () => void; onUpdated: () => void }) {
   const { currentUser } = useCampusAuth();
-  const canEditSettings = currentUser?.role === "super_admin";
+  // Docente tiene edición completa en Ajustes del curso ligero, igual que Super Admin.
+  const canEditSettings = currentUser?.role === "super_admin" || currentUser?.role === "docente";
   // La pestaña activa vive en la URL (?cursoLigeroTab=...), no en useState —
   // así Ctrl+Shift+R te deja en la misma pestaña.
   const [tabParam, setTabParam] = useUrlState("cursoLigeroTab", "contenido");

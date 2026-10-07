@@ -341,7 +341,8 @@ export default function CursoDetailView({
   curso, onBack, onUpdated, initialTab = "contenido",
 }: { curso: Curso; onBack: () => void; onUpdated: () => void; initialTab?: TabKey }) {
   const { currentUser } = useCampusAuth();
-  const canEditSettings = currentUser?.role === "super_admin";
+  // Docente tiene edición completa en Ajustes del curso, igual que Super Admin.
+  const canEditSettings = currentUser?.role === "super_admin" || currentUser?.role === "docente";
   // La pestaña activa vive en la URL (?cursoTab=...), no en useState — así
   // Ctrl+Shift+R te deja en la misma pestaña.
   const [tabParam, setTabParam] = useUrlState("cursoTab", initialTab);

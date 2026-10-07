@@ -158,7 +158,8 @@ function CursoLigeroForm({
 
 export default function CursosLigerosView() {
   const { currentUser, canVer } = useCampusAuth();
-  const isSuperAdmin = currentUser?.role === "super_admin";
+  // Docente tiene edición completa en Cursos ligeros, igual que Super Admin.
+  const isSuperAdmin = currentUser?.role === "super_admin" || currentUser?.role === "docente";
   const [cursos, setCursos]     = useState<CursoLigero[]>([]);
   const [docentes, setDocentes] = useState<Docente[]>([]);
   const [loading, setLoading]   = useState(true);

@@ -2,7 +2,10 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_role($user, ['super_admin']);
+// Docente tiene edicion completa en Cursos/Cursos ligeros, igual que
+// Super Admin -- mismo pedido explicito del cliente ya aplicado en
+// Programas/Asignaturas.
+require_role($user, ['super_admin', 'docente']);
 
 $body = json_body();
 $id   = (int) ($body['id'] ?? 0);

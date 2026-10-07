@@ -464,6 +464,100 @@ function require_gestion_programa(array $user, int $programaId): void
     fail('No autorizado.', 403);
 }
 
+/** Igual que require_gestion_asignatura(), pero para un Curso (cursos solo
+ *  tiene 1 docente, en `cursos.docente_identificacion`, no una tabla puente). */
+function require_gestion_curso(array $user, int $cursoId): void
+{
+    if (in_array($user['role'], ['admin', 'super_admin'], true)) return;
+    if ($user['role'] === 'docente' && !empty($user['identificacion'])) {
+        $stmt = db()->prepare('SELECT id FROM cursos WHERE id = ? AND docente_identificacion = ?');
+        $stmt->execute([$cursoId, $user['identificacion']]);
+        if ($stmt->fetch()) return;
+    }
+    fail('No autorizado.', 403);
+}
+
+/** Igual que require_gestion_curso(), pero para un Curso ligero. */
+function require_gestion_curso_ligero(array $user, int $cursoLigeroId): void
+{
+    if (in_array($user['role'], ['admin', 'super_admin'], true)) return;
+    if ($user['role'] === 'docente' && !empty($user['identificacion'])) {
+        $stmt = db()->prepare('SELECT id FROM cursos_ligeros WHERE id = ? AND docente_identificacion = ?');
+        $stmt->execute([$cursoLigeroId, $user['identificacion']]);
+        if ($stmt->fetch()) return;
+    }
+    fail('No autorizado.', 403);
+}
+
+/**
+ * Ids de `estudiantes` que un docente puede ver — matriculados en algo que
+ * él enseña: un programa (directo o por una asignatura de su pensum), una
+ * asignatura directa, un curso o un curso ligero donde es el docente
+ * asignado. Usado para que "Estudiantes" (institucional.estudiantes) y
+ * similares no le muestren a un docente la base completa de estudiantes.
+ * admin/super_admin no deben llamar a esto — ya ven a todos sin filtrar.
+ */
+function estudiante_ids_visibles_para_docente(string $identificacion): array
+{
+    if ($identificacion === '') return [];
+    $ids = [];
+
+    // Vía programa — matrícula real (tabla `matriculas`, cruzada por nombre
+    // del programa igual que require_acceso_programa()) — docente directo
+    // del programa, o docente de una asignatura dentro de su pensum.
+    $stmt = db()->prepare(
+        "SELECT DISTINCT e.id
+         FROM estudiantes e
+         JOIN matriculas m ON m.estudiante_id = e.id AND m.estado != 'CANCELADO'
+         JOIN programas p ON (m.programa = p.nombre OR m.programa LIKE CONCAT(p.nombre, ' - %'))
+         WHERE EXISTS (
+             SELECT 1 FROM programa_docentes pd JOIN docentes d ON d.id = pd.docente_id
+             WHERE pd.programa_id = p.id AND d.identificacion = ?
+         ) OR EXISTS (
+             SELECT 1 FROM programa_asignaturas pa
+             JOIN asignatura_docentes ad ON ad.asignatura_id = pa.asignatura_id
+             JOIN docentes d ON d.id = ad.docente_id
+             WHERE pa.programa_id = p.id AND d.identificacion = ?
+         )"
+    );
+    $stmt->execute([$identificacion, $identificacion]);
+    foreach ($stmt->fetchAll() as $r) $ids[(int) $r['id']] = true;
+
+    // Vía asignatura directa.
+    $stmt = db()->prepare(
+        "SELECT DISTINCT ae.estudiante_id AS id
+         FROM asignatura_estudiantes ae
+         JOIN asignatura_docentes ad ON ad.asignatura_id = ae.asignatura_id
+         JOIN docentes d ON d.id = ad.docente_id
+         WHERE d.identificacion = ?"
+    );
+    $stmt->execute([$identificacion]);
+    foreach ($stmt->fetchAll() as $r) $ids[(int) $r['id']] = true;
+
+    // Vía curso.
+    $stmt = db()->prepare(
+        "SELECT DISTINCT ce.estudiante_id AS id
+         FROM curso_estudiantes ce
+         JOIN cursos c ON c.id = ce.curso_id
+         WHERE c.docente_identificacion = ?"
+    );
+    $stmt->execute([$identificacion]);
+    foreach ($stmt->fetchAll() as $r) $ids[(int) $r['id']] = true;
+
+    // Vía curso ligero (la inscripción guarda la cédula del estudiante, no su id).
+    $stmt = db()->prepare(
+        "SELECT DISTINCT e.id
+         FROM curso_ligero_inscripciones cli
+         JOIN cursos_ligeros cl ON cl.id = cli.curso_ligero_id
+         JOIN estudiantes e ON e.identificacion = cli.estudiante_identificacion
+         WHERE cl.docente_identificacion = ?"
+    );
+    $stmt->execute([$identificacion]);
+    foreach ($stmt->fetchAll() as $r) $ids[(int) $r['id']] = true;
+
+    return array_keys($ids);
+}
+
 /** Mismo mecanismo que require_acceso_curso_ligero(), para el contenido de un Curso. */
 function require_acceso_curso(array $user, int $cursoId): void
 {

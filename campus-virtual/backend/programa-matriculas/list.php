@@ -12,6 +12,10 @@ $stmt->execute([$programaId]);
 $programa = $stmt->fetch();
 if (!$programa) fail('Programa no encontrado.', 404);
 
+// Un docente solo ve la matrícula de SUS programas — admin/super_admin/
+// equipo/administrativo siguen viendo cualquier programa, como siempre.
+if ($user['role'] === 'docente') require_gestion_programa($user, (int) $programaId);
+
 // La matrícula real de un programa NO vive en una tabla propia de Campus
 // Virtual — es el histórico importado de Q10 (tabla `matriculas`), donde el
 // programa quedó guardado como texto libre "{nombre} - {jornada}". No hay
