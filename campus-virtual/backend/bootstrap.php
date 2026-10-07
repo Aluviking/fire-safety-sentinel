@@ -453,12 +453,21 @@ function require_gestion_programa(array $user, int $programaId): void
 {
     if (in_array($user['role'], ['admin', 'super_admin'], true)) return;
     if ($user['role'] === 'docente' && !empty($user['identificacion'])) {
+        // Directo (programa_docentes) O indirecto: docente de una asignatura
+        // que está dentro del pensum de este programa (programa_asignaturas)
+        // — mismo criterio que ya usa programas/list.php para decidir qué
+        // programas le aparecen a un docente en su lista.
         $stmt = db()->prepare(
-            'SELECT pd.id FROM programa_docentes pd
+            'SELECT 1 FROM programa_docentes pd
              JOIN docentes d ON d.id = pd.docente_id
-             WHERE pd.programa_id = ? AND d.identificacion = ?'
+             WHERE pd.programa_id = ? AND d.identificacion = ?
+             UNION
+             SELECT 1 FROM programa_asignaturas pa
+             JOIN asignatura_docentes ad ON ad.asignatura_id = pa.asignatura_id
+             JOIN docentes d ON d.id = ad.docente_id
+             WHERE pa.programa_id = ? AND d.identificacion = ?'
         );
-        $stmt->execute([$programaId, $user['identificacion']]);
+        $stmt->execute([$programaId, $user['identificacion'], $programaId, $user['identificacion']]);
         if ($stmt->fetch()) return;
     }
     fail('No autorizado.', 403);
