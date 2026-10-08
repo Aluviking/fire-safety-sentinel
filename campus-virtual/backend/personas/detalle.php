@@ -37,13 +37,6 @@ if ($tipo === 'estudiante') {
     );
     $cursosLigeros->execute([$identificacion]);
 
-    $cursos = db()->prepare(
-        "SELECT c.id, c.programa_asignatura_jornada, ce.estado
-         FROM curso_estudiantes ce JOIN cursos c ON c.id = ce.curso_id
-         WHERE ce.estudiante_id = ? ORDER BY c.id DESC"
-    );
-    $cursos->execute([$id]);
-
     // Asignaturas heredadas del pensum de cada programa en el que está
     // matriculado (mismo puente que mis-asignaturas/list.php).
     $asignaturas = db()->prepare(
@@ -57,23 +50,44 @@ if ($tipo === 'estudiante') {
     );
     $asignaturas->execute([$id]);
 
-    $creditos = db()->prepare('SELECT * FROM creditos WHERE identificacion_estudiante = ? ORDER BY fecha_credito DESC');
-    $creditos->execute([$identificacion]);
+    // Lo histórico/financiero (cursos pasados, créditos, pagos, notas) es
+    // exclusivo de Super Admin — Docente/Coordinador/Administrativo solo ven
+    // la situación actual del estudiante (matrículas, asignaturas, cursos
+    // ligeros), nunca su historial académico o financiero completo.
+    $cursos = $creditos = $pagosRealizados = $pagosPendientes = $notasCredito = $evaluaciones = $notasFinales = [];
+    if ($user['role'] === 'super_admin') {
+        $cursosStmt = db()->prepare(
+            "SELECT c.id, c.programa_asignatura_jornada, ce.estado
+             FROM curso_estudiantes ce JOIN cursos c ON c.id = ce.curso_id
+             WHERE ce.estudiante_id = ? ORDER BY c.id DESC"
+        );
+        $cursosStmt->execute([$id]);
+        $cursos = $cursosStmt->fetchAll();
 
-    $pagosRealizados = db()->prepare('SELECT * FROM pagos_realizados WHERE identificacion = ? ORDER BY fecha_pago DESC');
-    $pagosRealizados->execute([$identificacion]);
+        $creditosStmt = db()->prepare('SELECT * FROM creditos WHERE identificacion_estudiante = ? ORDER BY fecha_credito DESC');
+        $creditosStmt->execute([$identificacion]);
+        $creditos = $creditosStmt->fetchAll();
 
-    $pagosPendientes = db()->prepare('SELECT * FROM pagos_pendientes WHERE identificacion = ?');
-    $pagosPendientes->execute([$identificacion]);
+        $pagosRealizadosStmt = db()->prepare('SELECT * FROM pagos_realizados WHERE identificacion = ? ORDER BY fecha_pago DESC');
+        $pagosRealizadosStmt->execute([$identificacion]);
+        $pagosRealizados = $pagosRealizadosStmt->fetchAll();
 
-    $notasCredito = db()->prepare('SELECT * FROM notas_credito WHERE identificacion = ? ORDER BY fecha DESC');
-    $notasCredito->execute([$identificacion]);
+        $pagosPendientesStmt = db()->prepare('SELECT * FROM pagos_pendientes WHERE identificacion = ?');
+        $pagosPendientesStmt->execute([$identificacion]);
+        $pagosPendientes = $pagosPendientesStmt->fetchAll();
 
-    $evaluaciones = db()->prepare('SELECT * FROM evaluaciones WHERE identificacion_estudiante = ? ORDER BY periodo DESC');
-    $evaluaciones->execute([$identificacion]);
+        $notasCreditoStmt = db()->prepare('SELECT * FROM notas_credito WHERE identificacion = ? ORDER BY fecha DESC');
+        $notasCreditoStmt->execute([$identificacion]);
+        $notasCredito = $notasCreditoStmt->fetchAll();
 
-    $notasFinales = db()->prepare('SELECT * FROM notas_finales WHERE identificacion_estudiante = ? ORDER BY periodo DESC');
-    $notasFinales->execute([$identificacion]);
+        $evaluacionesStmt = db()->prepare('SELECT * FROM evaluaciones WHERE identificacion_estudiante = ? ORDER BY periodo DESC');
+        $evaluacionesStmt->execute([$identificacion]);
+        $evaluaciones = $evaluacionesStmt->fetchAll();
+
+        $notasFinalesStmt = db()->prepare('SELECT * FROM notas_finales WHERE identificacion_estudiante = ? ORDER BY periodo DESC');
+        $notasFinalesStmt->execute([$identificacion]);
+        $notasFinales = $notasFinalesStmt->fetchAll();
+    }
 
     $cuenta = db()->prepare("SELECT username, email, role, created_at FROM users WHERE identificacion = ? AND role = 'estudiante'");
     $cuenta->execute([$identificacion]);
@@ -85,14 +99,14 @@ if ($tipo === 'estudiante') {
         'cuentaAcceso' => $cuenta->fetch() ?: null,
         'matriculas' => $matriculas->fetchAll(),
         'cursosLigeros' => $cursosLigeros->fetchAll(),
-        'cursos' => $cursos->fetchAll(),
+        'cursos' => $cursos,
         'asignaturas' => $asignaturas->fetchAll(),
-        'creditos' => $creditos->fetchAll(),
-        'pagosRealizados' => $pagosRealizados->fetchAll(),
-        'pagosPendientes' => $pagosPendientes->fetchAll(),
-        'notasCredito' => $notasCredito->fetchAll(),
-        'evaluaciones' => $evaluaciones->fetchAll(),
-        'notasFinales' => $notasFinales->fetchAll(),
+        'creditos' => $creditos,
+        'pagosRealizados' => $pagosRealizados,
+        'pagosPendientes' => $pagosPendientes,
+        'notasCredito' => $notasCredito,
+        'evaluaciones' => $evaluaciones,
+        'notasFinales' => $notasFinales,
     ]);
 }
 

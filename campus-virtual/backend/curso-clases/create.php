@@ -28,13 +28,17 @@ if (!empty($body['crearConZoom'])) {
     $meetingId   = $creada['meetingId'];
 }
 
+// Una clase de prueba siempre se puede borrar de verdad, aunque ya tenga
+// grabación — una real, no (ver curso-clases/delete.php).
+$esPrueba = !empty($body['esPrueba']) ? 1 : 0;
+
 db()->prepare(
     'INSERT INTO curso_clases_virtuales
-        (curso_id, aula_recurso_id, titulo, fecha_inicio, fecha_fin, link_reunion, zoom_meeting_id)
-     VALUES (?,?,?,?,?,?,?)'
+        (curso_id, aula_recurso_id, titulo, fecha_inicio, fecha_fin, link_reunion, zoom_meeting_id, es_prueba)
+     VALUES (?,?,?,?,?,?,?,?)'
 )->execute([
     $cursoId, $body['aulaRecursoId'] ?? null, $titulo, $fechaInicio, $fechaFin,
-    $linkReunion ?: null, $meetingId,
+    $linkReunion ?: null, $meetingId, $esPrueba,
 ]);
 
 respond(['ok' => true, 'clase' => ['id' => (int) db()->lastInsertId(), 'linkReunion' => $linkReunion ?: null]]);

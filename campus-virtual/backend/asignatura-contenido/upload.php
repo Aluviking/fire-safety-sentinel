@@ -13,6 +13,7 @@ $stmt->execute([$id]);
 $item = $stmt->fetch();
 if (!$item) fail('Recurso no encontrado.', 404);
 require_gestion_asignatura($user, (int) $item['asignatura_id']);
+require_dueno_o_compartido($user, $item['creado_por_identificacion']);
 
 if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) fail('Archivo inválido.');
 

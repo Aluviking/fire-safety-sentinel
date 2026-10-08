@@ -38,6 +38,14 @@ if (($data['event'] ?? '') === 'recording.completed') {
             if (($f['file_type'] ?? '') === 'MP4' && !empty($f['play_url'])) { $shareUrl = $f['play_url']; break; }
         }
     }
+    // Zoom le pide clave a cualquiera que abra el link sin estar loggeado con
+    // la cuenta dueña de la grabación — y ningún estudiante lo está. Si no se
+    // le pega la clave al link, a todos les sale ese candado pidiéndola.
+    $password = $data['payload']['object']['password'] ?? null;
+    if ($shareUrl && $password && !str_contains($shareUrl, 'pwd=')) {
+        $separador = str_contains($shareUrl, '?') ? '&' : '?';
+        $shareUrl .= $separador . 'pwd=' . urlencode($password);
+    }
     if ($meetingId !== '' && $shareUrl) {
         foreach (['asignatura_clases_virtuales', 'curso_clases_virtuales', 'curso_ligero_clases_virtuales', 'programa_clases_virtuales'] as $tabla) {
             db()->prepare("UPDATE {$tabla} SET grabacion_url = ? WHERE zoom_meeting_id = ?")->execute([$shareUrl, $meetingId]);

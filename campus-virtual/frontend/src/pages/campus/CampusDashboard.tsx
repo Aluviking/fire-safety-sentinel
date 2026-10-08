@@ -7,7 +7,7 @@ import {
   Users, BookOpen, GraduationCap, DollarSign, FileText,
   Calendar, Award, ClipboardList, UserCheck, Building,
   ChevronRight, LayoutDashboard, AlertCircle, Briefcase,
-  Shield, TrendingUp, Clock, UserCog, ScrollText, ShieldCheck, Video, UserPlus,
+  Shield, TrendingUp, Clock, UserCog, ScrollText, ShieldCheck, Video, UserPlus, PlayCircle,
 } from "lucide-react";
 import { useCampusAuth, type CampusUser, type Permisos } from "@/context/CampusAuthContext";
 import { apiFetch } from "@/lib/api";
@@ -266,12 +266,13 @@ const QUICK_ACCESS = [
 
 /* ── Datos reales del panel de inicio (anuncios/clases/auditoría/contadores) ── */
 interface AnuncioReciente { origen: string; origen_nombre: string; titulo: string; mensaje: string | null; importancia: string; created_at: string }
-interface ClaseProxima { origen: string; origen_nombre: string; origen_id: number; titulo: string; fecha_inicio: string; fecha_fin: string | null }
+interface ClaseProxima { origen: string; origen_nombre: string; origen_id: number; titulo: string; fecha_inicio: string; fecha_fin: string | null; grabacion_url?: string | null }
 interface AuditoriaReciente { id: number; user_name: string; action: string; detail: string | null; created_at: string }
 interface PreinscripcionReciente { id: number; nombres: string; apellidos: string; tipo_interes: string; item_nombre: string; created_at: string }
 interface ResumenData {
   anuncios: AnuncioReciente[];
   clases: ClaseProxima[];
+  clasesHistorial: ClaseProxima[];
   auditoria: AuditoriaReciente[];
   preinscripciones: PreinscripcionReciente[];
   stats: { cursos: number; pagosPendientes: number; notificaciones: number };
@@ -410,8 +411,8 @@ function NavDropdown({
 
 /* ── Campana de notificaciones (real: anuncios + auditoría de los últimos 7 días) ── */
 function NotificationBell({
-  resumen, loading, isSuperAdmin, onGoHistorial, onGoInscritos,
-}: { resumen: ResumenData | null; loading: boolean; isSuperAdmin: boolean; onGoHistorial: () => void; onGoInscritos: () => void }) {
+  resumen, loading, isSuperAdmin, onGoHistorial, onGoInscritos, onGoToClase,
+}: { resumen: ResumenData | null; loading: boolean; isSuperAdmin: boolean; onGoHistorial: () => void; onGoInscritos: () => void; onGoToClase: (c: ClaseProxima) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -439,6 +440,13 @@ function NotificationBell({
           detalle: `${p.tipo_interes === "programa" ? "Programa" : p.tipo_interes === "diplomado" ? "Diplomado" : "Curso"}: ${p.item_nombre}`,
           fecha: p.created_at,
           onClick: onGoInscritos,
+        })),
+        ...resumen.clases.map((c, i) => ({
+          key: `c-${i}`,
+          titulo: "Próxima clase, no te la pierdas",
+          detalle: `${c.titulo} · ${c.origen}: ${c.origen_nombre}`,
+          fecha: c.fecha_inicio,
+          onClick: () => onGoToClase(c),
         })),
       ]
         .sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime())
@@ -738,6 +746,48 @@ function DashboardHome({
                     </div>
                     <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0 mt-1" />
                   </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+            <PlayCircle className="w-4 h-4 text-[#C41717]/60" />
+            <h3 className="text-slate-700 text-sm font-semibold">Histórico de clases virtuales</h3>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {resumenLoading ? (
+              <p className="text-slate-400 text-xs text-center py-8">Cargando...</p>
+            ) : (resumen?.clasesHistorial.length ?? 0) === 0 ? (
+              <p className="text-slate-400 text-xs text-center py-8">Aún no hay clases pasadas.</p>
+            ) : (
+              resumen!.clasesHistorial.map((c, i) => {
+                const d = new Date(c.fecha_inicio);
+                return (
+                  <div key={`${c.origen}-${c.titulo}-${i}`} className="flex items-start gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
+                    <button onClick={() => onGoToClase(c)} className="flex items-start gap-3 flex-1 min-w-0 text-left">
+                      <div className="flex flex-col items-center shrink-0 w-10">
+                        <span className="text-slate-400 text-[10px] font-bold">{d.toLocaleDateString("es-CO", { day: "numeric", month: "short" })}</span>
+                        <span className="text-slate-400 text-[9px]">{d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-slate-700 text-sm leading-snug">{c.titulo}</p>
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-medium">
+                          {c.origen}: {c.origen_nombre}
+                        </span>
+                      </div>
+                    </button>
+                    {c.grabacion_url ? (
+                      <a href={c.grabacion_url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[11px] font-semibold text-[#C41717] hover:text-[#A81212] shrink-0 mt-1">
+                        <PlayCircle className="w-3.5 h-3.5" /> Ver grabación
+                      </a>
+                    ) : (
+                      <span className="text-[10px] text-slate-300 shrink-0 mt-1.5">En proceso...</span>
+                    )}
+                  </div>
                 );
               })
             )}
@@ -1099,6 +1149,7 @@ export default function CampusDashboard() {
               isSuperAdmin={isSuperAdmin}
               onGoHistorial={() => setActiveNav({ nav: "Historial", sub: "" })}
               onGoInscritos={() => setActiveNav({ nav: "Institucional", sub: "Inscritos" })}
+              onGoToClase={handleGoToClase}
             />
             <button className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/15 transition-all">
               <HelpCircle className="w-4 h-4" />

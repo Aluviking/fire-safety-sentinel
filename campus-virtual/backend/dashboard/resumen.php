@@ -43,6 +43,28 @@ $clases = db()->query(
      ORDER BY fecha_inicio ASC LIMIT 8"
 )->fetchAll();
 
+// Histórico: mismas 4 familias, pero ya pasadas y con el link de la
+// grabación — para que el panel de Docente/Admin tenga la misma tarjeta de
+// "Histórico de clases virtuales" que ya tiene el panel del Estudiante.
+$clasesHistorial = db()->query(
+    "(SELECT 'Programa' AS origen, p.nombre AS origen_nombre, p.id AS origen_id, c.titulo, c.fecha_inicio, c.fecha_fin, c.grabacion_url
+      FROM programa_clases_virtuales c JOIN programas p ON p.id = c.programa_id
+      WHERE COALESCE(c.fecha_fin, c.fecha_inicio) < NOW() AND c.archivado = 0)
+     UNION ALL
+     (SELECT 'Asignatura', asg.nombre, asg.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.grabacion_url
+      FROM asignatura_clases_virtuales c JOIN asignaturas asg ON asg.id = c.asignatura_id
+      WHERE COALESCE(c.fecha_fin, c.fecha_inicio) < NOW() AND c.archivado = 0)
+     UNION ALL
+     (SELECT 'Curso', cu.codigo_nombre, cu.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.grabacion_url
+      FROM curso_clases_virtuales c JOIN cursos cu ON cu.id = c.curso_id
+      WHERE COALESCE(c.fecha_fin, c.fecha_inicio) < NOW() AND c.archivado = 0)
+     UNION ALL
+     (SELECT 'Curso ligero', cl.nombre, cl.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.grabacion_url
+      FROM curso_ligero_clases_virtuales c JOIN cursos_ligeros cl ON cl.id = c.curso_ligero_id
+      WHERE COALESCE(c.fecha_fin, c.fecha_inicio) < NOW() AND c.archivado = 0)
+     ORDER BY fecha_inicio DESC LIMIT 8"
+)->fetchAll();
+
 // La auditoría completa (Historial) es exclusiva de Super Admin — aquí solo
 // se asoma un resumen de las últimas acciones para la campana.
 $auditoria = [];
@@ -91,6 +113,7 @@ respond([
     'ok' => true,
     'anuncios' => $anuncios,
     'clases' => $clases,
+    'clasesHistorial' => $clasesHistorial,
     'auditoria' => $auditoria,
     'preinscripciones' => $preinscripciones,
     'stats' => [

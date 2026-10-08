@@ -15,14 +15,20 @@ $stmt = db()->prepare('SELECT COALESCE(MAX(orden), -1) + 1 FROM asignatura_conte
 $stmt->execute([$asignaturaId]);
 $orden = (int) $stmt->fetchColumn();
 
+// Si lo crea un Docente, queda marcado como suyo — un colega docente
+// asignado a la misma asignatura no lo va a poder ver/editar/descargar. Lo
+// que crea Admin/Super Admin (NULL) es material institucional, visible y
+// editable para cualquier docente asignado.
+$creadoPor = $user['role'] === 'docente' ? ($user['identificacion'] ?? null) : null;
+
 db()->prepare(
     'INSERT INTO asignatura_contenido
         (asignatura_id, titulo, modulo, tipo, orden, descripcion, contenido_texto, url_externa,
          como_completarlo, restringir_fecha, fecha_desde, fecha_hasta,
          preguntas_por_pagina, preguntas_aleatorias, mostrar_puntaje, tiempo_maximo_min, tiempo_minimo_min,
          porcentaje_aprobacion, intentos_disponibles, permitir_editar_respuestas,
-         permitir_verificar_antes_enviar, ver_detalle_resultados, tomar_foto)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+         permitir_verificar_antes_enviar, ver_detalle_resultados, tomar_foto, creado_por_identificacion)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
 )->execute([
     $asignaturaId, $titulo, trim($body['modulo'] ?? '') ?: null, $body['tipo'] ?? 'Texto', $orden,
     $body['descripcion'] ?? null, $body['contenidoTexto'] ?? null, $body['urlExterna'] ?? null,
@@ -34,7 +40,7 @@ db()->prepare(
     $body['intentosDisponibles'] ?? 1,
     array_key_exists('permitirEditarRespuestas', $body) ? (!empty($body['permitirEditarRespuestas']) ? 1 : 0) : 1,
     array_key_exists('permitirVerificarAntesEnviar', $body) ? (!empty($body['permitirVerificarAntesEnviar']) ? 1 : 0) : 1,
-    !empty($body['verDetalleResultados']) ? 1 : 0, !empty($body['tomarFoto']) ? 1 : 0,
+    !empty($body['verDetalleResultados']) ? 1 : 0, !empty($body['tomarFoto']) ? 1 : 0, $creadoPor,
 ]);
 
 respond(['ok' => true, 'contenido' => ['id' => (int) db()->lastInsertId(), 'titulo' => $titulo]]);

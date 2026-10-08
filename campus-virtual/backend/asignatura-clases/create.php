@@ -28,13 +28,27 @@ if (!empty($body['crearConZoom'])) {
     $meetingId   = $creada['meetingId'];
 }
 
+// grabacionUrl: para cargar a mano la grabación de una clase que ya pasó
+// (ej. se perdió el aviso automático del webhook, o la reunión se borró y
+// se recrea solo para dejar la grabación disponible) — opcional, normalmente
+// la llena sola el webhook de Zoom cuando termina de procesar.
+$grabacionUrl = trim($body['grabacionUrl'] ?? '');
+// esPrueba: una clase de prueba siempre se puede borrar de verdad, aunque ya
+// tenga grabación — una real, no (require_gestion_* ya exige permiso para
+// borrar cualquiera de las dos, esto solo decide CÓMO se borra).
+$esPrueba = !empty($body['esPrueba']) ? 1 : 0;
+// Si la crea un Docente, queda marcada como suya — un colega docente
+// asignado a la misma asignatura no la va a ver. Lo de Admin/Super Admin
+// (NULL) es institucional, visible para cualquier docente asignado.
+$creadoPor = $user['role'] === 'docente' ? ($user['identificacion'] ?? null) : null;
+
 db()->prepare(
     'INSERT INTO asignatura_clases_virtuales
-        (asignatura_id, aula_recurso_id, titulo, fecha_inicio, fecha_fin, link_reunion, zoom_meeting_id)
-     VALUES (?,?,?,?,?,?,?)'
+        (asignatura_id, aula_recurso_id, titulo, fecha_inicio, fecha_fin, link_reunion, zoom_meeting_id, grabacion_url, es_prueba, creado_por_identificacion)
+     VALUES (?,?,?,?,?,?,?,?,?,?)'
 )->execute([
     $asignaturaId, $body['aulaRecursoId'] ?? null, $titulo, $fechaInicio, $fechaFin,
-    $linkReunion ?: null, $meetingId,
+    $linkReunion ?: null, $meetingId, $grabacionUrl ?: null, $esPrueba, $creadoPor,
 ]);
 
 respond(['ok' => true, 'clase' => ['id' => (int) db()->lastInsertId(), 'linkReunion' => $linkReunion ?: null]]);

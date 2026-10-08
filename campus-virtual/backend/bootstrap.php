@@ -605,6 +605,25 @@ function docente_tiene_asignatura_periodo(string $identificacion, string $asigna
     return (bool) $stmt->fetchColumn();
 }
 
+/**
+ * Candado de "dueño" para contenido/anuncios/clases de una Asignatura o
+ * Programa compartidos entre varios docentes: un docente solo puede
+ * editar/borrar/subir archivos a lo que él mismo creó — nunca lo de un
+ * colega, aunque ambos estén asignados a la misma asignatura/programa. Lo
+ * creado por Admin/Super Admin (creado_por_identificacion NULL) se trata
+ * como material institucional compartido, editable por cualquier docente
+ * asignado (ya pasó el candado de require_gestion_* antes de llegar aquí).
+ * Admin/Super Admin siempre pasan, sin importar quién lo creó.
+ */
+function require_dueno_o_compartido(array $user, ?string $creadoPor): void
+{
+    if ($user['role'] !== 'docente') return;
+    if ($creadoPor === null || $creadoPor === '') return;
+    if ($creadoPor !== ($user['identificacion'] ?? null)) {
+        fail('Esto lo creó otro docente — no lo puedes editar ni eliminar.', 403);
+    }
+}
+
 /* ─── Auditoría ────────────────────────────────────────────────────────── */
 function log_trace(array $user, string $action, ?string $detail = null): void
 {

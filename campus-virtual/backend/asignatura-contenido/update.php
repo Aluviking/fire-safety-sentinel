@@ -10,11 +10,12 @@ $id     = (int) ($body['id'] ?? 0);
 $titulo = trim($body['titulo'] ?? '');
 if ($id === 0 || $titulo === '') fail('El título es requerido.');
 
-$actual = db()->prepare('SELECT asignatura_id FROM asignatura_contenido WHERE id = ?');
+$actual = db()->prepare('SELECT asignatura_id, creado_por_identificacion FROM asignatura_contenido WHERE id = ?');
 $actual->execute([$id]);
-$asignaturaId = $actual->fetchColumn();
-if ($asignaturaId === false) fail('Recurso no encontrado.', 404);
-require_gestion_asignatura($user, (int) $asignaturaId);
+$row = $actual->fetch();
+if (!$row) fail('Recurso no encontrado.', 404);
+require_gestion_asignatura($user, (int) $row['asignatura_id']);
+require_dueno_o_compartido($user, $row['creado_por_identificacion']);
 
 db()->prepare(
     'UPDATE asignatura_contenido SET titulo = ?, modulo = ?, descripcion = ?, contenido_texto = ?, url_externa = ?,

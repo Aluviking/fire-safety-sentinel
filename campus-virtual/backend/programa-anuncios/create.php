@@ -11,7 +11,12 @@ $titulo     = trim($body['titulo'] ?? '');
 if ($programaId === 0 || $titulo === '') fail('El título es requerido.');
 require_gestion_programa($user, $programaId);
 
-db()->prepare('INSERT INTO programa_anuncios (programa_id, titulo, mensaje, importancia) VALUES (?,?,?,?)')
-    ->execute([$programaId, $titulo, $body['mensaje'] ?? null, $body['importancia'] ?? 'Normal']);
+// Si lo crea un Docente, queda marcado como suyo — un colega docente
+// asignado al mismo programa no lo va a ver. Lo de Admin/Super Admin (NULL)
+// es institucional, visible para cualquier docente asignado.
+$creadoPor = $user['role'] === 'docente' ? ($user['identificacion'] ?? null) : null;
+
+db()->prepare('INSERT INTO programa_anuncios (programa_id, titulo, mensaje, importancia, creado_por_identificacion) VALUES (?,?,?,?,?)')
+    ->execute([$programaId, $titulo, $body['mensaje'] ?? null, $body['importancia'] ?? 'Normal', $creadoPor]);
 
 respond(['ok' => true, 'anuncio' => ['id' => (int) db()->lastInsertId(), 'titulo' => $titulo]]);

@@ -16,11 +16,22 @@ if ($programaId === 0) fail('programaId requerido.');
 
 require_acceso_programa($user, $programaId);
 
+// Se agregan también las clases creadas directamente en una asignatura del
+// pensum de este programa (tabla aparte, asignatura_clases_virtuales) —
+// mismo motivo que programa-clases/list.php del lado admin: una clase
+// programada desde una asignatura puntual parecía no existir al ver el
+// programa que la contiene. `origen`/`origen_nombre` le dicen al front de
+// dónde viene cada fila, para poder organizarlas por asignatura.
 $stmt = db()->prepare(
-    'SELECT id, titulo, fecha_inicio, fecha_fin, link_reunion, grabacion_url
-     FROM programa_clases_virtuales
-     WHERE programa_id = ?
-     ORDER BY fecha_inicio'
+    "(SELECT 'Programa' AS origen, p.nombre AS origen_nombre, c.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.link_reunion, c.grabacion_url
+      FROM programa_clases_virtuales c JOIN programas p ON p.id = c.programa_id
+      WHERE c.programa_id = ?)
+     UNION ALL
+     (SELECT 'Asignatura', asg.nombre, c.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.link_reunion, c.grabacion_url
+      FROM asignatura_clases_virtuales c JOIN asignaturas asg ON asg.id = c.asignatura_id
+      JOIN programa_asignaturas pa ON pa.asignatura_id = asg.id
+      WHERE pa.programa_id = ?)
+     ORDER BY fecha_inicio"
 );
-$stmt->execute([$programaId]);
+$stmt->execute([$programaId, $programaId]);
 respond(['ok' => true, 'clases' => $stmt->fetchAll()]);
