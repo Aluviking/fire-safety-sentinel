@@ -783,7 +783,12 @@ function DashboardHome({
           <div className="flex gap-3">
             {[
               { label: "Cursos",     value: resumenLoading ? "—" : String(resumen?.stats.cursos ?? 0),          icon: BookOpen      },
-              { label: "Pagos pend.", value: resumenLoading ? "—" : String(resumen?.stats.pagosPendientes ?? 0), icon: ClipboardList },
+              // "Pagos pend." es información de tesorería — un Docente no
+              // tiene ese módulo, así que ni siquiera se le muestra la
+              // tarjeta (mejor que mostrar un "0" que parece un dato real).
+              ...(canVerVista("tesoreria.pagos")
+                ? [{ label: "Pagos pend.", value: resumenLoading ? "—" : String(resumen?.stats.pagosPendientes ?? 0), icon: ClipboardList }]
+                : []),
               { label: "Novedades",  value: resumenLoading ? "—" : String(resumen?.stats.notificaciones ?? 0),   icon: Bell          },
             ].map(({ label, value, icon: Icon }) => (
               <div key={label}

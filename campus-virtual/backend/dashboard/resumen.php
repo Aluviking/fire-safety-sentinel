@@ -98,8 +98,24 @@ if ($permisos['all'] || (($permisos['modulos']['institucional.inscritos']['ver']
 }
 
 // Contadores reales para las tarjetas del encabezado (nada decorativo).
-$totalCursos = (int) db()->query('SELECT COUNT(*) FROM cursos')->fetchColumn();
-$pagosPendientes = (int) db()->query('SELECT COUNT(*) FROM pagos_pendientes')->fetchColumn();
+// Un docente solo ve el total de SUS propios cursos, no el de toda la
+// institución — mismo candado de dueño que ya usa cursos/list.php.
+if ($user['role'] === 'docente') {
+    $stmtTotalCursos = db()->prepare('SELECT COUNT(*) FROM cursos WHERE docente_identificacion = ?');
+    $stmtTotalCursos->execute([$user['identificacion'] ?? '']);
+    $totalCursos = (int) $stmtTotalCursos->fetchColumn();
+} else {
+    $totalCursos = (int) db()->query('SELECT COUNT(*) FROM cursos')->fetchColumn();
+}
+
+// Pagos pendientes es información de cartera/tesorería — un Docente no
+// tiene ese módulo (rol_modulos_por_defecto() ni siquiera se lo asigna),
+// así que no se le calcula ni se le muestra, mismo candado por permiso
+// real que ya protege Preinscripciones arriba.
+$pagosPendientes = 0;
+if ($permisos['all'] || (($permisos['modulos']['tesoreria.pagos']['ver'] ?? false) === true)) {
+    $pagosPendientes = (int) db()->query('SELECT COUNT(*) FROM pagos_pendientes')->fetchColumn();
+}
 $anunciosRecientesCount = (int) db()->query(
     "SELECT COUNT(*) FROM (
         SELECT created_at FROM programa_anuncios WHERE created_at >= NOW() - INTERVAL 7 DAY
