@@ -74,6 +74,25 @@ $stmt = db()->prepare(
 $stmt->execute($paramsScope);
 $clases = $stmt->fetchAll();
 
+// Cuántas de esas próximas clases hay en total (sin el LIMIT 8 de arriba) —
+// esto es justamente lo que debe sumar al badge de "Novedades": antes esa
+// cuenta solo miraba anuncios/auditoría/preinscripciones y nunca las
+// reuniones próximas, así que a un Docente con reuniones agendadas pero sin
+// anuncios recientes le salía "0 Novedades" aunque sí tuviera algo pendiente.
+$stmtClasesCount = db()->prepare(
+    "SELECT COUNT(*) FROM (
+        (SELECT c.id FROM programa_clases_virtuales c JOIN programas p ON p.id = c.programa_id WHERE c.fecha_inicio >= NOW() AND c.es_prueba = 0$scopeProg)
+        UNION ALL
+        (SELECT c.id FROM asignatura_clases_virtuales c JOIN asignaturas asg ON asg.id = c.asignatura_id WHERE c.fecha_inicio >= NOW() AND c.es_prueba = 0$scopeAsg)
+        UNION ALL
+        (SELECT c.id FROM curso_clases_virtuales c JOIN cursos cu ON cu.id = c.curso_id WHERE c.fecha_inicio >= NOW() AND c.es_prueba = 0$scopeCursoClases)
+        UNION ALL
+        (SELECT c.id FROM curso_ligero_clases_virtuales c JOIN cursos_ligeros cl ON cl.id = c.curso_ligero_id WHERE c.fecha_inicio >= NOW() AND c.es_prueba = 0$scopeCL)
+    ) t"
+);
+$stmtClasesCount->execute($paramsScope);
+$clasesProximasCount = (int) $stmtClasesCount->fetchColumn();
+
 // Histórico: mismas 4 familias, pero ya pasadas y con el link de la
 // grabación — para que el panel de Docente/Admin tenga la misma tarjeta de
 // "Histórico de clases virtuales" que ya tiene el panel del Estudiante.
@@ -179,6 +198,6 @@ respond([
     'stats' => [
         'cursos' => $totalCursos,
         'pagosPendientes' => $pagosPendientes,
-        'notificaciones' => $anunciosRecientesCount + $auditoriaRecienteCount + $preinscripcionesPendientesCount,
+        'notificaciones' => $anunciosRecientesCount + $auditoriaRecienteCount + $preinscripcionesPendientesCount + $clasesProximasCount,
     ],
 ]);
