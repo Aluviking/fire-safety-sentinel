@@ -607,6 +607,65 @@ interface ProgramaAsignado { id: number; nombre: string; imagen_path: string | n
 interface CursoAsignado { id: number; codigo_nombre: string | null; imagen_path: string | null; dias_disponibles: number | null }
 interface CursoLigeroAsignado { id: number; nombre: string; categoria: string | null; imagen_path: string | null }
 
+/* ── Carpeta colapsable: evita que la grilla completa ocupe espacio siempre
+   — se ve un resumen compacto (icono + nombre + cantidad) y el clic abre el
+   detalle en una ventana flotante. Reusable para cualquier categoría futura
+   (diplomados, seminarios, etc.) sin rediseñar nada. ── */
+function CategoriaFolder({
+  icon: Icon, label, count, children,
+}: { icon: typeof GraduationCap; label: string; count: number; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  if (count === 0) return null;
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 hover:border-[#C41717]/30 hover:shadow-sm transition-all"
+      >
+        <span className="flex items-center gap-2.5 text-slate-700 text-sm font-bold">
+          <Icon className="w-4 h-4 text-[#C41717]/60" /> {label}
+          <span className="text-slate-400 text-xs font-semibold">{count}</span>
+        </span>
+        <ChevronRight className="w-4 h-4 text-slate-400" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-[3px]"
+              onClick={() => setOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="relative w-full sm:max-w-3xl lg:max-w-5xl max-h-[92vh] sm:max-h-[88vh]
+                         flex flex-col rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40 shrink-0" />
+              <div className="px-5 sm:px-7 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <h2 className="text-slate-900 font-bold text-lg flex items-center gap-2">
+                  <Icon className="w-4 h-4 text-[#C41717]/60" /> {label}
+                  <span className="text-slate-400 text-sm font-semibold">{count}</span>
+                </h2>
+                <button onClick={() => setOpen(false)} className="p-2 -mr-1 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all shrink-0">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 sm:px-7 py-5">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {children}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
 function MisAsignadosDocente({ onGoToItem }: { onGoToItem: (sub: string, idParam: string, id: number) => void }) {
   const [programas, setProgramas] = useState<ProgramaAsignado[]>([]);
   const [cursos, setCursos] = useState<CursoAsignado[]>([]);
@@ -626,79 +685,55 @@ function MisAsignadosDocente({ onGoToItem }: { onGoToItem: (sub: string, idParam
   if (!loaded || (programas.length === 0 && cursos.length === 0 && cursosLigeros.length === 0)) return null;
 
   return (
-    <div className="space-y-7">
-      {programas.length > 0 && (
-        <div>
-          <h2 className="text-slate-700 text-sm font-bold mb-3 flex items-center gap-2.5">
-            <GraduationCap className="w-4 h-4 text-[#C41717]/60" /> Mis programas
-            <span className="text-slate-400 text-xs font-semibold">{programas.length}</span>
-          </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {programas.map((p) => (
-              <ItemCard
-                key={p.id}
-                icon={GraduationCap}
-                title={p.nombre}
-                imagePath={p.imagen_path ? `/programas/imagen.php?id=${p.id}` : null}
-                accent={accentFor(p.nombre)}
-                onClick={() => onGoToItem(p.nombre.toUpperCase().startsWith("CURSO") ? "Estructuración › Crear curso" : "Estructuración › Crear programa", "programaId", p.id)}
-                footer={
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                    <Clock className="w-3 h-3 text-slate-400" /> {p.dias_disponibles != null ? `${p.dias_disponibles} días disponibles` : "Sin fecha límite"}
-                  </span>
-                }
-              />
-            ))}
-          </div>
-        </div>
-      )}
-      {cursos.length > 0 && (
-        <div>
-          <h2 className="text-slate-700 text-sm font-bold mb-3 flex items-center gap-2.5">
-            <BookOpen className="w-4 h-4 text-[#C41717]/60" /> Mis cursos
-            <span className="text-slate-400 text-xs font-semibold">{cursos.length}</span>
-          </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {cursos.map((c) => (
-              <ItemCard
-                key={c.id}
-                icon={BookOpen}
-                title={c.codigo_nombre ?? "—"}
-                imagePath={c.imagen_path ? `/cursos/imagen.php?id=${c.id}` : null}
-                accent={accentFor(c.codigo_nombre ?? String(c.id))}
-                onClick={() => onGoToItem("Educación virtual › Cursos virtuales", "cursoId", c.id)}
-                footer={
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                    <Clock className="w-3 h-3 text-slate-400" /> {c.dias_disponibles != null ? `${c.dias_disponibles} días disponibles` : "Sin fecha límite"}
-                  </span>
-                }
-              />
-            ))}
-          </div>
-        </div>
-      )}
-      {cursosLigeros.length > 0 && (
-        <div>
-          <h2 className="text-slate-700 text-sm font-bold mb-3 flex items-center gap-2.5">
-            <Award className="w-4 h-4 text-[#C41717]/60" /> Mis cursos ligeros
-            <span className="text-slate-400 text-xs font-semibold">{cursosLigeros.length}</span>
-          </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {cursosLigeros.map((c) => (
-              <ItemCard
-                key={c.id}
-                icon={Award}
-                title={c.nombre}
-                subtitle={c.categoria}
-                imagePath={c.imagen_path ? `/cursos-ligeros/imagen.php?id=${c.id}` : null}
-                accent={accentFor(c.nombre)}
-                onClick={() => onGoToItem("Educación virtual › Cursos ligeros", "cursoLigeroId", c.id)}
-                footer={<span className="text-[11px] text-slate-300">&nbsp;</span>}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="space-y-2.5">
+      <CategoriaFolder icon={GraduationCap} label="Mis programas" count={programas.length}>
+        {programas.map((p) => (
+          <ItemCard
+            key={p.id}
+            icon={GraduationCap}
+            title={p.nombre}
+            imagePath={p.imagen_path ? `/programas/imagen.php?id=${p.id}` : null}
+            accent={accentFor(p.nombre)}
+            onClick={() => onGoToItem(p.nombre.toUpperCase().startsWith("CURSO") ? "Estructuración › Crear curso" : "Estructuración › Crear programa", "programaId", p.id)}
+            footer={
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                <Clock className="w-3 h-3 text-slate-400" /> {p.dias_disponibles != null ? `${p.dias_disponibles} días disponibles` : "Sin fecha límite"}
+              </span>
+            }
+          />
+        ))}
+      </CategoriaFolder>
+      <CategoriaFolder icon={BookOpen} label="Mis cursos" count={cursos.length}>
+        {cursos.map((c) => (
+          <ItemCard
+            key={c.id}
+            icon={BookOpen}
+            title={c.codigo_nombre ?? "—"}
+            imagePath={c.imagen_path ? `/cursos/imagen.php?id=${c.id}` : null}
+            accent={accentFor(c.codigo_nombre ?? String(c.id))}
+            onClick={() => onGoToItem("Educación virtual › Cursos virtuales", "cursoId", c.id)}
+            footer={
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                <Clock className="w-3 h-3 text-slate-400" /> {c.dias_disponibles != null ? `${c.dias_disponibles} días disponibles` : "Sin fecha límite"}
+              </span>
+            }
+          />
+        ))}
+      </CategoriaFolder>
+      <CategoriaFolder icon={Award} label="Mis cursos ligeros" count={cursosLigeros.length}>
+        {cursosLigeros.map((c) => (
+          <ItemCard
+            key={c.id}
+            icon={Award}
+            title={c.nombre}
+            subtitle={c.categoria}
+            imagePath={c.imagen_path ? `/cursos-ligeros/imagen.php?id=${c.id}` : null}
+            accent={accentFor(c.nombre)}
+            onClick={() => onGoToItem("Educación virtual › Cursos ligeros", "cursoLigeroId", c.id)}
+            footer={<span className="text-[11px] text-slate-300">&nbsp;</span>}
+          />
+        ))}
+      </CategoriaFolder>
     </div>
   );
 }
