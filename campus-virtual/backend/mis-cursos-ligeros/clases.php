@@ -14,10 +14,12 @@ if ($cursoLigeroId === 0) fail('cursoLigeroId requerido.');
 
 require_acceso_curso_ligero($user, $cursoLigeroId);
 
+// es_prueba = 0: las reuniones marcadas como "de prueba" al crearlas nunca
+// deben llegarle a un estudiante — mala experiencia, no son clases reales.
 $stmt = db()->prepare(
     'SELECT id, titulo, fecha_inicio, fecha_fin, link_reunion, grabacion_url
      FROM curso_ligero_clases_virtuales
-     WHERE curso_ligero_id = ?
+     WHERE curso_ligero_id = ? AND es_prueba = 0
      ORDER BY fecha_inicio'
 );
 $stmt->execute([$cursoLigeroId]);

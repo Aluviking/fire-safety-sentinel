@@ -563,15 +563,20 @@ function CrearAsignaturaModal({ programaId, onClose, onSaved }: { programaId: nu
      este pensum — el contenido en sí solo se crea/edita desde el módulo
      Asignaturas; esto es simplemente asomarse a verlo sin salir de aquí. ── */
 function VerContenidoAsignaturaTab({ programaId }: { programaId: number }) {
+  const { currentUser } = useCampusAuth();
   const [asignaturas, setAsignaturas] = useState<PensumAsignatura[]>([]);
   const [loading, setLoading] = useState(true);
   const [seleccionada, setSeleccionada] = useState<PensumAsignatura | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    apiFetch<{ asignaturas: PensumAsignatura[] }>(`/programa-asignaturas/list.php?programaId=${programaId}`)
+    // Un Docente solo ve aquí SUS propias asignaturas de este programa, no
+    // las de sus colegas — distinto del Pensum completo (esa sí la ve/edita
+    // entera, es gestión de estructura, no "lo suyo").
+    const soloMias = currentUser?.role === "docente" ? "&soloMias=1" : "";
+    apiFetch<{ asignaturas: PensumAsignatura[] }>(`/programa-asignaturas/list.php?programaId=${programaId}${soloMias}`)
       .then((d) => setAsignaturas(d.asignaturas)).finally(() => setLoading(false));
-  }, [programaId]);
+  }, [programaId, currentUser?.role]);
 
   if (seleccionada) {
     return (

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCampusAuth, type CampusUser, type Permisos } from "@/context/CampusAuthContext";
 import { apiFetch } from "@/lib/api";
+import { ItemCard, accentFor } from "./ItemCard";
 import RegistrarEstudianteModal from "./RegistrarEstudianteModal";
 import { CuentaSwitcher } from "./CuentaSwitcher";
 import RegistrarPersonalModal from "./RegistrarPersonalModal";
@@ -598,10 +599,117 @@ function ProgramasDestacados({ onNavigate }: { onNavigate: (nav: string, sub: st
   );
 }
 
+/* ── "Mis asignados" (Docente) — mismas tarjetas de Programas/Cursos/Cursos
+     ligeros que ya ve el estudiante, pero con lo que el Docente da clase —
+     los 3 endpoints ya vienen filtrados a "solo lo suyo" del lado del
+     servidor (mismo candado que usa el propio módulo Programas/Cursos). ── */
+interface ProgramaAsignado { id: number; nombre: string; imagen_path: string | null; dias_disponibles: number | null }
+interface CursoAsignado { id: number; codigo_nombre: string | null; imagen_path: string | null; dias_disponibles: number | null }
+interface CursoLigeroAsignado { id: number; nombre: string; categoria: string | null; imagen_path: string | null }
+
+function MisAsignadosDocente({ onGoToItem }: { onGoToItem: (sub: string, idParam: string, id: number) => void }) {
+  const [programas, setProgramas] = useState<ProgramaAsignado[]>([]);
+  const [cursos, setCursos] = useState<CursoAsignado[]>([]);
+  const [cursosLigeros, setCursosLigeros] = useState<CursoLigeroAsignado[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      apiFetch<{ programas: ProgramaAsignado[] }>("/programas/list.php").catch(() => ({ programas: [] })),
+      apiFetch<{ cursos: CursoAsignado[] }>("/cursos/list.php").catch(() => ({ cursos: [] })),
+      apiFetch<{ cursosLigeros: CursoLigeroAsignado[] }>("/cursos-ligeros/list.php").catch(() => ({ cursosLigeros: [] })),
+    ])
+      .then(([p, c, cl]) => { setProgramas(p.programas); setCursos(c.cursos); setCursosLigeros(cl.cursosLigeros); })
+      .finally(() => setLoaded(true));
+  }, []);
+
+  if (!loaded || (programas.length === 0 && cursos.length === 0 && cursosLigeros.length === 0)) return null;
+
+  return (
+    <div className="space-y-7">
+      {programas.length > 0 && (
+        <div>
+          <h2 className="text-slate-700 text-sm font-bold mb-3 flex items-center gap-2.5">
+            <GraduationCap className="w-4 h-4 text-[#C41717]/60" /> Mis programas
+            <span className="text-slate-400 text-xs font-semibold">{programas.length}</span>
+          </h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {programas.map((p) => (
+              <ItemCard
+                key={p.id}
+                icon={GraduationCap}
+                title={p.nombre}
+                imagePath={p.imagen_path ? `/programas/imagen.php?id=${p.id}` : null}
+                accent={accentFor(p.nombre)}
+                onClick={() => onGoToItem(p.nombre.toUpperCase().startsWith("CURSO") ? "Estructuración › Crear curso" : "Estructuración › Crear programa", "programaId", p.id)}
+                footer={
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                    <Clock className="w-3 h-3 text-slate-400" /> {p.dias_disponibles != null ? `${p.dias_disponibles} días disponibles` : "Sin fecha límite"}
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      {cursos.length > 0 && (
+        <div>
+          <h2 className="text-slate-700 text-sm font-bold mb-3 flex items-center gap-2.5">
+            <BookOpen className="w-4 h-4 text-[#C41717]/60" /> Mis cursos
+            <span className="text-slate-400 text-xs font-semibold">{cursos.length}</span>
+          </h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {cursos.map((c) => (
+              <ItemCard
+                key={c.id}
+                icon={BookOpen}
+                title={c.codigo_nombre ?? "—"}
+                imagePath={c.imagen_path ? `/cursos/imagen.php?id=${c.id}` : null}
+                accent={accentFor(c.codigo_nombre ?? String(c.id))}
+                onClick={() => onGoToItem("Educación virtual › Cursos virtuales", "cursoId", c.id)}
+                footer={
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                    <Clock className="w-3 h-3 text-slate-400" /> {c.dias_disponibles != null ? `${c.dias_disponibles} días disponibles` : "Sin fecha límite"}
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      {cursosLigeros.length > 0 && (
+        <div>
+          <h2 className="text-slate-700 text-sm font-bold mb-3 flex items-center gap-2.5">
+            <Award className="w-4 h-4 text-[#C41717]/60" /> Mis cursos ligeros
+            <span className="text-slate-400 text-xs font-semibold">{cursosLigeros.length}</span>
+          </h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {cursosLigeros.map((c) => (
+              <ItemCard
+                key={c.id}
+                icon={Award}
+                title={c.nombre}
+                subtitle={c.categoria}
+                imagePath={c.imagen_path ? `/cursos-ligeros/imagen.php?id=${c.id}` : null}
+                accent={accentFor(c.nombre)}
+                onClick={() => onGoToItem("Educación virtual › Cursos ligeros", "cursoLigeroId", c.id)}
+                footer={<span className="text-[11px] text-slate-300">&nbsp;</span>}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Dashboard Home ───────────────────────────────────────────────────────── */
 function DashboardHome({
-  user, onNavigate, resumen, resumenLoading, vistaSimulada, onGoToClase,
-}: { user: CampusUser; onNavigate: (nav: string, sub: string) => void; resumen: ResumenData | null; resumenLoading: boolean; vistaSimulada: "docente" | null; onGoToClase: (c: ClaseProxima) => void }) {
+  user, onNavigate, resumen, resumenLoading, vistaSimulada, onGoToClase, onGoToItem,
+}: {
+  user: CampusUser; onNavigate: (nav: string, sub: string) => void; resumen: ResumenData | null; resumenLoading: boolean;
+  vistaSimulada: "docente" | null; onGoToClase: (c: ClaseProxima) => void; onGoToItem: (sub: string, idParam: string, id: number) => void;
+}) {
   const { canVer, permisos } = useCampusAuth();
   // Si Super Admin activó la vista simulada de Docente, el saludo/accesos
   // rápidos usan los permisos de vista previa en vez de los reales — es solo
@@ -795,6 +903,8 @@ function DashboardHome({
         </div>
       </div>
 
+      {user.role === "docente" && <MisAsignadosDocente onGoToItem={onGoToItem} />}
+
       <ProgramasDestacados onNavigate={onNavigate} />
     </motion.div>
   );
@@ -950,6 +1060,15 @@ export default function CampusDashboard() {
       return;
     }
     setSearchParams({ nav: "Académico", sub, [idParam]: String(c.origen_id), [tabParam]: "clases" }, { replace: true });
+    setMobileMenuOpen(false);
+    setOpenMenu(null);
+  };
+
+  // Acceso directo desde las tarjetas de "Mis asignados" (Docente) a un
+  // programa/curso/curso-ligero puntual, ya abierto — mismo mecanismo que
+  // handleGoToClase, sin pestaña fija (entra a la que tenga por defecto).
+  const handleGoToItem = (sub: string, idParam: string, id: number) => {
+    setSearchParams({ nav: "Académico", sub, [idParam]: String(id) }, { replace: true });
     setMobileMenuOpen(false);
     setOpenMenu(null);
   };
@@ -1348,7 +1467,7 @@ export default function CampusDashboard() {
         {personaAbierta ? (
           <PersonaDetalleView tipo={personaAbierta.tipo} id={personaAbierta.id} onBack={() => setPersonaAbierta(null)} />
         ) : !activeNav ? (
-          <DashboardHome user={user} onNavigate={handleNavigate} resumen={resumen} resumenLoading={resumenLoading} vistaSimulada={vistaSimulada} onGoToClase={handleGoToClase} />
+          <DashboardHome user={user} onNavigate={handleNavigate} resumen={resumen} resumenLoading={resumenLoading} vistaSimulada={vistaSimulada} onGoToClase={handleGoToClase} onGoToItem={handleGoToItem} />
         ) : activeNav.nav === "Usuarios" ? (
           <UsuariosView />
         ) : activeNav.nav === "Perfiles" && isSuperAdmin ? (

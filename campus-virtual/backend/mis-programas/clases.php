@@ -22,15 +22,17 @@ require_acceso_programa($user, $programaId);
 // programada desde una asignatura puntual parecía no existir al ver el
 // programa que la contiene. `origen`/`origen_nombre` le dicen al front de
 // dónde viene cada fila, para poder organizarlas por asignatura.
+// es_prueba = 0: las reuniones marcadas como "de prueba" al crearlas nunca
+// deben llegarle a un estudiante — mala experiencia, no son clases reales.
 $stmt = db()->prepare(
     "(SELECT 'Programa' AS origen, p.nombre AS origen_nombre, c.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.link_reunion, c.grabacion_url
       FROM programa_clases_virtuales c JOIN programas p ON p.id = c.programa_id
-      WHERE c.programa_id = ?)
+      WHERE c.programa_id = ? AND c.es_prueba = 0)
      UNION ALL
      (SELECT 'Asignatura', asg.nombre, c.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.link_reunion, c.grabacion_url
       FROM asignatura_clases_virtuales c JOIN asignaturas asg ON asg.id = c.asignatura_id
       JOIN programa_asignaturas pa ON pa.asignatura_id = asg.id
-      WHERE pa.programa_id = ?)
+      WHERE pa.programa_id = ? AND c.es_prueba = 0)
      ORDER BY fecha_inicio"
 );
 $stmt->execute([$programaId, $programaId]);
