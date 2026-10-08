@@ -15,3 +15,26 @@
   # se deja este mapeo como respaldo por si algún día aparece alguno.
   AddType text/javascript .mjs
 </IfModule>
+
+<IfModule mod_headers.c>
+  # index.html NUNCA se cachea — es lo primero que pide cualquier
+  # dispositivo al entrar (celular incluido, donde no existe Ctrl+Shift+R),
+  # y es el único archivo que le dice al navegador cuáles son los JS/CSS
+  # "actuales". Si el navegador se queda con un index.html viejo, sigue
+  # pidiendo los archivos de la versión anterior aunque ya hayamos subido
+  # cambios — por eso antes hacía falta forzar la recarga a mano.
+  <FilesMatch "^index\.html$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+
+  # Los archivos dentro de /assets/ sí se pueden cachear agresivo y para
+  # siempre — Vite le pone un nombre distinto (con hash) a cada archivo cada
+  # vez que su contenido cambia, así que un nombre repetido SIEMPRE tiene el
+  # mismo contenido de siempre; no hay riesgo de quedarse con una versión
+  # vieja aunque se cachee "para siempre".
+  <FilesMatch "\.(js|css|woff2?|png|jpe?g|gif|svg|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
