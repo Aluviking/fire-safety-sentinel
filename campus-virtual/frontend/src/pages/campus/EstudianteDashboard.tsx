@@ -79,6 +79,11 @@ const ACCENT_PALETTE = ["#C41717", "#1E3A5F", "#9F1239", "#065F46", "#6B21A8", "
 const accentFor = (seed: string) =>
   ACCENT_PALETTE[[...seed].reduce((a, c) => a + c.charCodeAt(0), 0) % ACCENT_PALETTE.length];
 
+// Una clase ya pasada no debe ofrecer "Unirse" (confunde — la reunión en
+// vivo ya terminó), solo "Ver grabación" si ya está lista.
+const claseYaPaso = (c: { fecha_inicio: string; fecha_fin: string | null }) =>
+  new Date(c.fecha_fin ?? c.fecha_inicio).getTime() < Date.now();
+
 /* ── Imagen protegida (requiere Authorization) para las tarjetas ──────────── */
 function CardImage({ path, alt }: { path: string; alt: string }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -162,6 +167,10 @@ export default function EstudianteDashboard() {
   // cursos y cursos ligeros) — se muestran de entrada en el panel principal,
   // sin que tenga que entrar primero a cada card para encontrarlas.
   const [clasesProximas, setClasesProximas] = useState<ClaseProximaEstudiante[]>([]);
+  // Historial de clases YA pasadas — mismo feed combinado, pero solo ofrece
+  // "Ver grabación" (la reunión en vivo ya terminó, no tiene sentido un
+  // botón "Unirse" ahí).
+  const [clasesHistorial, setClasesHistorial] = useState<ClaseProximaEstudiante[]>([]);
 
   // Un programa/curso/diplomado abierto muestra SUS asignaturas adentro (no
   // una lista suelta de todas mezcladas) — así se ve organizado por dónde
@@ -200,6 +209,10 @@ export default function EstudianteDashboard() {
     apiFetch<{ clases: ClaseProximaEstudiante[] }>("/mis-clases/proximas.php")
       .then((d) => setClasesProximas(d.clases))
       .catch(() => setClasesProximas([]));
+
+    apiFetch<{ clases: ClaseProximaEstudiante[] }>("/mis-clases/historial.php")
+      .then((d) => setClasesHistorial(d.clases))
+      .catch(() => setClasesHistorial([]));
   }, [user]);
 
   useEffect(() => {
@@ -294,7 +307,7 @@ export default function EstudianteDashboard() {
                           {new Date(c.fecha_inicio).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
-                          {c.link_reunion && (
+                          {!claseYaPaso(c) && c.link_reunion && (
                             <a href={c.link_reunion} target="_blank" rel="noopener noreferrer"
                               className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#C41717] hover:bg-[#A81212] rounded-lg px-3 py-1.5 transition-colors">
                               <Video className="w-3.5 h-3.5" /> Unirse
@@ -306,7 +319,10 @@ export default function EstudianteDashboard() {
                               <PlayCircle className="w-3.5 h-3.5" /> Ver grabación
                             </a>
                           )}
-                          {!c.link_reunion && !c.grabacion_url && (
+                          {claseYaPaso(c) && !c.grabacion_url && (
+                            <span className="text-[11px] text-slate-300">Grabación en proceso...</span>
+                          )}
+                          {!claseYaPaso(c) && !c.link_reunion && !c.grabacion_url && (
                             <span className="text-[11px] text-slate-300">Sin link disponible todavía</span>
                           )}
                         </div>
@@ -353,7 +369,7 @@ export default function EstudianteDashboard() {
                         {new Date(c.fecha_inicio).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        {c.link_reunion && (
+                        {!claseYaPaso(c) && c.link_reunion && (
                           <a href={c.link_reunion} target="_blank" rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#C41717] hover:bg-[#A81212] rounded-lg px-3 py-1.5 transition-colors">
                             <Video className="w-3.5 h-3.5" /> Unirse
@@ -365,7 +381,10 @@ export default function EstudianteDashboard() {
                             <PlayCircle className="w-3.5 h-3.5" /> Ver grabación
                           </a>
                         )}
-                        {!c.link_reunion && !c.grabacion_url && (
+                        {claseYaPaso(c) && !c.grabacion_url && (
+                          <span className="text-[11px] text-slate-300">Grabación en proceso...</span>
+                        )}
+                        {!claseYaPaso(c) && !c.link_reunion && !c.grabacion_url && (
                           <span className="text-[11px] text-slate-300">Sin link disponible todavía</span>
                         )}
                       </div>
@@ -466,6 +485,37 @@ export default function EstudianteDashboard() {
                           className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-[#C41717] hover:bg-[#A81212] rounded-lg px-3 py-1.5 transition-colors mt-1">
                           <Video className="w-3.5 h-3.5" /> Unirse
                         </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {clasesHistorial.length > 0 && (
+              <div>
+                <SectionHeader icon={PlayCircle} label="Historial de clases" count={clasesHistorial.length} />
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {clasesHistorial.map((c, i) => (
+                    <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                          <Video className="w-4 h-4 text-slate-400" />
+                        </div>
+                        <p className="text-slate-800 font-semibold text-sm leading-tight truncate">{c.titulo}</p>
+                      </div>
+                      <p className="text-[11px] text-slate-400">{c.origen}: {c.origen_nombre}</p>
+                      <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                        {new Date(c.fecha_inicio).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}
+                      </p>
+                      {c.grabacion_url ? (
+                        <a href={c.grabacion_url} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-[#C41717] bg-[#C41717]/8 hover:bg-[#C41717]/15 rounded-lg px-3 py-1.5 transition-colors mt-1">
+                          <PlayCircle className="w-3.5 h-3.5" /> Ver grabación
+                        </a>
+                      ) : (
+                        <span className="text-[11px] text-slate-300 mt-1">Grabación en proceso...</span>
                       )}
                     </div>
                   ))}
