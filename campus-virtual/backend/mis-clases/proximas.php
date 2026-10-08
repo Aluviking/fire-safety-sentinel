@@ -17,7 +17,7 @@ $id = $user['identificacion'];
 $stmt = db()->prepare(
     "(SELECT 'Programa' AS origen, p.nombre AS origen_nombre, c.titulo, c.fecha_inicio, c.fecha_fin, c.link_reunion, c.grabacion_url
       FROM programa_clases_virtuales c JOIN programas p ON p.id = c.programa_id
-      WHERE c.fecha_inicio >= NOW() AND EXISTS (
+      WHERE COALESCE(c.fecha_fin, c.fecha_inicio) >= NOW() AND EXISTS (
         SELECT 1 FROM matriculas m JOIN estudiantes e ON e.id = m.estudiante_id
         WHERE e.identificacion = ? AND m.estado != 'CANCELADO'
           AND (m.programa = p.nombre OR m.programa LIKE CONCAT(p.nombre, ' - %'))
@@ -25,7 +25,7 @@ $stmt = db()->prepare(
      UNION ALL
      (SELECT 'Asignatura', asg.nombre, c.titulo, c.fecha_inicio, c.fecha_fin, c.link_reunion, c.grabacion_url
       FROM asignatura_clases_virtuales c JOIN asignaturas asg ON asg.id = c.asignatura_id
-      WHERE c.fecha_inicio >= NOW() AND EXISTS (
+      WHERE COALESCE(c.fecha_fin, c.fecha_inicio) >= NOW() AND EXISTS (
         SELECT 1 FROM programa_asignaturas pa
           JOIN programas p ON p.id = pa.programa_id
           JOIN matriculas m ON (m.programa = p.nombre OR m.programa LIKE CONCAT(p.nombre, ' - %')) AND m.estado != 'CANCELADO'
@@ -35,14 +35,14 @@ $stmt = db()->prepare(
      UNION ALL
      (SELECT 'Curso', cu.codigo_nombre, c.titulo, c.fecha_inicio, c.fecha_fin, c.link_reunion, c.grabacion_url
       FROM curso_clases_virtuales c JOIN cursos cu ON cu.id = c.curso_id
-      WHERE c.fecha_inicio >= NOW() AND EXISTS (
+      WHERE COALESCE(c.fecha_fin, c.fecha_inicio) >= NOW() AND EXISTS (
         SELECT 1 FROM curso_estudiantes ce JOIN estudiantes e ON e.id = ce.estudiante_id
         WHERE ce.curso_id = cu.id AND e.identificacion = ?
       ))
      UNION ALL
      (SELECT 'Curso ligero', cl.nombre, c.titulo, c.fecha_inicio, c.fecha_fin, c.link_reunion, c.grabacion_url
       FROM curso_ligero_clases_virtuales c JOIN cursos_ligeros cl ON cl.id = c.curso_ligero_id
-      WHERE c.fecha_inicio >= NOW() AND EXISTS (
+      WHERE COALESCE(c.fecha_fin, c.fecha_inicio) >= NOW() AND EXISTS (
         SELECT 1 FROM curso_ligero_inscripciones cli WHERE cli.curso_ligero_id = cl.id AND cli.estudiante_identificacion = ?
       ))
      ORDER BY fecha_inicio ASC LIMIT 10"
