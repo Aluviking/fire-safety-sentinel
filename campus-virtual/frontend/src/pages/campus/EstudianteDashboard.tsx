@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LogOut, BookOpen, GraduationCap, Layers, ArrowLeft, AlertCircle, Loader2,
-  Clock, User, Sparkles, Video, PlayCircle, Calendar, Bell,
+  Clock, User, Sparkles, Video, PlayCircle, Calendar, Bell, KeyRound,
 } from "lucide-react";
 import gfoLogo from "@/assets/gfo-academy-logo.jpeg";
 import { useCampusAuth } from "@/context/CampusAuthContext";
@@ -56,6 +56,7 @@ interface ClaseVirtualEstudiante {
   fecha_fin: string | null;
   link_reunion: string | null;
   grabacion_url: string | null;
+  grabacion_password?: string | null;
 }
 interface ClaseProximaEstudiante {
   origen: "Programa" | "Asignatura" | "Curso" | "Curso ligero";
@@ -65,6 +66,7 @@ interface ClaseProximaEstudiante {
   fecha_fin: string | null;
   link_reunion: string | null;
   grabacion_url: string | null;
+  grabacion_password?: string | null;
 }
 type Activo = { nombre: string; contentBase: string; questionsBase: string; ownerIdKey: string; ownerId: number };
 
@@ -347,7 +349,7 @@ export default function EstudianteDashboard() {
                           <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
                           {new Date(c.fecha_inicio).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}
                         </p>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                           {c.grabacion_url ? (
                             <a href={c.grabacion_url} target="_blank" rel="noopener noreferrer"
                               className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#C41717] bg-[#C41717]/8 hover:bg-[#C41717]/15 rounded-lg px-3 py-1.5 transition-colors">
@@ -355,6 +357,11 @@ export default function EstudianteDashboard() {
                             </a>
                           ) : (
                             <span className="text-[11px] text-slate-300">Grabación en proceso...</span>
+                          )}
+                          {c.grabacion_url && c.grabacion_password && (
+                            <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+                              <KeyRound className="w-3 h-3 text-slate-400 shrink-0" /> Clave: <span className="font-semibold text-slate-700">{c.grabacion_password}</span>
+                            </span>
                           )}
                         </div>
                       </div>
@@ -441,7 +448,7 @@ export default function EstudianteDashboard() {
                               <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
                               {new Date(c.fecha_inicio).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}
                             </p>
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
                               {c.grabacion_url ? (
                                 <a href={c.grabacion_url} target="_blank" rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#C41717] bg-[#C41717]/8 hover:bg-[#C41717]/15 rounded-lg px-3 py-1.5 transition-colors">
@@ -449,6 +456,11 @@ export default function EstudianteDashboard() {
                                 </a>
                               ) : (
                                 <span className="text-[11px] text-slate-300">Grabación en proceso...</span>
+                              )}
+                              {c.grabacion_url && c.grabacion_password && (
+                                <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+                                  <KeyRound className="w-3 h-3 text-slate-400 shrink-0" /> Clave: <span className="font-semibold text-slate-700">{c.grabacion_password}</span>
+                                </span>
                               )}
                             </div>
                           </div>
@@ -582,6 +594,11 @@ export default function EstudianteDashboard() {
                         </a>
                       ) : (
                         <span className="text-[11px] text-slate-300 mt-1">Grabación en proceso...</span>
+                      )}
+                      {c.grabacion_url && c.grabacion_password && (
+                        <span className="inline-flex items-center justify-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 mt-1">
+                          <KeyRound className="w-3 h-3 text-slate-400 shrink-0" /> Clave: <span className="font-semibold text-slate-700">{c.grabacion_password}</span>
+                        </span>
                       )}
                     </div>
                   ))}

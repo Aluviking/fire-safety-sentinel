@@ -47,8 +47,12 @@ if (($data['event'] ?? '') === 'recording.completed') {
         $shareUrl .= $separador . 'pwd=' . urlencode($password);
     }
     if ($meetingId !== '' && $shareUrl) {
+        // grabacion_password queda también aparte (no solo pegada al link)
+        // para poder mostrársela en texto a estudiantes/docentes que ya
+        // tienen acceso real a esa clase — útil si Zoom igual la vuelve a
+        // pedir pese al pwd= en la URL.
         foreach (['asignatura_clases_virtuales', 'curso_clases_virtuales', 'curso_ligero_clases_virtuales', 'programa_clases_virtuales'] as $tabla) {
-            db()->prepare("UPDATE {$tabla} SET grabacion_url = ? WHERE zoom_meeting_id = ?")->execute([$shareUrl, $meetingId]);
+            db()->prepare("UPDATE {$tabla} SET grabacion_url = ?, grabacion_password = ? WHERE zoom_meeting_id = ?")->execute([$shareUrl, $password, $meetingId]);
         }
     }
 }

@@ -7,7 +7,7 @@ import {
   Users, BookOpen, GraduationCap, DollarSign, FileText,
   Calendar, Award, ClipboardList, UserCheck, Building,
   ChevronRight, LayoutDashboard, AlertCircle, Briefcase,
-  Shield, TrendingUp, Clock, UserCog, ScrollText, ShieldCheck, Video, UserPlus, PlayCircle,
+  Shield, TrendingUp, Clock, UserCog, ScrollText, ShieldCheck, Video, UserPlus, PlayCircle, KeyRound,
 } from "lucide-react";
 import { useCampusAuth, type CampusUser, type Permisos } from "@/context/CampusAuthContext";
 import { apiFetch } from "@/lib/api";
@@ -267,7 +267,7 @@ const QUICK_ACCESS = [
 
 /* ── Datos reales del panel de inicio (anuncios/clases/auditoría/contadores) ── */
 interface AnuncioReciente { origen: string; origen_nombre: string; titulo: string; mensaje: string | null; importancia: string; created_at: string }
-interface ClaseProxima { origen: string; origen_nombre: string; origen_id: number; titulo: string; fecha_inicio: string; fecha_fin: string | null; grabacion_url?: string | null }
+interface ClaseProxima { origen: string; origen_nombre: string; origen_id: number; titulo: string; fecha_inicio: string; fecha_fin: string | null; grabacion_url?: string | null; grabacion_password?: string | null }
 interface AuditoriaReciente { id: number; user_name: string; action: string; detail: string | null; created_at: string }
 interface PreinscripcionReciente { id: number; nombres: string; apellidos: string; tipo_interes: string; item_nombre: string; created_at: string }
 interface ResumenData {
@@ -927,14 +927,21 @@ function DashboardHome({
                         </span>
                       </div>
                     </button>
-                    {c.grabacion_url ? (
-                      <a href={c.grabacion_url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-[11px] font-semibold text-[#C41717] hover:text-[#A81212] shrink-0 mt-1">
-                        <PlayCircle className="w-3.5 h-3.5" /> Ver grabación
-                      </a>
-                    ) : (
-                      <span className="text-[10px] text-slate-300 shrink-0 mt-1.5">En proceso...</span>
-                    )}
+                    <div className="flex flex-col items-end gap-1 shrink-0 mt-1">
+                      {c.grabacion_url ? (
+                        <a href={c.grabacion_url} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-[11px] font-semibold text-[#C41717] hover:text-[#A81212]">
+                          <PlayCircle className="w-3.5 h-3.5" /> Ver grabación
+                        </a>
+                      ) : (
+                        <span className="text-[10px] text-slate-300 mt-0.5">En proceso...</span>
+                      )}
+                      {c.grabacion_url && c.grabacion_password && (
+                        <span className="flex items-center gap-1 text-[10px] text-slate-500">
+                          <KeyRound className="w-3 h-3 text-slate-400 shrink-0" /> Clave: <span className="font-semibold text-slate-700">{c.grabacion_password}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })

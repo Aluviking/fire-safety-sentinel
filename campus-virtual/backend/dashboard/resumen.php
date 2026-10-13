@@ -97,19 +97,19 @@ $clasesProximasCount = (int) $stmtClasesCount->fetchColumn();
 // grabación — para que el panel de Docente/Admin tenga la misma tarjeta de
 // "Histórico de clases virtuales" que ya tiene el panel del Estudiante.
 $stmt = db()->prepare(
-    "(SELECT 'Programa' AS origen, p.nombre AS origen_nombre, p.id AS origen_id, c.titulo, c.fecha_inicio, c.fecha_fin, c.grabacion_url
+    "(SELECT 'Programa' AS origen, p.nombre AS origen_nombre, p.id AS origen_id, c.titulo, c.fecha_inicio, c.fecha_fin, c.grabacion_url, c.grabacion_password
       FROM programa_clases_virtuales c JOIN programas p ON p.id = c.programa_id
       WHERE COALESCE(c.fecha_fin, c.fecha_inicio) < NOW() AND c.archivado = 0 AND c.es_prueba = 0$scopeProg)
      UNION ALL
-     (SELECT 'Asignatura', asg.nombre, asg.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.grabacion_url
+     (SELECT 'Asignatura', asg.nombre, asg.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.grabacion_url, c.grabacion_password
       FROM asignatura_clases_virtuales c JOIN asignaturas asg ON asg.id = c.asignatura_id
       WHERE COALESCE(c.fecha_fin, c.fecha_inicio) < NOW() AND c.archivado = 0 AND c.es_prueba = 0$scopeAsg)
      UNION ALL
-     (SELECT 'Curso', cu.codigo_nombre, cu.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.grabacion_url
+     (SELECT 'Curso', cu.codigo_nombre, cu.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.grabacion_url, c.grabacion_password
       FROM curso_clases_virtuales c JOIN cursos cu ON cu.id = c.curso_id
       WHERE COALESCE(c.fecha_fin, c.fecha_inicio) < NOW() AND c.archivado = 0 AND c.es_prueba = 0$scopeCursoClases)
      UNION ALL
-     (SELECT 'Curso ligero', cl.nombre, cl.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.grabacion_url
+     (SELECT 'Curso ligero', cl.nombre, cl.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.grabacion_url, c.grabacion_password
       FROM curso_ligero_clases_virtuales c JOIN cursos_ligeros cl ON cl.id = c.curso_ligero_id
       WHERE COALESCE(c.fecha_fin, c.fecha_inicio) < NOW() AND c.archivado = 0 AND c.es_prueba = 0$scopeCL)
      ORDER BY fecha_inicio DESC LIMIT 8"

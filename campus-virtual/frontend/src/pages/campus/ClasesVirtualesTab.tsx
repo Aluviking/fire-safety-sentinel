@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Loader2, X, Video, Link2, Disc, PlayCircle, Calendar } from "lucide-react";
+import { Plus, Loader2, X, Video, Link2, Disc, PlayCircle, Calendar, KeyRound } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { SearchableSelect } from "./SearchableSelect";
 
@@ -19,6 +19,7 @@ export interface ClaseVirtual {
   link_reunion: string | null;
   zoom_meeting_id: string | null;
   grabacion_url: string | null;
+  grabacion_password?: string | null;
   // Solo presentes cuando esta fila en realidad viene de otro nivel (ej. una
   // asignatura del pensum, vista desde el programa que la contiene) — null
   // para las clases creadas directamente aquí.
@@ -274,6 +275,11 @@ function ClaseCard({
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#C41717] bg-[#C41717]/8 hover:bg-[#C41717]/15 rounded-lg px-3 py-1.5 transition-colors">
             <PlayCircle className="w-3.5 h-3.5" /> Ver grabación
           </a>
+        )}
+        {c.grabacion_url && c.grabacion_password && (
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+            <KeyRound className="w-3 h-3 text-slate-400 shrink-0" /> Clave: <span className="font-semibold text-slate-700">{c.grabacion_password}</span>
+          </span>
         )}
         {pasada && !c.grabacion_url && (
           <span className="text-[11px] text-slate-300">Grabación en proceso...</span>

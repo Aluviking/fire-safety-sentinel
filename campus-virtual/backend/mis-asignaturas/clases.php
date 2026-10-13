@@ -17,7 +17,7 @@ require_acceso_asignatura($user, $asignaturaId);
 // es_prueba = 0: las reuniones marcadas como "de prueba" al crearlas nunca
 // deben llegarle a un estudiante — mala experiencia, no son clases reales.
 $stmt = db()->prepare(
-    'SELECT id, titulo, fecha_inicio, fecha_fin, link_reunion, grabacion_url
+    'SELECT id, titulo, fecha_inicio, fecha_fin, link_reunion, grabacion_url, grabacion_password
      FROM asignatura_clases_virtuales
      WHERE asignatura_id = ? AND es_prueba = 0
      ORDER BY fecha_inicio'

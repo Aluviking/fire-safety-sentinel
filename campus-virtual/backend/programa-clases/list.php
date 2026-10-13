@@ -19,14 +19,14 @@ if ($programaId === '') fail('programaId requerido.');
 // programa/asignatura.
 $filtroDocente = $user['role'] === 'docente' ? 1 : 0;
 $stmt = db()->prepare(
-    "(SELECT c.id, c.aula_recurso_id, c.titulo, c.fecha_inicio, c.fecha_fin, c.link_reunion, c.zoom_meeting_id, c.grabacion_url, c.es_prueba,
+    "(SELECT c.id, c.aula_recurso_id, c.titulo, c.fecha_inicio, c.fecha_fin, c.link_reunion, c.zoom_meeting_id, c.grabacion_url, c.grabacion_password, c.es_prueba,
              a.nombre AS aula_nombre, NULL AS origen_nombre, NULL AS origen_api_base
       FROM programa_clases_virtuales c
       LEFT JOIN aulas_recursos a ON a.id = c.aula_recurso_id
       WHERE c.programa_id = ? AND c.archivado = 0
         AND (? = 0 OR c.creado_por_identificacion = ? OR c.creado_por_identificacion IS NULL))
      UNION ALL
-     (SELECT ac.id, ac.aula_recurso_id, ac.titulo, ac.fecha_inicio, ac.fecha_fin, ac.link_reunion, ac.zoom_meeting_id, ac.grabacion_url, ac.es_prueba,
+     (SELECT ac.id, ac.aula_recurso_id, ac.titulo, ac.fecha_inicio, ac.fecha_fin, ac.link_reunion, ac.zoom_meeting_id, ac.grabacion_url, ac.grabacion_password, ac.es_prueba,
              aa.nombre AS aula_nombre, asg.nombre AS origen_nombre, '/asignatura-clases' AS origen_api_base
       FROM asignatura_clases_virtuales ac
       JOIN programa_asignaturas pa ON pa.asignatura_id = ac.asignatura_id
