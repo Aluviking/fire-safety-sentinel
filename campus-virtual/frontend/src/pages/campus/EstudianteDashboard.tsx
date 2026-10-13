@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LogOut, BookOpen, GraduationCap, Layers, ArrowLeft, AlertCircle, Loader2,
   Clock, User, Sparkles, Video, PlayCircle, Calendar, Bell, KeyRound,
   Search, LayoutDashboard, Star, Heart, Smile, Rocket, Trophy, Target,
   Compass, Lightbulb, ChevronLeft, ChevronRight, Megaphone,
-  FileText, ListChecks, MessageSquare,
+  FileText, ListChecks, MessageSquare, Menu, X,
 } from "lucide-react";
 import gfoLogo from "@/assets/gfo-academy-logo.jpeg";
 import { useCampusAuth } from "@/context/CampusAuthContext";
@@ -222,7 +222,7 @@ function AvatarPicker({ grande = false }: { grande?: boolean }) {
         <Icono className={grande ? "w-7 h-7" : "w-4 h-4"} />
       </button>
       {open && (
-        <div className={`absolute ${grande ? "left-0" : "right-0"} top-full mt-2 w-56 rounded-xl bg-white border border-slate-200 shadow-[0_8px_32px_rgba(0,0,0,0.18)] z-50 p-3`}>
+        <div className={`absolute ${grande ? "left-0" : "right-0"} top-full mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-xl bg-white border border-slate-200 shadow-[0_8px_32px_rgba(0,0,0,0.18)] z-50 p-3`}>
           <p className="text-slate-500 text-[11px] font-semibold mb-2">Elige tu ícono</p>
           <div className="grid grid-cols-4 gap-2">
             {Object.entries(ICONOS_AVATAR).map(([nombre, Ic]) => (
@@ -442,6 +442,10 @@ export default function EstudianteDashboard() {
   const [vistaHome, setVistaHome] = useState<"inicio" | "programas" | "clases" | "perfil">("inicio");
   // Submenú del menú lateral — qué ítem de nivel superior está desplegado.
   const [menuAbierto, setMenuAbierto] = useState<"programas" | "clases" | null>(null);
+  // El menú lateral es "hidden lg:flex" (solo escritorio) — sin esto, en
+  // celular no había ninguna forma de cambiar de pestaña ni de llegar a
+  // "Mi perfil".
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Filtro real del submenú "Clases virtuales" (Próximas / Anteriores).
   const [filtroClases, setFiltroClases] = useState<"todas" | "proximas" | "anteriores">("todas");
 
@@ -551,6 +555,76 @@ export default function EstudianteDashboard() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Buenos días" : hour < 18 ? "Buenas tardes" : "Buenas noches";
 
+  // Contenido del menú (Inicio / Mis programas / Clases virtuales / Mi
+  // perfil) — se usa tal cual en el menú lateral de escritorio y en el
+  // panel desplegable de celular, para que ambos naveguen exactamente igual.
+  const menuLateralItems = (
+    <>
+      <button onClick={() => irATab("inicio")}
+        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${!activo && !programaAbierto && vistaHome === "inicio" ? "bg-[#C41717]/8 text-[#C41717]" : "text-slate-500 hover:bg-slate-50"}`}>
+        <LayoutDashboard className="w-4 h-4" /> Inicio
+      </button>
+
+      <button
+        onClick={() => { irATab("programas"); setMenuAbierto((m) => (m === "programas" ? null : "programas")); }}
+        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${!activo && !programaAbierto && vistaHome === "programas" ? "bg-[#C41717]/8 text-[#C41717]" : "text-slate-500 hover:bg-slate-50"}`}>
+        <GraduationCap className="w-4 h-4" /> Mis programas
+        <ChevronRight className={`w-3.5 h-3.5 ml-auto transition-transform ${menuAbierto === "programas" ? "rotate-90" : ""}`} />
+      </button>
+      {menuAbierto === "programas" && (
+        <div className="ml-4 pl-3 border-l border-slate-100 flex flex-col gap-0.5 py-1">
+          {programas.map((p) => (
+            <button key={`p-${p.id}`} onClick={() => { setProgramaAbierto(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              className="text-left px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-[#C41717] hover:bg-slate-50 transition-colors truncate">
+              {p.nombre}
+            </button>
+          ))}
+          {cursosVirtuales.map((c) => (
+            <button key={`cv-${c.id}`} onClick={() => { setActivo({ nombre: c.codigo_nombre ?? "Curso", contentBase: "/curso-contenido", questionsBase: "/curso-preguntas", ownerIdKey: "cursoId", ownerId: c.id }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              className="text-left px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-[#C41717] hover:bg-slate-50 transition-colors truncate">
+              {c.codigo_nombre ?? "—"}
+            </button>
+          ))}
+          {cursos.map((c) => (
+            <button key={`cl-${c.id}`} onClick={() => { setActivo({ nombre: c.nombre, contentBase: "/curso-ligero-contenido", questionsBase: "/curso-ligero-preguntas", ownerIdKey: "cursoLigeroId", ownerId: c.id }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              className="text-left px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-[#C41717] hover:bg-slate-50 transition-colors truncate">
+              {c.nombre}
+            </button>
+          ))}
+          {programas.length + cursosVirtuales.length + cursos.length === 0 && (
+            <p className="px-2.5 py-1.5 text-[11px] text-slate-300">Nada todavía</p>
+          )}
+        </div>
+      )}
+
+      <button
+        onClick={() => { irATab("clases"); setFiltroClases("todas"); setMenuAbierto((m) => (m === "clases" ? null : "clases")); }}
+        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${!activo && !programaAbierto && vistaHome === "clases" ? "bg-[#C41717]/8 text-[#C41717]" : "text-slate-500 hover:bg-slate-50"}`}>
+        <Video className="w-4 h-4" /> Clases virtuales
+        <ChevronRight className={`w-3.5 h-3.5 ml-auto transition-transform ${menuAbierto === "clases" ? "rotate-90" : ""}`} />
+      </button>
+      {menuAbierto === "clases" && (
+        <div className="ml-4 pl-3 border-l border-slate-100 flex flex-col gap-0.5 py-1">
+          {([
+            { f: "todas", label: "Todas" },
+            { f: "proximas", label: "Próximas" },
+            { f: "anteriores", label: "Anteriores" },
+          ] as const).map(({ f, label }) => (
+            <button key={f} onClick={() => { irATab("clases"); setFiltroClases(f); }}
+              className={`text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${vistaHome === "clases" && filtroClases === f ? "text-[#C41717] font-semibold bg-[#C41717]/8" : "text-slate-500 hover:text-[#C41717] hover:bg-slate-50"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <button onClick={() => irATab("perfil")}
+        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${!activo && !programaAbierto && vistaHome === "perfil" ? "bg-[#C41717]/8 text-[#C41717]" : "text-slate-500 hover:bg-slate-50"}`}>
+        <User className="w-4 h-4" /> Mi perfil
+      </button>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-[#F1F5F9] flex flex-col">
       {isImpersonando && (
@@ -593,76 +667,37 @@ export default function EstudianteDashboard() {
             className="p-2 rounded-lg text-white hover:bg-white/15 transition-all shrink-0">
             <LogOut className="w-4 h-4" />
           </button>
+          <button onClick={() => setMobileMenuOpen((v) => !v)}
+            className="lg:hidden p-2 rounded-lg text-white hover:bg-white/15 transition-all shrink-0">
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </header>
+
+      {/* Menú móvil — mismas opciones y misma navegación que el menú lateral
+          de escritorio, se cierra solo al elegir cualquier ítem. */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setMobileMenuOpen(false)}
+            className="lg:hidden bg-white border-b border-slate-200 overflow-hidden"
+          >
+            <div className="flex flex-col gap-1 px-3 py-3">
+              {menuLateralItems}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 flex max-w-7xl w-full mx-auto min-h-0">
         {/* Menú lateral — navbar real: cambia la pestaña, no hace scroll. Con
             submenú real en "Mis programas" (cada uno de los tuyos) y
-            "Clases virtuales" (Próximas/Anteriores). */}
+            "Clases virtuales" (Próximas/Anteriores). Solo escritorio — en
+            celular lo reemplaza el panel desplegable del botón hamburguesa. */}
         <aside className="hidden lg:flex flex-col w-52 shrink-0 border-r border-slate-200 bg-white px-3 py-5 gap-1 overflow-y-auto">
-          <button onClick={() => irATab("inicio")}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${!activo && !programaAbierto && vistaHome === "inicio" ? "bg-[#C41717]/8 text-[#C41717]" : "text-slate-500 hover:bg-slate-50"}`}>
-            <LayoutDashboard className="w-4 h-4" /> Inicio
-          </button>
-
-          <button
-            onClick={() => { irATab("programas"); setMenuAbierto((m) => (m === "programas" ? null : "programas")); }}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${!activo && !programaAbierto && vistaHome === "programas" ? "bg-[#C41717]/8 text-[#C41717]" : "text-slate-500 hover:bg-slate-50"}`}>
-            <GraduationCap className="w-4 h-4" /> Mis programas
-            <ChevronRight className={`w-3.5 h-3.5 ml-auto transition-transform ${menuAbierto === "programas" ? "rotate-90" : ""}`} />
-          </button>
-          {menuAbierto === "programas" && (
-            <div className="ml-4 pl-3 border-l border-slate-100 flex flex-col gap-0.5 py-1">
-              {programas.map((p) => (
-                <button key={`p-${p.id}`} onClick={() => { setProgramaAbierto(p); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                  className="text-left px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-[#C41717] hover:bg-slate-50 transition-colors truncate">
-                  {p.nombre}
-                </button>
-              ))}
-              {cursosVirtuales.map((c) => (
-                <button key={`cv-${c.id}`} onClick={() => { setActivo({ nombre: c.codigo_nombre ?? "Curso", contentBase: "/curso-contenido", questionsBase: "/curso-preguntas", ownerIdKey: "cursoId", ownerId: c.id }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                  className="text-left px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-[#C41717] hover:bg-slate-50 transition-colors truncate">
-                  {c.codigo_nombre ?? "—"}
-                </button>
-              ))}
-              {cursos.map((c) => (
-                <button key={`cl-${c.id}`} onClick={() => { setActivo({ nombre: c.nombre, contentBase: "/curso-ligero-contenido", questionsBase: "/curso-ligero-preguntas", ownerIdKey: "cursoLigeroId", ownerId: c.id }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                  className="text-left px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-[#C41717] hover:bg-slate-50 transition-colors truncate">
-                  {c.nombre}
-                </button>
-              ))}
-              {programas.length + cursosVirtuales.length + cursos.length === 0 && (
-                <p className="px-2.5 py-1.5 text-[11px] text-slate-300">Nada todavía</p>
-              )}
-            </div>
-          )}
-
-          <button
-            onClick={() => { irATab("clases"); setFiltroClases("todas"); setMenuAbierto((m) => (m === "clases" ? null : "clases")); }}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${!activo && !programaAbierto && vistaHome === "clases" ? "bg-[#C41717]/8 text-[#C41717]" : "text-slate-500 hover:bg-slate-50"}`}>
-            <Video className="w-4 h-4" /> Clases virtuales
-            <ChevronRight className={`w-3.5 h-3.5 ml-auto transition-transform ${menuAbierto === "clases" ? "rotate-90" : ""}`} />
-          </button>
-          {menuAbierto === "clases" && (
-            <div className="ml-4 pl-3 border-l border-slate-100 flex flex-col gap-0.5 py-1">
-              {([
-                { f: "todas", label: "Todas" },
-                { f: "proximas", label: "Próximas" },
-                { f: "anteriores", label: "Anteriores" },
-              ] as const).map(({ f, label }) => (
-                <button key={f} onClick={() => { irATab("clases"); setFiltroClases(f); }}
-                  className={`text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${vistaHome === "clases" && filtroClases === f ? "text-[#C41717] font-semibold bg-[#C41717]/8" : "text-slate-500 hover:text-[#C41717] hover:bg-slate-50"}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <button onClick={() => irATab("perfil")}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${!activo && !programaAbierto && vistaHome === "perfil" ? "bg-[#C41717]/8 text-[#C41717]" : "text-slate-500 hover:bg-slate-50"}`}>
-            <User className="w-4 h-4" /> Mi perfil
-          </button>
+          {menuLateralItems}
         </aside>
 
         <main className="flex-1 min-w-0 px-4 sm:px-6 py-6">
