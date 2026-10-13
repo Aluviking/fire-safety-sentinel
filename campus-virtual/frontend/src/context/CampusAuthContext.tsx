@@ -13,6 +13,7 @@ export interface CampusUser {
   perfilId?: number | null;
   perfilNombre?: string | null;
   identificacion?: string | null;
+  createdAt?: string | null;
 }
 
 export interface Permisos {
@@ -42,6 +43,7 @@ interface CampusAuthContextType {
   isImpersonando: boolean;
   cuentasVinculadas: CuentaVinculada[];
   cambiarCuenta: (userId: string) => Promise<{ ok: boolean; role?: Role; error?: string }>;
+  updateAvatar: (icono: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
 const CampusAuthContext = createContext<CampusAuthContextType | undefined>(undefined);
@@ -53,7 +55,7 @@ function mapUserRow(row: any): CampusUser {
     id: row.id, nombre: row.nombre, email: row.email, username: row.username,
     role: row.role, avatar: row.avatar_path ?? null,
     perfilId: row.perfil_id ?? null, perfilNombre: row.perfil_nombre ?? null,
-    identificacion: row.identificacion ?? null,
+    identificacion: row.identificacion ?? null, createdAt: row.created_at ?? null,
   };
 }
 
@@ -260,6 +262,18 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Cada usuario cambia SOLO su propio ícono de avatar (nunca el de otro) —
+  // el backend ya lo valida contra una lista fija de íconos permitidos.
+  const updateAvatar = async (icono: string) => {
+    try {
+      await apiFetch("/usuarios/actualizar-avatar.php", { method: "POST", json: { icono } });
+      setCurrentUser((c) => (c ? { ...c, avatar: icono } : c));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "Error." };
+    }
+  };
+
   const canVer = (modulo: string) => permisos.all || !!permisos.modulos[modulo]?.ver;
   const canEditar = (modulo: string) => permisos.all || !!permisos.modulos[modulo]?.editar;
 
@@ -267,7 +281,7 @@ export function CampusAuthProvider({ children }: { children: ReactNode }) {
     <CampusAuthContext.Provider value={{
       currentUser, permisos, loading, users, login, logout, createUser, deleteUser, updateUser, resetPassword,
       changeRole, assignPerfil, canVer, canEditar, verComo, volverAMiCuenta, isImpersonando,
-      cuentasVinculadas, cambiarCuenta,
+      cuentasVinculadas, cambiarCuenta, updateAvatar,
     }}>
       {children}
     </CampusAuthContext.Provider>

@@ -1571,12 +1571,18 @@ export default function CampusDashboard() {
       </main>
 
       {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
-      <footer className="bg-white border-t border-slate-200 py-4 px-6 flex items-center justify-between">
-        <GFOLogoSmall className="rounded-xl border border-slate-200 shadow-sm opacity-70" />
-        <p className="text-slate-400 text-[10px] tracking-wide">
-          © {new Date().getFullYear()} GFO Academy. Campus Virtual
-        </p>
-        <a href="/" className="text-slate-400 hover:text-slate-600 text-xs transition-colors">
+      <footer className="bg-[#C41717] py-4 px-6 flex items-center justify-between">
+        <GFOLogoSmall className="rounded-xl border border-white/25 shadow-sm opacity-90" />
+        <div className="flex flex-col items-center gap-0.5">
+          <p className="text-white text-[10px] tracking-wide">
+            © {new Date().getFullYear()} GFO Academy. Campus Virtual
+          </p>
+          <a href="https://www.rubikcontroldigital.com/" target="_blank" rel="noopener noreferrer"
+            className="text-white text-[10px] tracking-wide hover:underline">
+            Powered by Rubik Control Digital
+          </a>
+        </div>
+        <a href="/" className="text-white/80 hover:text-white text-xs transition-colors">
           Volver a SISO
         </a>
       </footer>

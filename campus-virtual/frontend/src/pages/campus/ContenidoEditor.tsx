@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Plus, X, Trash2, Loader2, Upload, ChevronRight, FileText, File as FileIcon,
   Video, Music, ClipboardCheck, ListChecks, Link as LinkIcon, MessageSquare, Import,
-  CheckCircle2, Circle, Square, CheckSquare, Download, Pencil, Lock, Unlock, AlertCircle,
+  CheckCircle2, Circle, Square, CheckSquare, Download, Pencil, Lock, Unlock, AlertCircle, Folder,
 } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import * as pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs";
@@ -932,35 +932,54 @@ export default function ContenidoEditor({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">{heading}</h3>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">{heading}</h3>
+          {items.length > 0 && (
+            <p className="text-slate-400 text-xs mt-0.5">{items.length} recurso{items.length !== 1 ? "s" : ""}</p>
+          )}
+        </div>
         {canEdit && <AgregarRecursoMenu onSelect={setCreatingTipo} label={addLabel} />}
       </div>
       {loading ? (
-        <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex justify-center py-10 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
       ) : items.length === 0 ? (
-        <p className="text-slate-400 text-sm text-center py-8">Aún no hay contenido agregado.</p>
+        <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
+          <FileText className="w-7 h-7 text-slate-300 mx-auto mb-2.5" />
+          <p className="text-slate-400 text-sm">Aún no hay contenido agregado.</p>
+        </div>
       ) : (
-        <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
+        <div className="space-y-3.5">
           {grupos.map((g) => (
-            <div key={g.modulo || "__sin_modulo__"}>
-              {g.modulo && <p className="px-4 pt-3 pb-1 text-xs font-bold text-slate-700">{g.modulo}</p>}
+            <div key={g.modulo || "__sin_modulo__"} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              {g.modulo && (
+                <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+                  <div className="w-7 h-7 rounded-lg bg-[#C41717]/8 border border-[#C41717]/20 flex items-center justify-center shrink-0">
+                    <Folder className="w-3.5 h-3.5 text-[#C41717]" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-800 flex-1 truncate">{g.modulo}</p>
+                  <span className="text-[11px] font-semibold text-slate-400 shrink-0">{g.items.length}</span>
+                </div>
+              )}
               <div className="divide-y divide-slate-100">
                 {g.items.map((it) => {
                   const Icon = TIPO_ICON[it.tipo] ?? FileText;
                   return (
-                    <div key={it.id} className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-slate-50 transition-colors group">
-                      <button onClick={() => setViewingItem(it)} className="flex-1 flex items-center gap-2.5 text-left min-w-0">
-                        <Icon className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                        <span className="text-sm text-slate-700 truncate">{it.titulo}</span>
-                      </button>
-                      {canEdit && (
-                        <button onClick={() => setViewingItem(it)} className="text-slate-300 group-hover:text-[#C41717] shrink-0 transition-colors" title="Ver / editar">
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
+                    <button key={it.id} onClick={() => setViewingItem(it)}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors text-left group">
+                      <div className="w-9 h-9 rounded-lg bg-slate-100 group-hover:bg-[#C41717]/8 flex items-center justify-center shrink-0 transition-colors">
+                        <Icon className="w-4 h-4 text-slate-500 group-hover:text-[#C41717] transition-colors" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{it.titulo}</p>
+                        {it.descripcion && <p className="text-xs text-slate-400 truncate mt-0.5">{it.descripcion}</p>}
+                      </div>
+                      <span className="hidden sm:inline-block text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-500 shrink-0">
+                        {it.tipo}
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#C41717] group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </button>
                   );
                 })}
               </div>

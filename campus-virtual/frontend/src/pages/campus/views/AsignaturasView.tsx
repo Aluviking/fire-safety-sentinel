@@ -41,6 +41,9 @@ function AsignaturaForm({
   const [nombre, setNombre] = useState(editing?.nombre ?? "");
   const [abreviacion, setAbreviacion] = useState(editing?.abreviacion ?? "");
   const [numCreditos, setNumCreditos] = useState(editing?.num_creditos != null ? String(editing.num_creditos) : "");
+  // Lo que ve el estudiante en su tarjeta ("qué se va a aprender aquí") —
+  // sin esto el campo quedaba guardado pero nunca se podía escribir.
+  const [descripcion, setDescripcion] = useState(editing?.descripcion ?? "");
   const [selected, setSelected] = useState<number[]>(editing?.programas.map((p) => p.id) ?? []);
   const [docentes, setDocentes] = useState<DocenteOption[]>([]);
   const [selectedDocentes, setSelectedDocentes] = useState<number[]>((editing?.docentes ?? []).map((d) => d.id));
@@ -57,11 +60,12 @@ function AsignaturaForm({
     setNombre(editing?.nombre ?? "");
     setAbreviacion(editing?.abreviacion ?? "");
     setNumCreditos(editing?.num_creditos != null ? String(editing.num_creditos) : "");
+    setDescripcion(editing?.descripcion ?? "");
     setSelected(editing?.programas.map((p) => p.id) ?? []);
     setSelectedDocentes((editing?.docentes ?? []).map((d) => d.id));
   }, [editing]);
 
-  const reset = () => { setCodigo(""); setNombre(""); setAbreviacion(""); setNumCreditos(""); setSelected([]); setSelectedDocentes([]); setError(""); };
+  const reset = () => { setCodigo(""); setNombre(""); setAbreviacion(""); setNumCreditos(""); setDescripcion(""); setSelected([]); setSelectedDocentes([]); setError(""); };
 
   const toggle = (id: number) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -77,7 +81,8 @@ function AsignaturaForm({
     try {
       const payload = {
         codigo: codigo.trim() || null, nombre: nombre.trim(), abreviacion: abreviacion.trim() || null,
-        numCreditos: numCreditos ? Number(numCreditos) : null, programaIds: selected, docenteIds: selectedDocentes,
+        numCreditos: numCreditos ? Number(numCreditos) : null, descripcion: descripcion.trim() || null,
+        programaIds: selected, docenteIds: selectedDocentes,
       };
       if (editing) {
         await apiFetch("/asignaturas/update.php", { method: "POST", json: { id: editing.id, ...payload } });
@@ -119,6 +124,11 @@ function AsignaturaForm({
         <input value={abreviacion} onChange={(e) => setAbreviacion(e.target.value)} placeholder="Abreviación (opcional)" className={inputCls} />
         <input value={numCreditos} onChange={(e) => setNumCreditos(e.target.value)} placeholder="Número de créditos (opcional)" type="number" className={inputCls} />
       </div>
+      <textarea
+        value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={2}
+        placeholder="Descripción breve — qué va a aprender el estudiante aquí (aparece en su tarjeta)"
+        className={`${inputCls} resize-none`}
+      />
 
       <div>
         <p className="text-[11px] font-semibold text-slate-500 mb-1.5">Programas a los que pertenece (opcional, se puede vincular a varios)</p>

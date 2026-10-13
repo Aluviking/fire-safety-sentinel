@@ -19,12 +19,12 @@ if ($stmt->fetch()) fail('Ya existe una asignatura con ese nombre.');
 
 db()->prepare(
     'INSERT INTO asignaturas (codigo, nombre, abreviacion, intensidad_semanal, intensidad_total, nivel,
-        num_creditos, aplica_practica_laboral)
-     VALUES (?,?,?,?,?,?,?,?)'
+        num_creditos, aplica_practica_laboral, descripcion)
+     VALUES (?,?,?,?,?,?,?,?,?)'
 )->execute([
     $body['codigo'] ?? null, $nombre, $body['abreviacion'] ?? null,
     $body['intensidadSemanal'] ?? null, $body['intensidadTotal'] ?? null, $body['nivel'] ?? null,
-    $body['numCreditos'] ?? null, $body['aplicaPracticaLaboral'] ?? 'No',
+    $body['numCreditos'] ?? null, $body['aplicaPracticaLaboral'] ?? 'No', $body['descripcion'] ?? null,
 ]);
 $asignaturaId = (int) db()->lastInsertId();
 
