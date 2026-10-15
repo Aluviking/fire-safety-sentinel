@@ -6,6 +6,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 const CampusLogin = lazy(() => import("./pages/campus/CampusLogin"));
 const CampusDashboard = lazy(() => import("./pages/campus/CampusDashboard"));
 const EstudianteDashboard = lazy(() => import("./pages/campus/EstudianteDashboard"));
+const DocenteDashboard = lazy(() => import("./pages/campus/DocenteDashboard"));
 const PreinscripcionPublica = lazy(() => import("./pages/campus/PreinscripcionPublica"));
 
 const App = () => {
@@ -25,6 +26,7 @@ const App = () => {
               <Route path="/" element={<CampusLogin />} />
               <Route path="/dashboard" element={<CampusDashboard />} />
               <Route path="/estudiante" element={<EstudianteDashboard />} />
+              <Route path="/docente" element={<DocenteDashboard />} />
               <Route path="/inscripcion" element={<PreinscripcionPublica />} />
             </Routes>
           </Suspense>

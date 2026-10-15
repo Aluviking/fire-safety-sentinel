@@ -9,7 +9,7 @@ require __DIR__ . '/../bootstrap.php';
 // tiene — aquí se valida por matrícula real en su lugar.
 
 $user = require_auth();
-if ($user['role'] !== 'estudiante') fail('No autorizado.', 403);
+if ($user['role'] !== 'estudiante' && $user['role'] !== 'docente') fail('No autorizado.', 403);
 
 $programaId = (int) ($_GET['programaId'] ?? 0);
 if ($programaId === 0) fail('programaId requerido.');
@@ -23,7 +23,16 @@ require_acceso_programa($user, $programaId);
 // programa que la contiene. `origen`/`origen_nombre` le dicen al front de
 // dónde viene cada fila, para poder organizarlas por asignatura.
 // es_prueba = 0: las reuniones marcadas como "de prueba" al crearlas nunca
-// deben llegarle a un estudiante — mala experiencia, no son clases reales.
+// deben llegarle (ni a estudiante ni a este resumen de docente) — mala
+// experiencia, no son clases reales. Para Docente, además, solo las de SUS
+// propias asignaturas dentro de este programa (mismo candado que ya usa
+// mis-programas/asignaturas.php).
+$filtroDocente = $user['role'] === 'docente' ? ' AND EXISTS (
+    SELECT 1 FROM asignatura_docentes ad JOIN docentes d ON d.id = ad.docente_id
+    WHERE ad.asignatura_id = asg.id AND d.identificacion = ?
+  )' : '';
+$paramsAsignatura = $user['role'] === 'docente' ? [$programaId, $user['identificacion'] ?? ''] : [$programaId];
+
 $stmt = db()->prepare(
     "(SELECT 'Programa' AS origen, p.nombre AS origen_nombre, c.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.link_reunion, c.grabacion_url, c.grabacion_password
       FROM programa_clases_virtuales c JOIN programas p ON p.id = c.programa_id
@@ -32,8 +41,8 @@ $stmt = db()->prepare(
      (SELECT 'Asignatura', asg.nombre, c.id, c.titulo, c.fecha_inicio, c.fecha_fin, c.link_reunion, c.grabacion_url, c.grabacion_password
       FROM asignatura_clases_virtuales c JOIN asignaturas asg ON asg.id = c.asignatura_id
       JOIN programa_asignaturas pa ON pa.asignatura_id = asg.id
-      WHERE pa.programa_id = ? AND c.es_prueba = 0)
+      WHERE pa.programa_id = ? AND c.es_prueba = 0{$filtroDocente})
      ORDER BY fecha_inicio"
 );
-$stmt->execute([$programaId, $programaId]);
+$stmt->execute([$programaId, ...$paramsAsignatura]);
 respond(['ok' => true, 'clases' => $stmt->fetchAll()]);

@@ -2,14 +2,15 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-// Docente tiene edicion completa en Cursos/Programas/Diplomados, igual
-// que Super Admin (no solo lo que tiene asignado) -- pedido explicito del
-// cliente, aplica a TODOS los docentes por rol, no por cuenta puntual.
+// Un docente solo puede borrar los programas de los que es dueño -- mismo
+// candado que update.php. Admin/Super Admin siempre pasan.
 require_role($user, ['super_admin', 'docente']);
 
 $body = json_body();
 $id   = (int) ($body['id'] ?? 0);
 if ($id === 0) fail('id requerido.');
+
+require_gestion_programa($user, $id);
 
 $stmt = db()->prepare('SELECT nombre FROM programas WHERE id = ?');
 $stmt->execute([$id]);

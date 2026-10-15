@@ -2,9 +2,8 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-// Docente tiene edicion completa en Cursos/Programas/Diplomados, igual
-// que Super Admin (no solo lo que tiene asignado) -- pedido explicito del
-// cliente, aplica a TODOS los docentes por rol, no por cuenta puntual.
+// Un docente solo puede editar sus propias asignaturas (asignatura_docentes)
+// -- nunca las de otro docente. Admin/Super Admin siempre pasan.
 require_role($user, ['super_admin', 'docente']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
@@ -13,6 +12,8 @@ $body   = json_body();
 $id     = (int) ($body['id'] ?? 0);
 $nombre = trim($body['nombre'] ?? '');
 if ($id === 0 || $nombre === '') fail('El nombre de la asignatura es requerido.');
+
+require_gestion_asignatura($user, $id);
 
 $current = db()->prepare('SELECT * FROM asignaturas WHERE id = ?');
 $current->execute([$id]);
@@ -69,8 +70,11 @@ if (!empty(array_diff($idsNuevos, $idsActuales))) {
     }
 }
 
-// Mismo tipo de sincronización por diferencia, para los docentes.
-if (array_key_exists('docenteIds', $body)) {
+// Mismo tipo de sincronización por diferencia, para los docentes -- pero
+// solo Admin/Super Admin pueden reasignar qué docentes dan esta asignatura;
+// un docente no puede agregarse colegas ni quitarlos (eso sería verlos/
+// tocarlos, justo lo que no debe pasar).
+if (array_key_exists('docenteIds', $body) && in_array($user['role'], ['admin', 'super_admin'], true)) {
     $stmt = db()->prepare('SELECT docente_id FROM asignatura_docentes WHERE asignatura_id = ?');
     $stmt->execute([$id]);
     $docentesActuales = array_map('intval', array_column($stmt->fetchAll(), 'docente_id'));

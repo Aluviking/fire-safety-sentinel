@@ -2,9 +2,10 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-// Docente tiene edicion completa en Cursos/Programas/Diplomados, igual
-// que Super Admin (no solo lo que tiene asignado) -- pedido explicito del
-// cliente, aplica a TODOS los docentes por rol, no por cuenta puntual.
+// Docente puede crear programas, pero queda como dueño SOLO de lo que él
+// crea (ver bloque de programa_docentes más abajo) -- nunca ve ni edita lo
+// de otros docentes (candado real en update.php/delete.php vía
+// require_gestion_programa()).
 require_role($user, ['admin', 'super_admin', 'docente']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
@@ -27,5 +28,19 @@ db()->prepare(
     $body['disponibleOfertaLaboral'] ?? 'Sí', $body['estado'] ?? 'Activo', $body['aplicaPreinscripcion'] ?? 'No',
     $body['aplicaGrupos'] ?? 'Sí', $body['categoria'] ?? null,
 ]);
+$programaId = (int) db()->lastInsertId();
 
-respond(['ok' => true, 'programa' => ['id' => (int) db()->lastInsertId(), 'nombre' => $nombre]]);
+// Un docente que crea un programa queda como su dueño (programa_docentes),
+// o nunca lo vería en su propia lista — mismo candado que ya usa
+// require_gestion_programa() para editar/borrar.
+if ($user['role'] === 'docente' && !empty($user['identificacion'])) {
+    $docente = db()->prepare('SELECT id FROM docentes WHERE identificacion = ?');
+    $docente->execute([$user['identificacion']]);
+    $docenteId = $docente->fetchColumn();
+    if ($docenteId) {
+        db()->prepare('INSERT IGNORE INTO programa_docentes (programa_id, docente_id) VALUES (?, ?)')
+            ->execute([$programaId, $docenteId]);
+    }
+}
+
+respond(['ok' => true, 'programa' => ['id' => $programaId, 'nombre' => $nombre]]);

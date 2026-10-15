@@ -30,7 +30,6 @@ import ConsolidadoNotasView from "./views/ConsolidadoNotasView";
 import CarteraGeneralView from "./views/CarteraGeneralView";
 import GestionFinancieraView from "./views/GestionFinancieraView";
 import HistorialView from "./views/HistorialView";
-import HistorialDocenteView from "./views/HistorialDocenteView";
 import SalasVirtualesView from "./views/SalasVirtualesView";
 import CursosLigerosView from "./views/CursosLigerosView";
 import CursosVirtualesView from "./views/CursosVirtualesView";
@@ -1040,12 +1039,14 @@ export default function CampusDashboard() {
       .finally(() => setResumenLoading(false));
   }, [loading, user]);
 
-  // Estudiante tiene su propio panel, distinto a este (que es el panel
-  // administrativo) — se redirige automático, sin mostrar "Acceso
-  // restringido" para un rol que sí tiene a dónde ir.
+  // Estudiante y ahora también Docente tienen su propio panel, distinto a
+  // este (que sigue siendo el panel administrativo, solo para
+  // admin/super_admin/equipo/administrativo) — se redirige automático, sin
+  // mostrar "Acceso restringido" para un rol que sí tiene a dónde ir.
   useEffect(() => {
     if (loading || !user) return;
     if (user.role === "estudiante") navigate("/estudiante", { replace: true });
+    if (user.role === "docente") navigate("/docente", { replace: true });
   }, [loading, user, navigate]);
 
   const logout = () => { authLogout(); navigate("/", { replace: true }); };
@@ -1122,7 +1123,7 @@ export default function CampusDashboard() {
 
   const toggleMenu = (label: string) => setOpenMenu((prev) => (prev === label ? null : label));
 
-  if (loading || !user || user.role === "estudiante") return null;
+  if (loading || !user || user.role === "estudiante" || user.role === "docente") return null;
 
   const isAdmin = user.role === "admin" || user.role === "super_admin";
   const isSuperAdmin = user.role === "super_admin";
@@ -1130,7 +1131,8 @@ export default function CampusDashboard() {
   // por su rol, con los permisos por defecto de rol_modulos_por_defecto() en
   // el backend — no requieren ningún paso aparte de "asignar perfil". Un
   // perfil_id explícito (opcional) solo sirve para afinar un caso puntual.
-  const hasAutoRole = user.role === "equipo" || user.role === "administrativo" || user.role === "docente";
+  // (Docente ya no llega aquí — tiene su propio panel en /docente.)
+  const hasAutoRole = user.role === "equipo" || user.role === "administrativo";
   const hasPerfil = user.perfilId != null;
   const canEnter = isAdmin || hasAutoRole || hasPerfil;
   // Si está activa la vista simulada de Docente, el MENÚ se filtra con los
@@ -1140,12 +1142,8 @@ export default function CampusDashboard() {
   const permisosVista = vistaSimulada === "docente" ? DOCENTE_PERMISOS_PREVIEW : permisos;
   const canVerVista = (modulo: string) => permisosVista.all || !!permisosVista.modulos[modulo]?.ver;
   const isSuperAdminVista = isSuperAdmin && vistaSimulada === null;
-  // Docente sí tiene Historial — pero el propio, filtrado a sus
-  // programas/asignaturas/cursos (ver HistorialDocenteView), nunca la
-  // auditoría administrativa completa que ve Super Admin.
-  const isDocenteReal = user.role === "docente";
   const visibleNavItems = filterNavItems(NAV_ITEMS, canVerVista, permisosVista.all)
-    .filter((item) => item.label !== "Historial" || isSuperAdminVista || isDocenteReal)
+    .filter((item) => item.label !== "Historial" || isSuperAdminVista)
     .filter((item) => item.label !== "Perfiles" || isSuperAdminVista)
     .filter((item) => item.label !== "Usuarios" || canVerVista("usuarios"));
 
@@ -1521,8 +1519,6 @@ export default function CampusDashboard() {
           <PerfilesView />
         ) : activeNav.nav === "Historial" && isSuperAdmin ? (
           <HistorialView />
-        ) : activeNav.nav === "Historial" && isDocenteReal ? (
-          <HistorialDocenteView />
         ) : activeNav.sub === "Estudiantes › Información básica" ? (
           <InformacionBasicaView onVerPersona={(id) => setPersonaAbierta({ tipo: "estudiante", id })} />
         ) : activeNav.sub === "Docentes › Información básica" ? (

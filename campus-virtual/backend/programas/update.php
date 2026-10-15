@@ -2,9 +2,9 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-// Docente tiene edicion completa en Cursos/Programas/Diplomados, igual
-// que Super Admin (no solo lo que tiene asignado) -- pedido explicito del
-// cliente, aplica a TODOS los docentes por rol, no por cuenta puntual.
+// Un docente solo puede editar los programas de los que es dueño (directo
+// en programa_docentes, o indirecto vía una asignatura suya dentro del
+// pensum) -- nunca los de otro docente. Admin/Super Admin siempre pasan.
 require_role($user, ['super_admin', 'docente']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
@@ -13,6 +13,8 @@ $body   = json_body();
 $id     = (int) ($body['id'] ?? 0);
 $nombre = trim($body['nombre'] ?? '');
 if ($id === 0 || $nombre === '') fail('El nombre del programa es requerido.');
+
+require_gestion_programa($user, $id);
 
 $current = db()->prepare('SELECT * FROM programas WHERE id = ?');
 $current->execute([$id]);

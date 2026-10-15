@@ -2,9 +2,10 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-// Docente tiene edicion completa en Cursos/Programas/Diplomados, igual
-// que Super Admin (no solo lo que tiene asignado) -- pedido explicito del
-// cliente, aplica a TODOS los docentes por rol, no por cuenta puntual.
+// Docente puede crear asignaturas, pero queda como dueño SOLO de la que
+// crea (ver bloque de docenteIds más abajo, forzado a sí mismo) -- nunca
+// puede asignar la asignatura a otro docente ni ver las de sus colegas
+// (candado real en update.php/delete.php vía require_gestion_asignatura()).
 require_role($user, ['admin', 'super_admin', 'docente']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
@@ -37,8 +38,17 @@ if (is_array($programaIds)) {
     }
 }
 
-// Puede tener varios docentes desde el momento en que se crea.
+// Puede tener varios docentes desde el momento en que se crea -- pero si
+// quien crea es un docente, se ignora lo que venga del body y se fuerza a
+// que quede ligada SOLO a sí mismo (no puede asignarse a otro docente que
+// no sea él, ni dejar la asignatura sin dueño donde ni él mismo la vería).
 $docenteIds = $body['docenteIds'] ?? [];
+if ($user['role'] === 'docente') {
+    $docente = db()->prepare('SELECT id FROM docentes WHERE identificacion = ?');
+    $docente->execute([$user['identificacion'] ?? '']);
+    $propioId = $docente->fetchColumn();
+    $docenteIds = $propioId ? [$propioId] : [];
+}
 if (is_array($docenteIds)) {
     $stmt = db()->prepare('INSERT IGNORE INTO asignatura_docentes (asignatura_id, docente_id) VALUES (?, ?)');
     foreach ($docenteIds as $did) {

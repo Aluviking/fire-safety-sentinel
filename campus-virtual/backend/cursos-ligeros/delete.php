@@ -2,14 +2,15 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-// Docente tiene edicion completa en Cursos/Cursos ligeros, igual que
-// Super Admin -- mismo pedido explicito del cliente ya aplicado en
-// Programas/Asignaturas.
+// Un docente solo puede borrar sus propios cursos ligeros -- mismo candado
+// que update.php. Admin/Super Admin siempre pasan.
 require_role($user, ['super_admin', 'docente']);
 
 $body = json_body();
 $id   = (int) ($body['id'] ?? 0);
 if ($id === 0) fail('id requerido.');
+
+require_gestion_curso_ligero($user, $id);
 
 $stmt = db()->prepare('SELECT nombre FROM cursos_ligeros WHERE id = ?');
 $stmt->execute([$id]);

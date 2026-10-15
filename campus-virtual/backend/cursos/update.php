@@ -2,9 +2,8 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-// Docente tiene edicion completa en Cursos/Cursos ligeros, igual que
-// Super Admin -- mismo pedido explicito del cliente ya aplicado en
-// Programas/Asignaturas.
+// Un docente solo puede editar sus propios cursos (docente_identificacion)
+// -- nunca los de otro docente. Admin/Super Admin siempre pasan.
 require_role($user, ['super_admin', 'docente']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') fail('Método no permitido.', 405);
@@ -18,6 +17,8 @@ $asignaturaId = $body['asignaturaId'] ?? null;
 if ($id === 0 || $codigoNombre === '' || !$programaId || !$asignaturaId) {
     fail('Nombre del curso, programa y asignatura son requeridos.');
 }
+
+require_gestion_curso($user, $id);
 
 $current = db()->prepare('SELECT * FROM cursos WHERE id = ?');
 $current->execute([$id]);
@@ -46,6 +47,11 @@ $jornadaTexto = array_key_exists('jornada', $body)
     ? ($programa['nombre'] . ' - ' . $asignatura['nombre'] . (trim((string) $body['jornada']) !== '' ? ' - ' . trim((string) $body['jornada']) : ''))
     : $row['programa_asignatura_jornada'];
 
+// Un docente no puede reasignar su curso a otro docente -- se fuerza a que
+// siga siendo el mismo, sin importar lo que venga del body.
+$docenteIdentificacion = $user['role'] === 'docente' ? ($user['identificacion'] ?? null) : $field('docenteIdentificacion', 'docente_identificacion');
+$docenteNombre         = $user['role'] === 'docente' ? ($user['nombre'] ?? null) : $field('docenteNombre', 'docente_nombre');
+
 db()->prepare(
     'UPDATE cursos SET codigo_nombre = ?, programa_id = ?, asignatura_id = ?, programa_asignatura_jornada = ?,
         tipo_evaluacion = ?, cupo_maximo = ?, fecha_inicio = ?, fecha_fin = ?, aula = ?, cerrado = ?,
@@ -56,8 +62,8 @@ db()->prepare(
     $codigoNombre, $programaId, $asignaturaId, $jornadaTexto,
     $field('tipoEvaluacion', 'tipo_evaluacion'), $field('cupoMaximo', 'cupo_maximo'),
     $field('fechaInicio', 'fecha_inicio'), $field('fechaFin', 'fecha_fin'), $field('aula', 'aula'),
-    $field('cerrado', 'cerrado'), $field('docenteIdentificacion', 'docente_identificacion'),
-    $field('docenteNombre', 'docente_nombre'), $field('horario', 'horario'), $field('periodo', 'periodo'),
+    $field('cerrado', 'cerrado'), $docenteIdentificacion,
+    $docenteNombre, $field('horario', 'horario'), $field('periodo', 'periodo'),
     $field('descripcion', 'descripcion'),
     array_key_exists('publicado', $body) ? (!empty($body['publicado']) ? 1 : 0) : $row['publicado'],
     $field('diasDisponibles', 'dias_disponibles'), $field('certificadoId', 'certificado_id'),
