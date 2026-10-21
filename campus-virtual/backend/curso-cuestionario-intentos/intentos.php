@@ -26,7 +26,7 @@ if ($id > 0) {
     if ($user['role'] === 'estudiante') {
         if ($intento['estudiante_identificacion'] !== ($user['identificacion'] ?? null)) fail('No autorizado.', 403);
     } else {
-        require_gestion_curso($user, (int) $intento['curso_id']);
+        require_ver_o_gestion_curso($user, (int) $intento['curso_id']);
     }
 
     $stmt = db()->prepare(
@@ -63,7 +63,7 @@ if ($user['role'] === 'estudiante') {
     $stmt = db()->prepare('SELECT * FROM curso_cuestionario_intentos WHERE contenido_id = ? AND estudiante_identificacion = ? ORDER BY numero_intento');
     $stmt->execute([$contenidoId, $user['identificacion']]);
 } else {
-    require_gestion_curso($user, (int) $contenido['curso_id']);
+    require_ver_o_gestion_curso($user, (int) $contenido['curso_id']);
     $stmt = db()->prepare('SELECT * FROM curso_cuestionario_intentos WHERE contenido_id = ? ORDER BY estudiante_nombre, numero_intento');
     $stmt->execute([$contenidoId]);
 }

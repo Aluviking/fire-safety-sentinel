@@ -17,7 +17,8 @@ if ($asignaturaId === 0) fail('asignaturaId requerido.');
 if ($user['role'] === 'docente') require_gestion_asignatura($user, $asignaturaId);
 
 $stmt = db()->prepare(
-    "SELECT m.id, e.id AS estudiante_id, m.estado, m.created_at, e.identificacion, e.nombre_completo, p.nombre AS programa_nombre
+    "SELECT m.id, e.id AS estudiante_id, m.estado, m.created_at, e.identificacion, e.nombre_completo, p.nombre AS programa_nombre,
+            m.mostrar_notas, m.mostrar_certificado
      FROM programa_asignaturas pa
      JOIN programas p ON p.id = pa.programa_id
      JOIN matriculas m ON (m.programa = p.nombre OR m.programa LIKE CONCAT(p.nombre, ' - %')) AND m.estado != 'CANCELADO'

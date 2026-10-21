@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, BookOpen, Users as UsersIcon, Plus, Loader2,
   Settings, Upload, X, Pencil, Check, ChevronUp, ChevronDown, Network, Star,
-  Megaphone, Video, Trash2, Building2, Eye, UserCog,
+  Megaphone, Video, Trash2, Building2, Eye, UserCog, Printer, ClipboardCheck,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
@@ -26,6 +26,7 @@ const CursoEmpresasTab = lazy(() => import("./CursoEmpresasTab"));
 interface MatriculaReal {
   id: number; estudiante_id: number; identificacion: string; nombre_completo: string;
   periodo: string | null; nivel: string | null; estado: string; sede: string | null; jornada: string | null;
+  mostrar_notas: number; mostrar_certificado: number;
 }
 interface EstudianteOption { id: number; identificacion: string; nombre_completo: string }
 const ESTADOS_MATRICULA = ["ACTIVO", "INACTIVO", "CANCELADO", "GRADUADO"];
@@ -1151,7 +1152,7 @@ function EditarMatriculaModal({ item, onClose, onSaved }: { item: MatriculaReal;
   );
 }
 
-function EstudiantesTab({ programaId }: { programaId: number }) {
+function EstudiantesTab({ programaId, programaNombre, certificadoId }: { programaId: number; programaNombre: string; certificadoId: number | null }) {
   const { currentUser } = useCampusAuth();
   const canManage = currentUser?.role === "admin" || currentUser?.role === "super_admin" || currentUser?.role === "docente";
   // Docente tiene edición completa (igual que Super Admin) en Estudiantes
@@ -1165,6 +1166,9 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
   const [busqueda, setBusqueda] = useState("");
   const [eliminandoTodos, setEliminandoTodos] = useState(false);
   const [borrandoTodos, setBorrandoTodos] = useState(false);
+  const [viendoDetalle, setViendoDetalle] = useState<MatriculaReal | null>(null);
+  const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
+  const [aplicandoMasivo, setAplicandoMasivo] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -1173,6 +1177,46 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
       .finally(() => setLoading(false));
   };
   useEffect(load, [programaId]);
+
+  // El estudiante NUNCA ve sus notas/certificado si esto no se prende aquí
+  // -- apagado por defecto (ver programa-matriculas/permisos.php). Se
+  // actualiza en el estado local (lista + panel de detalle si está abierto)
+  // sin esperar un recargue completo, para que el interruptor se sienta
+  // inmediato.
+  const actualizarPermisos = async (matriculaId: number, cambios: { mostrarNotas?: boolean; mostrarCertificado?: boolean }) => {
+    await apiFetch("/programa-matriculas/permisos.php", { method: "POST", json: { id: matriculaId, ...cambios } });
+    const aplicar = (m: MatriculaReal): MatriculaReal => m.id !== matriculaId ? m : {
+      ...m,
+      mostrar_notas: cambios.mostrarNotas !== undefined ? (cambios.mostrarNotas ? 1 : 0) : m.mostrar_notas,
+      mostrar_certificado: cambios.mostrarCertificado !== undefined ? (cambios.mostrarCertificado ? 1 : 0) : m.mostrar_certificado,
+    };
+    setMatriculados((prev) => prev.map(aplicar));
+    setViendoDetalle((prev) => (prev ? aplicar(prev) : prev));
+  };
+
+  // Aplica el mismo cambio a varios estudiantes de una sola vez -- para
+  // "personalizado" (solo los que marcaste) o para "todos" (pasando todos
+  // los ids visibles). Cada uno se guarda con su propia llamada -- si una
+  // fila puntual fallara (ej. ya no existe), no bota las demás.
+  const aplicarMasivo = async (ids: number[], cambios: { mostrarNotas?: boolean; mostrarCertificado?: boolean }) => {
+    setAplicandoMasivo(true);
+    try {
+      await Promise.all(ids.map((id) => actualizarPermisos(id, cambios)));
+    } finally {
+      setAplicandoMasivo(false);
+    }
+  };
+
+  const toggleSeleccionado = (id: number) => {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleSeleccionarTodos = (ids: number[]) => {
+    setSeleccionados((prev) => (prev.size === ids.length ? new Set() : new Set(ids)));
+  };
 
   const q = busqueda.trim().toLowerCase();
   const filtrados = q
@@ -1243,23 +1287,72 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
       ) : filtrados.length === 0 ? (
         <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">Sin resultados para "{busqueda}".</p>
       ) : (
+        <>
+        {canManage && (
+          <div className="flex items-center gap-3 flex-wrap p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+            <span className="text-slate-500 font-medium">
+              {seleccionados.size > 0 ? `${seleccionados.size} seleccionado${seleccionados.size !== 1 ? "s" : ""}` : "Ninguno seleccionado"}
+            </span>
+            <div className="flex items-center gap-2 ml-auto flex-wrap">
+              <span className="text-slate-400">Para los seleccionados:</span>
+              <button disabled={seleccionados.size === 0 || aplicandoMasivo} onClick={() => aplicarMasivo([...seleccionados], { mostrarNotas: true })}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:border-[#C41717]/30 disabled:opacity-40 disabled:cursor-not-allowed">
+                Mostrar notas
+              </button>
+              <button disabled={seleccionados.size === 0 || aplicandoMasivo} onClick={() => aplicarMasivo([...seleccionados], { mostrarCertificado: true })}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:border-[#C41717]/30 disabled:opacity-40 disabled:cursor-not-allowed">
+                Mostrar certificado
+              </button>
+              <button disabled={seleccionados.size === 0 || aplicandoMasivo} onClick={() => aplicarMasivo([...seleccionados], { mostrarNotas: false, mostrarCertificado: false })}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 disabled:opacity-40 disabled:cursor-not-allowed">
+                Ocultar ambos
+              </button>
+              <span className="text-slate-300">|</span>
+              <span className="text-slate-400">Para TODOS ({filtrados.length}):</span>
+              <button disabled={aplicandoMasivo} onClick={() => aplicarMasivo(filtrados.map((m) => m.id), { mostrarNotas: true, mostrarCertificado: true })}
+                className="px-2.5 py-1 rounded-lg bg-[#C41717] hover:bg-[#B01313] text-white font-semibold disabled:opacity-60">
+                Mostrar certificado y notas a todos
+              </button>
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto border border-slate-200 rounded-xl">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
+                {canManage && (
+                  <th className="px-3 py-2 w-8">
+                    <input type="checkbox" checked={seleccionados.size === filtrados.length && filtrados.length > 0}
+                      onChange={() => toggleSeleccionarTodos(filtrados.map((m) => m.id))} className="cursor-pointer" />
+                  </th>
+                )}
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estudiante</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Identificación</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Período</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Jornada</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Nivel</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estado</th>
+                {canManage && <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Notas / Certificado</th>}
                 {isSuperAdmin && <th className="text-right px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Acciones</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtrados.map((m) => (
                 <tr key={m.id} className="hover:bg-slate-50/70">
-                  <td className="px-3 py-2 text-slate-800 font-medium text-xs">{m.nombre_completo}</td>
+                  {canManage && (
+                    <td className="px-3 py-2">
+                      <input type="checkbox" checked={seleccionados.has(m.id)} onChange={() => toggleSeleccionado(m.id)} className="cursor-pointer" />
+                    </td>
+                  )}
+                  <td className="px-3 py-2 text-xs">
+                    {canManage ? (
+                      <button onClick={() => setViendoDetalle(m)} className="text-slate-800 font-medium hover:text-[#C41717] hover:underline text-left">
+                        {m.nombre_completo}
+                      </button>
+                    ) : (
+                      <span className="text-slate-800 font-medium">{m.nombre_completo}</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-slate-500 text-xs">{m.identificacion}</td>
                   <td className="px-3 py-2 text-slate-500 text-xs">{m.periodo ?? "—"}</td>
                   <td className="px-3 py-2 text-slate-500 text-xs">{m.jornada ?? "—"}</td>
@@ -1269,6 +1362,16 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
                       {m.estado}
                     </span>
                   </td>
+                  {canManage && (
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-center gap-3">
+                        <MiniToggle label="Notas" checked={!!m.mostrar_notas}
+                          onChange={(v) => actualizarPermisos(m.id, { mostrarNotas: v })} />
+                        <MiniToggle label="Cert." checked={!!m.mostrar_certificado}
+                          onChange={(v) => actualizarPermisos(m.id, { mostrarCertificado: v })} />
+                      </div>
+                    </td>
+                  )}
                   {isSuperAdmin && (
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-end gap-2.5">
@@ -1286,10 +1389,21 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {agregando && <AgregarMatriculaModal programaId={programaId} onClose={() => setAgregando(false)} onSaved={load} />}
       {editing && <EditarMatriculaModal item={editing} onClose={() => setEditing(null)} onSaved={load} />}
+      {viendoDetalle && (
+        <EstudianteDetallePanel
+          matricula={viendoDetalle}
+          programaNombre={programaNombre}
+          certificadoId={certificadoId}
+          onClose={() => setViendoDetalle(null)}
+          onToggleNotas={(v) => actualizarPermisos(viendoDetalle.id, { mostrarNotas: v })}
+          onToggleCertificado={(v) => actualizarPermisos(viendoDetalle.id, { mostrarCertificado: v })}
+        />
+      )}
       <ConfirmModal
         open={!!deleting}
         title="Eliminar matrícula"
@@ -1309,6 +1423,144 @@ function EstudiantesTab({ programaId }: { programaId: number }) {
         onConfirm={confirmDeleteTodos}
         onCancel={() => setEliminandoTodos(false)}
       />
+    </div>
+  );
+}
+
+/* ── Interruptor compacto (Notas / Certificado) ──────────────────────────── */
+export function MiniToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  const [busy, setBusy] = useState(false);
+  const toggle = async () => {
+    setBusy(true);
+    try { await onChange(!checked); } finally { setBusy(false); }
+  };
+  return (
+    <button type="button" onClick={toggle} disabled={busy}
+      className="flex items-center gap-1.5 disabled:opacity-50" title={`${checked ? "Ocultar" : "Mostrar"} ${label.toLowerCase()} al estudiante`}>
+      <span className={`w-7 h-4 rounded-full relative transition-colors ${checked ? "bg-emerald-500" : "bg-slate-300"}`}>
+        <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-3.5" : "translate-x-0.5"}`} />
+      </span>
+      <span className="text-[10px] text-slate-500">{label}</span>
+    </button>
+  );
+}
+
+/* ── Detalle de un estudiante (notas + certificado) ──────────────────────── */
+interface EvaluacionEstudiante {
+  id: number; asignatura: string | null; periodo: string | null; parametro: string | null;
+  porcentaje: number | null; nota: number | null; inasistencias: number | null;
+}
+
+function EstudianteDetallePanel({
+  matricula, programaNombre, certificadoId, onClose, onToggleNotas, onToggleCertificado,
+}: {
+  matricula: MatriculaReal; programaNombre: string; certificadoId: number | null;
+  onClose: () => void; onToggleNotas: (v: boolean) => void; onToggleCertificado: (v: boolean) => void;
+}) {
+  const [evaluaciones, setEvaluaciones] = useState<EvaluacionEstudiante[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [previsualizando, setPrevisualizando] = useState(false);
+
+  useEffect(() => {
+    apiFetch<{ evaluaciones: EvaluacionEstudiante[] }>(`/evaluaciones/list.php?identificacion=${matricula.identificacion}`)
+      .then((d) => setEvaluaciones(d.evaluaciones))
+      .catch(() => setEvaluaciones([]))
+      .finally(() => setLoading(false));
+  }, [matricula.identificacion]);
+
+  const mostrarAmbos = () => { onToggleNotas(true); onToggleCertificado(true); };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="h-1 bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40 shrink-0" />
+        <div className="p-5 overflow-y-auto">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-bold text-slate-900">{matricula.nombre_completo}</h2>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+          </div>
+          <p className="text-xs text-slate-400 mb-4">{matricula.identificacion} · {programaNombre}</p>
+
+          <div className="flex items-center gap-4 mb-4 p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <MiniToggle label="Mostrar notas" checked={!!matricula.mostrar_notas} onChange={onToggleNotas} />
+            <MiniToggle label="Mostrar certificado" checked={!!matricula.mostrar_certificado} onChange={onToggleCertificado} />
+            {(!matricula.mostrar_notas || !matricula.mostrar_certificado) && (
+              <button onClick={mostrarAmbos} className="text-[11px] font-semibold text-[#C41717] hover:text-[#B01313] ml-auto">
+                Mostrar certificado y notas
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 mb-2.5">
+            <ClipboardCheck className="w-3.5 h-3.5 text-slate-400" />
+            <p className="text-xs font-semibold text-slate-600">Evaluaciones ({evaluaciones.length})</p>
+          </div>
+          {loading ? (
+            <div className="flex justify-center py-6 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+          ) : evaluaciones.length === 0 ? (
+            <p className="text-xs text-slate-400 py-3">Este estudiante todavía no tiene evaluaciones registradas.</p>
+          ) : (
+            <div className="space-y-1.5 mb-4">
+              {evaluaciones.map((e) => (
+                <div key={e.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-slate-50 text-xs">
+                  <div className="min-w-0">
+                    <p className="text-slate-700 font-medium truncate">{e.asignatura ?? "—"} · {e.parametro ?? "—"}</p>
+                    <p className="text-[10px] text-slate-400">{e.periodo ?? "—"}</p>
+                  </div>
+                  <span className="font-bold text-slate-800 shrink-0">{e.nota ?? "—"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {certificadoId && (
+            <button onClick={() => setPrevisualizando(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:border-[#C41717]/30 text-xs font-semibold transition-colors">
+              <Eye className="w-3.5 h-3.5" /> Vista previa del certificado
+            </button>
+          )}
+        </div>
+      </div>
+      {previsualizando && certificadoId && (
+        <CertificadoPreview certificadoId={certificadoId} nombreEstudiante={matricula.nombre_completo} onClose={() => setPrevisualizando(false)} />
+      )}
+    </div>
+  );
+}
+
+export function CertificadoPreview({ certificadoId, nombreEstudiante, onClose }: { certificadoId: number; nombreEstudiante: string; onClose: () => void }) {
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let url: string | null = null;
+    apiImage(`/certificados/image.php?id=${certificadoId}`).then((u) => { url = u; setImgUrl(u); }).catch(() => {});
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [certificadoId]);
+
+  const fecha = new Date().toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" });
+
+  return (
+    <div className="fixed inset-0 z-[110] bg-slate-900/90 flex flex-col items-center justify-center p-4">
+      <div className="flex items-center gap-3 mb-4 print:hidden">
+        <button onClick={onClose} className="flex items-center gap-1.5 text-sm font-semibold text-white/80 hover:text-white">
+          <ArrowLeft className="w-4 h-4" /> Cerrar
+        </button>
+        <button onClick={() => window.print()}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-slate-800 text-sm font-semibold hover:bg-slate-100 transition-colors">
+          <Printer className="w-4 h-4" /> Imprimir
+        </button>
+      </div>
+      {!imgUrl ? (
+        <Loader2 className="w-6 h-6 text-white animate-spin" />
+      ) : (
+        <div className="relative bg-white shadow-2xl max-w-full">
+          <img src={imgUrl} alt="Certificado" className="max-w-full max-h-[75vh]" />
+          <div className="absolute inset-x-0 top-[58%] flex flex-col items-center gap-1 px-8">
+            <p className="text-slate-900 font-bold text-[clamp(1rem,3vw,2rem)] text-center">{nombreEstudiante}</p>
+            <p className="text-slate-400 text-[clamp(0.5rem,1vw,0.75rem)] text-center">{fecha}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1487,7 +1739,7 @@ export default function ProgramaDetailView({
             {tab === "ver-contenido" && <VerContenidoAsignaturaTab programaId={programa.id} />}
             {tab === "anuncios" && <ProgramaAnunciosTab programaId={programa.id} />}
             {tab === "clases" && <ClasesVirtualesTab parentId={programa.id} apiBase="/programa-clases" paramName="programaId" />}
-            {tab === "estudiantes" && <EstudiantesTab programaId={programa.id} />}
+            {tab === "estudiantes" && <EstudiantesTab programaId={programa.id} programaNombre={programa.nombre} certificadoId={programa.certificado_id} />}
             {tab === "docentes" && <CursoDocentesTab programaId={programa.id} />}
             {tab === "empresas" && esCurso && (
               <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>

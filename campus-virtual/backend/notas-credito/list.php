@@ -2,7 +2,7 @@
 require __DIR__ . '/../bootstrap.php';
 
 $user = require_auth();
-require_permiso($user, 'tesoreria.notas_credito');
+require_role($user, ['super_admin']);
 
 $rows = db()->query('SELECT * FROM notas_credito ORDER BY fecha DESC, id DESC')->fetchAll();
 respond(['ok' => true, 'notasCredito' => $rows]);

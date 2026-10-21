@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import gfoLogo from "@/assets/gfo-academy-logo.jpeg";
@@ -7,7 +7,7 @@ import {
   Users, BookOpen, GraduationCap, DollarSign, FileText,
   Calendar, Award, ClipboardList, UserCheck, Building,
   ChevronRight, LayoutDashboard, AlertCircle, Briefcase,
-  Shield, TrendingUp, Clock, UserCog, ScrollText, ShieldCheck, Video, UserPlus, PlayCircle, KeyRound,
+  Shield, TrendingUp, Clock, UserCog, ScrollText, ShieldCheck, Video, UserPlus, PlayCircle, KeyRound, Loader2,
 } from "lucide-react";
 import { useCampusAuth, type CampusUser, type Permisos } from "@/context/CampusAuthContext";
 import { apiFetch } from "@/lib/api";
@@ -16,29 +16,39 @@ import RegistrarEstudianteModal from "./RegistrarEstudianteModal";
 import { CuentaSwitcher } from "./CuentaSwitcher";
 import RegistrarPersonalModal from "./RegistrarPersonalModal";
 import RegistrarCodeudorModal from "./RegistrarCodeudorModal";
-import InformacionBasicaView from "./views/InformacionBasicaView";
-import PersonalInfoView from "./views/PersonalInfoView";
-import UsuariosView from "./views/UsuariosView";
-import CreditosView from "./views/CreditosView";
-import PagosView from "./views/PagosView";
-import NotasCreditoView from "./views/NotasCreditoView";
-import CodeudoresInfoView from "./views/CodeudoresInfoView";
-import ProgramasView from "./views/ProgramasView";
-import AsignaturasView from "./views/AsignaturasView";
-import EvaluacionesView from "./views/EvaluacionesView";
-import ConsolidadoNotasView from "./views/ConsolidadoNotasView";
-import CarteraGeneralView from "./views/CarteraGeneralView";
-import GestionFinancieraView from "./views/GestionFinancieraView";
-import HistorialView from "./views/HistorialView";
-import SalasVirtualesView from "./views/SalasVirtualesView";
-import CursosLigerosView from "./views/CursosLigerosView";
-import CursosVirtualesView from "./views/CursosVirtualesView";
-import PlantillasView from "./views/PlantillasView";
-import CertificadosView from "./views/CertificadosView";
-import BancoPreguntasView from "./views/BancoPreguntasView";
-import InscritosView from "./views/InscritosView";
-import PerfilesView from "./views/PerfilesView";
-import PersonaDetalleView from "./views/PersonaDetalleView";
+// Carga diferida -- antes estas 27 vistas se bajaban TODAS de una sola vez
+// con el panel admin, aunque la cuenta solo entrara a mirar "Inicio". Con
+// lazy(), cada una solo se descarga la primera vez que se abre su pestaña
+// (mismo patrón ya usado en DocenteDashboard para los mismos fines).
+const InformacionBasicaView = lazy(() => import("./views/InformacionBasicaView"));
+const PersonalInfoView = lazy(() => import("./views/PersonalInfoView"));
+const UsuariosView = lazy(() => import("./views/UsuariosView"));
+const CreditosView = lazy(() => import("./views/CreditosView"));
+const PagosView = lazy(() => import("./views/PagosView"));
+const NotasCreditoView = lazy(() => import("./views/NotasCreditoView"));
+const CodeudoresInfoView = lazy(() => import("./views/CodeudoresInfoView"));
+const ProgramasView = lazy(() => import("./views/ProgramasView"));
+const AsignaturasView = lazy(() => import("./views/AsignaturasView"));
+const EvaluacionesView = lazy(() => import("./views/EvaluacionesView"));
+const ConsolidadoNotasView = lazy(() => import("./views/ConsolidadoNotasView"));
+const CarteraGeneralView = lazy(() => import("./views/CarteraGeneralView"));
+const GestionFinancieraView = lazy(() => import("./views/GestionFinancieraView"));
+const HistorialView = lazy(() => import("./views/HistorialView"));
+const SalasVirtualesView = lazy(() => import("./views/SalasVirtualesView"));
+const CursosLigerosView = lazy(() => import("./views/CursosLigerosView"));
+const CursosVirtualesView = lazy(() => import("./views/CursosVirtualesView"));
+const PlantillasView = lazy(() => import("./views/PlantillasView"));
+const CertificadosView = lazy(() => import("./views/CertificadosView"));
+const BancoPreguntasView = lazy(() => import("./views/BancoPreguntasView"));
+const InscritosView = lazy(() => import("./views/InscritosView"));
+const PerfilesView = lazy(() => import("./views/PerfilesView"));
+const PersonaDetalleView = lazy(() => import("./views/PersonaDetalleView"));
+const OtrosIngresosView = lazy(() => import("./views/OtrosIngresosView"));
+const EgresosView = lazy(() => import("./views/EgresosView"));
+const ImportarPagosView = lazy(() => import("./views/ImportarPagosView"));
+const CatalogoTesoreriaView = lazy(() => import("./views/CatalogoTesoreriaView"));
+const TercerosView = lazy(() => import("./views/TercerosView"));
+const ParametrosCertificadosView = lazy(() => import("./views/ParametrosCertificadosView"));
 
 /* ── GFO Academy Logo ─────────────────────────────────────────────────────── */
 // Sin forma fija propia (ni rounded/border/shadow/tamaño de imagen) — cada
@@ -133,10 +143,9 @@ const NAV_ITEMS: NavItem[] = [
 
 // Traduce cada etiqueta real del menú a su clave de módulo en el backend
 // (ver modulos_catalogo() en bootstrap.php — deben coincidir exacto). Lo que
-// no aparece aquí (Otros Ingresos/Egresos/Adaptaciones/Estructuración de
-// Tesorería/"Parámetros de constancias y certificados") no tiene vista real
-// construida — bajo un perfil restrictivo queda oculto; una cuenta sin
-// perfil (permisos.all) lo sigue viendo igual que hoy.
+// NO aparece aquí no tiene vista real construida — bajo un perfil
+// restrictivo queda oculto; una cuenta sin perfil (permisos.all) lo sigue
+// viendo igual que hoy.
 const MODULO_POR_ETIQUETA: Record<string, string> = {
   "Estudiantes": "institucional.estudiantes",
   "Docentes": "institucional.docentes",
@@ -156,6 +165,16 @@ const MODULO_POR_ETIQUETA: Record<string, string> = {
   "Créditos": "tesoreria.creditos",
   "Pagos": "tesoreria.pagos",
   "Administrar notas crédito": "tesoreria.notas_credito",
+  "Otros Ingresos": "tesoreria.otros_ingresos",
+  "Egresos": "tesoreria.egresos",
+  "Importar pagos": "tesoreria.adaptaciones",
+  "Impuestos": "tesoreria.impuestos",
+  "Productos": "tesoreria.productos",
+  "Descuentos": "tesoreria.descuentos",
+  "Cuentas": "tesoreria.cuentas",
+  "Terceros": "tesoreria.terceros",
+  "Formas de pago": "tesoreria.formas_pago",
+  "Parámetros de constancias y certificados": "academico.parametros_certificados",
   "Consolidado de notas": "informes.consolidado_notas",
   "Cartera general": "informes.cartera_general",
   "Gestión financiera": "informes.gestion_financiera",
@@ -1140,7 +1159,13 @@ export default function CampusDashboard() {
   // del panel (modales, acciones puntuales) sigue con los permisos reales,
   // esto solo cambia qué aparece en la barra de navegación y el saludo.
   const permisosVista = vistaSimulada === "docente" ? DOCENTE_PERMISOS_PREVIEW : permisos;
-  const canVerVista = (modulo: string) => permisosVista.all || !!permisosVista.modulos[modulo]?.ver;
+  // Tesorería completa quedó exclusiva de super_admin -- pedido explícito
+  // del cliente. `permisos.all` (que normalmente da acceso a todo, admin
+  // incluido) ya NO basta para esto: se exige el rol real, sin importar
+  // perfil ni vista simulada -- mismo candado que ya aplica el backend en
+  // cada endpoint de Tesorería.
+  const canVerVista = (modulo: string) =>
+    modulo.startsWith("tesoreria.") ? user.role === "super_admin" : (permisosVista.all || !!permisosVista.modulos[modulo]?.ver);
   const isSuperAdminVista = isSuperAdmin && vistaSimulada === null;
   const visibleNavItems = filterNavItems(NAV_ITEMS, canVerVista, permisosVista.all)
     .filter((item) => item.label !== "Historial" || isSuperAdminVista)
@@ -1509,6 +1534,7 @@ export default function CampusDashboard() {
 
       {/* ── CONTENIDO PRINCIPAL ─────────────────────────────────────────────── */}
       <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 max-w-7xl w-full mx-auto">
+        <Suspense fallback={<div className="flex justify-center py-16 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>}>
         {personaAbierta ? (
           <PersonaDetalleView tipo={personaAbierta.tipo} id={personaAbierta.id} onBack={() => setPersonaAbierta(null)} />
         ) : !activeNav ? (
@@ -1535,6 +1561,28 @@ export default function CampusDashboard() {
           <PagosView />
         ) : activeNav.sub === "Administrar notas crédito" ? (
           <NotasCreditoView />
+        ) : activeNav.sub === "Otros Ingresos" ? (
+          <OtrosIngresosView />
+        ) : activeNav.sub === "Egresos" ? (
+          <EgresosView />
+        ) : activeNav.sub === "Adaptaciones › Importar pagos" ? (
+          <ImportarPagosView />
+        ) : activeNav.sub === "Estructuración › Impuestos" ? (
+          <CatalogoTesoreriaView resourceBase="/tesoreria-impuestos" listKey="impuestos" itemLabel="Impuesto"
+            campos={[{ key: "porcentaje", label: "Porcentaje (%)", type: "number" }]} />
+        ) : activeNav.sub === "Estructuración › Productos" ? (
+          <CatalogoTesoreriaView resourceBase="/tesoreria-productos" listKey="productos" itemLabel="Producto"
+            campos={[{ key: "valor_base", submitKey: "valorBase", label: "Valor base", type: "number" }]} />
+        ) : activeNav.sub === "Estructuración › Descuentos" ? (
+          <CatalogoTesoreriaView resourceBase="/tesoreria-descuentos" listKey="descuentos" itemLabel="Descuento"
+            campos={[{ key: "tipo", label: "Tipo (Porcentaje / Valor fijo)", type: "text" }, { key: "valor", label: "Valor", type: "number" }]} />
+        ) : activeNav.sub === "Estructuración › Cuentas" ? (
+          <CatalogoTesoreriaView resourceBase="/tesoreria-cuentas" listKey="cuentas" itemLabel="Cuenta" itemLabelFem
+            campos={[{ key: "codigo", label: "Código contable", type: "text" }]} />
+        ) : activeNav.sub === "Estructuración › Formas de pago" ? (
+          <CatalogoTesoreriaView resourceBase="/tesoreria-formas-pago" listKey="formasPago" itemLabel="Forma de pago" itemLabelFem />
+        ) : activeNav.sub === "Estructuración › Terceros" ? (
+          <TercerosView />
         ) : activeNav.sub === "Codeudores › Información básica" ? (
           <CodeudoresInfoView />
         ) : activeNav.sub === "Estructuración › Crear programa" ? (
@@ -1543,6 +1591,8 @@ export default function CampusDashboard() {
           <AsignaturasView />
         ) : activeNav.sub === "Estructuración › Crear curso" ? (
           <ProgramasView soloTipo="curso" />
+        ) : activeNav.sub === "Estructuración › Parámetros de constancias y certificados" ? (
+          <ParametrosCertificadosView />
         ) : activeNav.sub === "Educación virtual › Cursos ligeros" ? (
           <CursosLigerosView />
         ) : activeNav.sub === "Educación virtual › Cursos virtuales" ? (
@@ -1564,6 +1614,7 @@ export default function CampusDashboard() {
         ) : (
           <ModulePlaceholder nav={activeNav.nav} sub={activeNav.sub} />
         )}
+        </Suspense>
       </main>
 
       {/* ── FOOTER ──────────────────────────────────────────────────────────── */}

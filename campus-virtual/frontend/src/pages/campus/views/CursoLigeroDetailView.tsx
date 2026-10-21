@@ -2,13 +2,14 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Megaphone, BookOpen, Video, Users as UsersIcon, Settings,
-  Plus, Trash2, Loader2, Upload, ChevronRight, Check, X,
+  Plus, Trash2, Loader2, Upload, ChevronRight, Check, X, Eye,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { SearchableSelect } from "../SearchableSelect";
 import { ClasesVirtualesTab } from "../ClasesVirtualesTab";
 import { useUrlState } from "../useUrlState";
+import { MiniToggle, CertificadoPreview } from "./ProgramaDetailView";
 // Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
 // ~1.7MB) desde que se le quitó la dependencia de un Worker aparte. Si se
 // importa de una, CADA curso ligero tiene que bajar y ejecutar ese bloque
@@ -32,7 +33,7 @@ interface Anuncio { id: number; titulo: string; mensaje: string | null; importan
 interface Inscripcion {
   id: number; estudiante_identificacion: string; nombre_completo: string | null;
   progreso: number; tiempo_total_minutos: number; promedio_final: string | null;
-  ultimo_acceso: string | null; estado_acceso: string;
+  ultimo_acceso: string | null; estado_acceso: string; mostrar_certificado: number;
 }
 interface Estudiante { identificacion: string; nombre_completo: string }
 interface Certificado { id: number; nombre: string }
@@ -124,12 +125,15 @@ function AnunciosTab({ cursoId }: { cursoId: number }) {
 }
 
 /* ── Usuarios (roster) ────────────────────────────────────────────────────── */
-function UsuariosTab({ cursoId }: { cursoId: number }) {
+function UsuariosTab({ cursoId, certificadoId }: { cursoId: number; certificadoId: number | null }) {
   const [inscripciones, setInscripciones] = useState<Inscripcion[]>([]);
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [selectedId, setSelectedId] = useState("");
+  const [previsualizando, setPrevisualizando] = useState<Inscripcion | null>(null);
+  const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
+  const [aplicandoMasivo, setAplicandoMasivo] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -171,6 +175,30 @@ function UsuariosTab({ cursoId }: { cursoId: number }) {
     load();
   };
 
+  // El estudiante NUNCA ve su certificado si esto no se prende aquí --
+  // apagado por defecto (ver curso-ligero-inscripciones/permisos.php).
+  const toggleCertificado = async (id: number, valor: boolean) => {
+    await apiFetch("/curso-ligero-inscripciones/permisos.php", { method: "POST", json: { id, mostrarCertificado: valor } });
+    setInscripciones((prev) => prev.map((i) => (i.id === id ? { ...i, mostrar_certificado: valor ? 1 : 0 } : i)));
+  };
+
+  const toggleCertificadoMasivo = async (ids: number[], valor: boolean) => {
+    setAplicandoMasivo(true);
+    try {
+      await Promise.all(ids.map((id) => toggleCertificado(id, valor)));
+    } finally {
+      setAplicandoMasivo(false);
+    }
+  };
+
+  const toggleSeleccionado = (id: number) => {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
   const inscritos = new Set(inscripciones.map((i) => i.estudiante_identificacion));
   const disponibles = estudiantes.filter((e) => !inscritos.has(e.identificacion));
 
@@ -202,22 +230,51 @@ function UsuariosTab({ cursoId }: { cursoId: number }) {
       ) : inscripciones.length === 0 ? (
         <p className="text-slate-400 text-sm text-center py-8 border border-slate-200 rounded-xl">Aún no hay estudiantes inscritos.</p>
       ) : (
+        <>
+        <div className="flex items-center gap-3 flex-wrap p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+          <span className="text-slate-500 font-medium">
+            {seleccionados.size > 0 ? `${seleccionados.size} seleccionado${seleccionados.size !== 1 ? "s" : ""}` : "Ninguno seleccionado"}
+          </span>
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
+            <button disabled={seleccionados.size === 0 || aplicandoMasivo} onClick={() => toggleCertificadoMasivo([...seleccionados], true)}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:border-[#C41717]/30 disabled:opacity-40 disabled:cursor-not-allowed">
+              Mostrar certificado a seleccionados
+            </button>
+            <button disabled={seleccionados.size === 0 || aplicandoMasivo} onClick={() => toggleCertificadoMasivo([...seleccionados], false)}
+              className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 disabled:opacity-40 disabled:cursor-not-allowed">
+              Ocultar a seleccionados
+            </button>
+            <span className="text-slate-300">|</span>
+            <button disabled={aplicandoMasivo} onClick={() => toggleCertificadoMasivo(inscripciones.map((i) => i.id), true)}
+              className="px-2.5 py-1 rounded-lg bg-[#C41717] hover:bg-[#B01313] text-white font-semibold disabled:opacity-60">
+              Mostrar certificado a todos ({inscripciones.length})
+            </button>
+          </div>
+        </div>
         <div className="overflow-x-auto border border-slate-200 rounded-xl">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-3 py-2 w-8">
+                  <input type="checkbox" checked={seleccionados.size === inscripciones.length && inscripciones.length > 0}
+                    onChange={() => setSeleccionados((prev) => (prev.size === inscripciones.length ? new Set() : new Set(inscripciones.map((i) => i.id))))} className="cursor-pointer" />
+                </th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estudiante</th>
                 <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Progreso %</th>
                 <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Tiempo (min)</th>
                 <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Promedio</th>
                 <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Último acceso</th>
                 <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estado</th>
+                <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Certificado</th>
                 <th className="text-right px-3 py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {inscripciones.map((i) => (
                 <tr key={i.id} className="hover:bg-slate-50/70">
+                  <td className="px-3 py-2">
+                    <input type="checkbox" checked={seleccionados.has(i.id)} onChange={() => toggleSeleccionado(i.id)} className="cursor-pointer" />
+                  </td>
                   <td className="px-3 py-2 text-slate-800 font-medium text-xs whitespace-nowrap">{i.nombre_completo ?? i.estudiante_identificacion}</td>
                   <td className="px-2 py-2 w-20">
                     <input defaultValue={i.progreso} onBlur={(e) => save(i.id, "progreso", e.target.value)} type="number" min={0} max={100}
@@ -242,6 +299,16 @@ function UsuariosTab({ cursoId }: { cursoId: number }) {
                       <option value="Bloqueado">Bloqueado</option>
                     </select>
                   </td>
+                  <td className="px-2 py-2">
+                    <div className="flex items-center justify-center gap-2">
+                      <MiniToggle label="Cert." checked={!!i.mostrar_certificado} onChange={(v) => toggleCertificado(i.id, v)} />
+                      {certificadoId && (
+                        <button onClick={() => setPrevisualizando(i)} title="Vista previa del certificado" className="text-slate-400 hover:text-[#C41717]">
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <button onClick={() => remove(i.id)} className="text-slate-300 hover:text-red-500 transition-colors"><X className="w-3.5 h-3.5" /></button>
                   </td>
@@ -250,6 +317,14 @@ function UsuariosTab({ cursoId }: { cursoId: number }) {
             </tbody>
           </table>
         </div>
+        </>
+      )}
+      {previsualizando && certificadoId && (
+        <CertificadoPreview
+          certificadoId={certificadoId}
+          nombreEstudiante={previsualizando.nombre_completo ?? previsualizando.estudiante_identificacion}
+          onClose={() => setPrevisualizando(null)}
+        />
       )}
     </div>
   );
@@ -434,7 +509,7 @@ export default function CursoLigeroDetailView({ curso, onBack, onUpdated }: { cu
             )}
             {tab === "anuncios" && <AnunciosTab cursoId={curso.id} />}
             {tab === "clases" && <ClasesVirtualesTab parentId={curso.id} apiBase="/curso-ligero-clases" paramName="cursoLigeroId" />}
-            {tab === "usuarios" && <UsuariosTab cursoId={curso.id} />}
+            {tab === "usuarios" && <UsuariosTab cursoId={curso.id} certificadoId={curso.certificado_id} />}
             {tab === "ajustes" && <AjustesTab curso={curso} canEdit={canEditSettings} onUpdated={onUpdated} />}
           </div>
         </div>

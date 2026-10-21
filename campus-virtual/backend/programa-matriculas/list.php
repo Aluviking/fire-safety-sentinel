@@ -24,7 +24,8 @@ if ($user['role'] === 'docente') require_gestion_programa($user, (int) $programa
 // no capturan jornada, así que también se acepta el nombre exacto sin sufijo.
 $stmt = db()->prepare(
     "SELECT m.id, e.id AS estudiante_id, e.identificacion, e.nombre_completo,
-            m.programa, m.periodo, m.nivel, m.estado, m.sede
+            m.programa, m.periodo, m.nivel, m.estado, m.sede,
+            m.mostrar_notas, m.mostrar_certificado
      FROM matriculas m
      JOIN estudiantes e ON e.id = m.estudiante_id
      WHERE m.programa = ? OR m.programa LIKE CONCAT(?, ' - %')

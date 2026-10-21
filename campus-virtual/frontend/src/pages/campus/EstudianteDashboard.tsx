@@ -5,11 +5,11 @@ import {
   LogOut, BookOpen, GraduationCap, Layers, ArrowLeft, AlertCircle, Loader2,
   Clock, User, Sparkles, Video, PlayCircle, Calendar, KeyRound,
   Search, LayoutDashboard, ChevronRight,
-  FileText, ListChecks, MessageSquare, Menu, X,
+  FileText, ListChecks, MessageSquare, Menu, X, ClipboardCheck, Award, Printer, Download,
 } from "lucide-react";
 import gfoLogo from "@/assets/gfo-academy-logo.jpeg";
 import { useCampusAuth } from "@/context/CampusAuthContext";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, apiImage, apiDownload } from "@/lib/api";
 import { CuentaSwitcher } from "./CuentaSwitcher";
 import { ItemCard, CardImage, accentFor } from "./ItemCard";
 import {
@@ -227,7 +227,7 @@ export default function EstudianteDashboard() {
   const [busqueda, setBusqueda] = useState("");
   // Pestaña activa del menú lateral — navegación real (cambia qué se
   // muestra), no un simple scroll a una sección de una página larga.
-  const [vistaHome, setVistaHome] = useState<"inicio" | "programas" | "clases" | "perfil">("inicio");
+  const [vistaHome, setVistaHome] = useState<"inicio" | "programas" | "clases" | "notas" | "certificados" | "perfil">("inicio");
   // Submenú del menú lateral — qué ítem de nivel superior está desplegado.
   const [menuAbierto, setMenuAbierto] = useState<"programas" | "clases" | null>(null);
   // El menú lateral es "hidden lg:flex" (solo escritorio) — sin esto, en
@@ -405,6 +405,16 @@ export default function EstudianteDashboard() {
           ))}
         </div>
       )}
+
+      <button onClick={() => irATab("notas")}
+        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${!activo && !programaAbierto && vistaHome === "notas" ? "bg-[#C41717]/8 text-[#C41717]" : "text-slate-500 hover:bg-slate-50"}`}>
+        <ClipboardCheck className="w-4 h-4" /> Mis notas
+      </button>
+
+      <button onClick={() => irATab("certificados")}
+        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${!activo && !programaAbierto && vistaHome === "certificados" ? "bg-[#C41717]/8 text-[#C41717]" : "text-slate-500 hover:bg-slate-50"}`}>
+        <Award className="w-4 h-4" /> Mis certificados
+      </button>
 
       <button onClick={() => irATab("perfil")}
         className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${!activo && !programaAbierto && vistaHome === "perfil" ? "bg-[#C41717]/8 text-[#C41717]" : "text-slate-500 hover:bg-slate-50"}`}>
@@ -746,6 +756,14 @@ export default function EstudianteDashboard() {
               </div>
             )}
           </motion.div>
+        ) : vistaHome === "notas" ? (
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+            <MisNotas />
+          </motion.div>
+        ) : vistaHome === "certificados" ? (
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+            <MisCertificados nombreEstudiante={user.nombre} />
+          </motion.div>
         ) : (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-4">
             {/* Encabezado simple — el color de marca ahora vive en el panel
@@ -1080,6 +1098,237 @@ export default function EstudianteDashboard() {
         </div>
         <div className="w-[52px] shrink-0" />
       </footer>
+    </div>
+  );
+}
+
+/* ── Mis notas (estudiante) ───────────────────────────────────────────────── */
+interface EvaluacionPropia {
+  id: number; codigo_curso: string | null; periodo: string | null; asignatura: string | null;
+  parametro: string | null; porcentaje: number | null; nota: number | null;
+  inasistencias: number | null; observaciones: string | null;
+}
+interface NotaFinalPropia {
+  id: number; programa: string | null; periodo: string | null; asignatura: string | null;
+  aprobado: string | null; nota_asignatura: number | null; promedio_acumulado: number | null; tipo_nota: string | null;
+}
+
+function MisNotas() {
+  const [evaluaciones, setEvaluaciones] = useState<EvaluacionPropia[]>([]);
+  const [notasFinales, setNotasFinales] = useState<NotaFinalPropia[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    apiFetch<{ evaluaciones: EvaluacionPropia[]; notasFinales: NotaFinalPropia[] }>("/mis-notas/list.php")
+      .then((d) => { setEvaluaciones(d.evaluaciones); setNotasFinales(d.notasFinales); })
+      .catch((e) => setError(e instanceof Error ? e.message : "No se pudieron cargar tus notas."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Agrupa evaluaciones por asignatura+período — una asignatura real suele
+  // tener varios parámetros (parciales, talleres, etc.), no tiene sentido
+  // mostrarlas como filas sueltas sin agrupar.
+  const grupos = evaluaciones.reduce<Record<string, EvaluacionPropia[]>>((acc, e) => {
+    const key = `${e.periodo ?? "—"} · ${e.asignatura ?? "—"}`;
+    (acc[key] ??= []).push(e);
+    return acc;
+  }, {});
+
+  if (loading) {
+    return <div className="flex justify-center py-16 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (error) {
+    return <p className="text-sm text-red-600">{error}</p>;
+  }
+  if (evaluaciones.length === 0 && notasFinales.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center">
+        <ClipboardCheck className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+        <p className="text-slate-500 text-sm">Todavía no tienes notas registradas.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <h1 className="text-slate-900 font-extrabold text-2xl leading-tight">Mis notas</h1>
+
+      {notasFinales.length > 0 && (
+        <div>
+          <SectionHeader icon={ClipboardCheck} label="Notas finales por asignatura" count={notasFinales.length} />
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left px-4 py-2.5 text-slate-500 font-semibold text-xs uppercase">Asignatura</th>
+                  <th className="text-left px-4 py-2.5 text-slate-500 font-semibold text-xs uppercase">Período</th>
+                  <th className="text-right px-4 py-2.5 text-slate-500 font-semibold text-xs uppercase">Nota</th>
+                  <th className="text-center px-4 py-2.5 text-slate-500 font-semibold text-xs uppercase">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {notasFinales.map((n) => (
+                  <tr key={n.id}>
+                    <td className="px-4 py-2.5 text-slate-700">{n.asignatura ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-slate-500">{n.periodo ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-right font-semibold text-slate-800">{n.nota_asignatura ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${n.aprobado === "S" ? "bg-emerald-50 text-emerald-700" : n.aprobado === "N" ? "bg-red-50 text-red-600" : "bg-slate-100 text-slate-500"}`}>
+                        {n.aprobado === "S" ? "Aprobada" : n.aprobado === "N" ? "No aprobada" : "—"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {Object.keys(grupos).length > 0 && (
+        <div>
+          <SectionHeader icon={FileText} label="Detalle por evaluación" count={evaluaciones.length} />
+          <div className="space-y-3">
+            {Object.entries(grupos).map(([key, filas]) => (
+              <div key={key} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                  <p className="text-xs font-semibold text-slate-600">{key}</p>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {filas.map((f) => (
+                    <div key={f.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm text-slate-700 truncate">{f.parametro ?? "Evaluación"}</p>
+                        {f.porcentaje != null && <p className="text-[11px] text-slate-400">{f.porcentaje}% de la nota</p>}
+                      </div>
+                      <span className="text-sm font-bold text-slate-800 shrink-0">{f.nota ?? "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Mis certificados (estudiante) ────────────────────────────────────────── */
+interface CertificadoDisponible {
+  origen: "Programa" | "Curso ligero"; origen_id: number; origen_nombre: string;
+  certificado_id: number; certificado_nombre: string; imagen_path: string | null; personalizable: boolean;
+}
+
+function MisCertificados({ nombreEstudiante }: { nombreEstudiante: string }) {
+  const [certificados, setCertificados] = useState<CertificadoDisponible[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [viendo, setViendo] = useState<CertificadoDisponible | null>(null);
+  const [descargando, setDescargando] = useState<number | null>(null);
+
+  useEffect(() => {
+    apiFetch<{ certificados: CertificadoDisponible[] }>("/mis-certificados/list.php")
+      .then((d) => setCertificados(d.certificados))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const descargarPlantilla = async (c: CertificadoDisponible) => {
+    setDescargando(c.certificado_id);
+    try {
+      const ext = c.imagen_path?.split(".").pop() ?? "pdf";
+      await apiDownload(`/certificados/image.php?id=${c.certificado_id}`, `${c.certificado_nombre}.${ext}`);
+    } finally {
+      setDescargando(null);
+    }
+  };
+
+  if (viendo) return <CertificadoOverlay certificado={viendo} nombreEstudiante={nombreEstudiante} onClose={() => setViendo(null)} />;
+
+  if (loading) {
+    return <div className="flex justify-center py-16 text-slate-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  }
+  if (certificados.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center">
+        <Award className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+        <p className="text-slate-500 text-sm">Todavía no tienes certificados disponibles.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <h1 className="text-slate-900 font-extrabold text-2xl leading-tight">Mis certificados</h1>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {certificados.map((c) => (
+          <div key={`${c.origen}-${c.origen_id}`} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-[#C41717]/8 border border-[#C41717]/20 flex items-center justify-center shrink-0">
+              <Award className="w-5 h-5 text-[#C41717]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-800 truncate">{c.origen_nombre}</p>
+              <p className="text-[11px] text-slate-400">{c.certificado_nombre}</p>
+            </div>
+            {c.personalizable ? (
+              <button onClick={() => setViendo(c)}
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold transition-colors">
+                Ver
+              </button>
+            ) : (
+              <button onClick={() => descargarPlantilla(c)} disabled={descargando === c.certificado_id}
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:border-slate-300 text-xs font-semibold transition-colors disabled:opacity-60">
+                <Download className="w-3 h-3" /> {descargando === c.certificado_id ? "..." : "Descargar"}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CertificadoOverlay({
+  certificado, nombreEstudiante, onClose,
+}: { certificado: CertificadoDisponible; nombreEstudiante: string; onClose: () => void }) {
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let url: string | null = null;
+    apiImage(`/certificados/image.php?id=${certificado.certificado_id}`).then((u) => { url = u; setImgUrl(u); });
+    return () => { if (url) URL.revokeObjectURL(url); };
+  }, [certificado.certificado_id]);
+
+  const fecha = new Date().toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" });
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-slate-900/80 flex flex-col items-center justify-center p-4 overflow-y-auto">
+      <div className="hidden print:block" />
+      <div className="flex items-center gap-3 mb-4 print:hidden">
+        <button onClick={onClose} className="flex items-center gap-1.5 text-sm font-semibold text-white/80 hover:text-white">
+          <ArrowLeft className="w-4 h-4" /> Volver
+        </button>
+        <button onClick={() => window.print()}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-slate-800 text-sm font-semibold hover:bg-slate-100 transition-colors">
+          <Printer className="w-4 h-4" /> Imprimir / Guardar como PDF
+        </button>
+      </div>
+      {!imgUrl ? (
+        <Loader2 className="w-6 h-6 text-white animate-spin" />
+      ) : (
+        <div className="relative bg-white shadow-2xl max-w-full" id="certificado-imprimir">
+          <img src={imgUrl} alt={certificado.certificado_nombre} className="max-w-full max-h-[80vh] print:max-h-none" />
+          {/* Posición genérica (centrada, ~60% hacia abajo) -- no hay
+              coordenadas guardadas por plantilla todavía, así que el nombre
+              se ve bien en la mayoría de diseños pero puede no caer en el
+              espacio exacto dejado para eso en cada plantilla puntual. */}
+          <div className="absolute inset-x-0 top-[58%] flex flex-col items-center gap-1 px-8">
+            <p className="text-slate-900 font-bold text-[clamp(1rem,3vw,2rem)] text-center">{nombreEstudiante}</p>
+            <p className="text-slate-600 text-[clamp(0.6rem,1.3vw,0.9rem)] text-center">{certificado.origen_nombre}</p>
+            <p className="text-slate-400 text-[clamp(0.5rem,1vw,0.75rem)] text-center">{fecha}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

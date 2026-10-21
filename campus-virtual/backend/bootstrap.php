@@ -182,11 +182,21 @@ function modulos_catalogo(): array
             'academico.asignaturas'        => 'Asignaturas',
             'academico.cursos'             => 'Cursos',
             'academico.banco_preguntas'    => 'Banco de preguntas',
+            'academico.parametros_certificados' => 'Parámetros de constancias y certificados',
         ],
         'Tesorería' => [
-            'tesoreria.creditos'      => 'Créditos',
-            'tesoreria.pagos'         => 'Pagos',
-            'tesoreria.notas_credito' => 'Administrar notas crédito',
+            'tesoreria.creditos'       => 'Créditos',
+            'tesoreria.pagos'          => 'Pagos',
+            'tesoreria.notas_credito'  => 'Administrar notas crédito',
+            'tesoreria.otros_ingresos' => 'Otros Ingresos',
+            'tesoreria.egresos'        => 'Egresos',
+            'tesoreria.adaptaciones'   => 'Adaptaciones',
+            'tesoreria.impuestos'      => 'Impuestos',
+            'tesoreria.productos'     => 'Productos',
+            'tesoreria.descuentos'    => 'Descuentos',
+            'tesoreria.cuentas'       => 'Cuentas',
+            'tesoreria.terceros'      => 'Terceros',
+            'tesoreria.formas_pago'   => 'Formas de pago',
         ],
         'Informes' => [
             'informes.consolidado_notas'  => 'Consolidado de notas',
@@ -233,10 +243,13 @@ function rol_modulos_por_defecto(string $role): ?array
         ]);
     }
     if ($role === 'administrativo') {
+        // Tesorería completa (créditos/pagos/notas crédito/catálogos/
+        // ingresos/egresos) quedó exclusiva de super_admin -- pedido
+        // explícito del cliente -- por eso ya no aparece aquí aunque antes
+        // administrativo sí la veía (solo lectura).
         return $ver([
             'institucional.estudiantes', 'institucional.docentes', 'institucional.administrativos',
             'institucional.inscritos',
-            'tesoreria.creditos', 'tesoreria.pagos', 'tesoreria.notas_credito',
             'informes.consolidado_notas', 'informes.cartera_general', 'informes.gestion_financiera',
         ]);
     }
@@ -496,6 +509,38 @@ function require_gestion_curso_ligero(array $user, int $cursoLigeroId): void
         if ($stmt->fetch()) return;
     }
     fail('No autorizado.', 403);
+}
+
+/**
+ * Para SOLO VER los intentos de un Cuestionario (nunca calificar): admin/
+ * super_admin/docente-dueño pasan igual que require_gestion_asignatura(), y
+ * además cualquier otro rol con permiso de "ver" el módulo (equipo,
+ * administrativo) también puede entrar a mirar -- antes les daba "No
+ * autorizado" sin ninguna razón real, ya que solo estaban viendo, no
+ * calificando. calificar.php sigue exigiendo require_gestion_asignatura()
+ * sin este atajo.
+ */
+function require_ver_o_gestion_asignatura(array $user, int $asignaturaId): void
+{
+    if (in_array($user['role'], ['admin', 'super_admin'], true)) return;
+    if ($user['role'] === 'docente') { require_gestion_asignatura($user, $asignaturaId); return; }
+    require_permiso($user, 'academico.asignaturas');
+}
+
+/** Igual que require_ver_o_gestion_asignatura(), para un Curso. */
+function require_ver_o_gestion_curso(array $user, int $cursoId): void
+{
+    if (in_array($user['role'], ['admin', 'super_admin'], true)) return;
+    if ($user['role'] === 'docente') { require_gestion_curso($user, $cursoId); return; }
+    require_permiso_alguno($user, ['academico.cursos', 'academico.cursos_virtuales']);
+}
+
+/** Igual que require_ver_o_gestion_asignatura(), para un Curso ligero. */
+function require_ver_o_gestion_curso_ligero(array $user, int $cursoLigeroId): void
+{
+    if (in_array($user['role'], ['admin', 'super_admin'], true)) return;
+    if ($user['role'] === 'docente') { require_gestion_curso_ligero($user, $cursoLigeroId); return; }
+    require_permiso($user, 'academico.cursos_ligeros');
 }
 
 /**

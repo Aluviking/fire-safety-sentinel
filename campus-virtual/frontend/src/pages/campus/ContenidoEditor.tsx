@@ -778,6 +778,7 @@ function ResponderCuestionario({ intentosBase, contenido }: { intentosBase: stri
   const [mios, setMios] = useState<IntentoResumen[]>([]);
   const [presentando, setPresentando] = useState<{ intentoId: number; preguntas: PreguntaIntento[]; mostrarPuntaje: boolean; verDetalle: boolean } | null>(null);
   const [respuestas, setRespuestas] = useState<Record<number, { opcionIds?: number[]; texto?: string; pares?: { opcionId: number; parejaElegida: string }[] }>>({});
+  const [paginaActual, setPaginaActual] = useState(0);
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<{ intentoId: number; puntosObtenidos: number; puntosTotales: number; porcentaje: number; aprobado: boolean | null; pendienteCalificar: boolean; mostrarPuntaje: boolean; verDetalle: boolean } | null>(null);
   const [detalle, setDetalle] = useState<IntentoDetalle | null>(null);
@@ -806,6 +807,7 @@ function ResponderCuestionario({ intentosBase, contenido }: { intentosBase: stri
       );
       setPresentando({ intentoId: d.intentoId, preguntas: d.preguntas, mostrarPuntaje: d.mostrarPuntaje, verDetalle: !!contenido.ver_detalle_resultados });
       setRespuestas({});
+      setPaginaActual(0);
       setResultado(null);
       setDetalle(null);
     } catch (err) {
@@ -926,10 +928,22 @@ function ResponderCuestionario({ intentosBase, contenido }: { intentosBase: stri
       if (p.tipo_respuesta === "asociacion") return !r?.pares || r.pares.length < p.opciones.length;
       return !r?.opcionIds?.length;
     }).length;
+    // preguntas_por_pagina divide el cuestionario en páginas -- sin ese
+    // valor (o en 0), se muestran todas de una sola vez, como antes.
+    const porPagina = contenido.preguntas_por_pagina && contenido.preguntas_por_pagina > 0
+      ? contenido.preguntas_por_pagina : presentando.preguntas.length;
+    const totalPaginas = Math.max(1, Math.ceil(presentando.preguntas.length / porPagina));
+    const pagina = Math.min(paginaActual, totalPaginas - 1);
+    const preguntasPagina = presentando.preguntas.slice(pagina * porPagina, (pagina + 1) * porPagina);
+    const esUltimaPagina = pagina === totalPaginas - 1;
     return (
       <div className="space-y-4">
         {error && <p className="text-xs text-red-600">{error}</p>}
-        {presentando.preguntas.map((p, idx) => {
+        {totalPaginas > 1 && (
+          <p className="text-xs text-slate-400">Página {pagina + 1} de {totalPaginas}</p>
+        )}
+        {preguntasPagina.map((p, localIdx) => {
+          const idx = pagina * porPagina + localIdx;
           const r = respuestas[p.id] ?? {};
           return (
             <div key={p.id} className="p-3.5 rounded-xl border border-slate-200">
@@ -980,11 +994,24 @@ function ResponderCuestionario({ intentosBase, contenido }: { intentosBase: stri
           );
         })}
         <div className="flex items-center gap-3">
-          <button onClick={enviar} disabled={enviando}
-            className="px-5 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold disabled:opacity-60 transition-colors">
-            {enviando ? "Enviando..." : "Enviar respuestas"}
-          </button>
-          {faltan > 0 && <span className="text-[11px] text-slate-400">Faltan {faltan} pregunta{faltan !== 1 ? "s" : ""} por responder.</span>}
+          {pagina > 0 && (
+            <button onClick={() => setPaginaActual(pagina - 1)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 text-sm font-semibold transition-colors">
+              Anterior
+            </button>
+          )}
+          {esUltimaPagina ? (
+            <button onClick={enviar} disabled={enviando}
+              className="px-5 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold disabled:opacity-60 transition-colors">
+              {enviando ? "Enviando..." : "Enviar respuestas"}
+            </button>
+          ) : (
+            <button onClick={() => setPaginaActual(pagina + 1)}
+              className="px-5 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold transition-colors">
+              Siguiente
+            </button>
+          )}
+          {esUltimaPagina && faltan > 0 && <span className="text-[11px] text-slate-400">Faltan {faltan} pregunta{faltan !== 1 ? "s" : ""} por responder.</span>}
         </div>
       </div>
     );

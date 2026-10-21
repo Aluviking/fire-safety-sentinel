@@ -1390,3 +1390,138 @@ CREATE TABLE IF NOT EXISTS curso_ligero_cuestionario_respuestas (
   FOREIGN KEY (intento_id) REFERENCES curso_ligero_cuestionario_intentos(id) ON DELETE CASCADE,
   FOREIGN KEY (pregunta_id) REFERENCES curso_ligero_preguntas(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Tesorería — módulos que estaban en el menú pero sin nada construido
+-- detrás. A diferencia de creditos/pagos_realizados/pagos_pendientes/
+-- notas_credito (histórico importado de Q10, solo lectura), estas son
+-- tablas NUEVAS con CRUD real desde la interfaz: catálogos de apoyo
+-- (Impuestos/Productos/Descuentos/Cuentas/Terceros/Formas de pago) +
+-- registro de movimientos que no son matrícula de estudiante (Otros
+-- Ingresos/Egresos). Los catálogos se referencian por NOMBRE (texto plano),
+-- igual que `producto`/`forma_pago`/`cuenta` ya lo hacen en las tablas de
+-- Q10 -- no son FK, para poder borrar/renombrar un catálogo sin romper
+-- movimientos ya guardados.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS tesoreria_impuestos (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  nombre     VARCHAR(150) NOT NULL,
+  porcentaje DECIMAL(6,3) NULL,
+  estado     VARCHAR(20)  NOT NULL DEFAULT 'Activo',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_tesoreria_impuesto_nombre (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS tesoreria_productos (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  nombre     VARCHAR(150)  NOT NULL,
+  valor_base DECIMAL(14,2) NULL,
+  estado     VARCHAR(20)   NOT NULL DEFAULT 'Activo',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_tesoreria_producto_nombre (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS tesoreria_descuentos (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  nombre     VARCHAR(150)  NOT NULL,
+  tipo       VARCHAR(20)   NOT NULL DEFAULT 'Porcentaje', -- 'Porcentaje' | 'Valor fijo'
+  valor      DECIMAL(14,2) NULL,
+  estado     VARCHAR(20)   NOT NULL DEFAULT 'Activo',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_tesoreria_descuento_nombre (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS tesoreria_cuentas (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  nombre     VARCHAR(150) NOT NULL,
+  codigo     VARCHAR(50)  NULL,
+  estado     VARCHAR(20)  NOT NULL DEFAULT 'Activo',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_tesoreria_cuenta_nombre (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS tesoreria_formas_pago (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  nombre     VARCHAR(150) NOT NULL,
+  estado     VARCHAR(20)  NOT NULL DEFAULT 'Activo',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_tesoreria_forma_pago_nombre (nombre)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS tesoreria_terceros (
+  id                INT AUTO_INCREMENT PRIMARY KEY,
+  tipo_documento    VARCHAR(20)  NULL,
+  numero_documento  VARCHAR(30)  NOT NULL,
+  nombre            VARCHAR(200) NOT NULL,
+  telefono          VARCHAR(30)  NULL,
+  correo            VARCHAR(150) NULL,
+  estado            VARCHAR(20)  NOT NULL DEFAULT 'Activo',
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_tesoreria_tercero_doc (numero_documento)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- `identificacion_estudiante` NULL-able porque no todo ingreso extra es de
+-- un estudiante puntual (ej. una donación) -- cuando sí aplica, es el mismo
+-- texto plano que usan evaluaciones/notas_finales/creditos, así que
+-- funciona igual para un estudiante importado de Q10 que para uno nuevo.
+CREATE TABLE IF NOT EXISTS otros_ingresos (
+  id                        INT AUTO_INCREMENT PRIMARY KEY,
+  fecha                     DATE NOT NULL,
+  concepto                  VARCHAR(255)  NOT NULL,
+  identificacion_estudiante VARCHAR(30)   NULL,
+  producto                  VARCHAR(150)  NULL,
+  valor                     DECIMAL(14,2) NOT NULL,
+  forma_pago                VARCHAR(150)  NULL,
+  cuenta                    VARCHAR(150)  NULL,
+  periodo                   VARCHAR(30)   NULL,
+  responsable               VARCHAR(150)  NULL,
+  observaciones             TEXT          NULL,
+  created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_otros_ingresos_estudiante (identificacion_estudiante)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS egresos (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  fecha         DATE NOT NULL,
+  concepto      VARCHAR(255)  NOT NULL,
+  tercero       VARCHAR(200)  NULL,
+  valor         DECIMAL(14,2) NOT NULL,
+  forma_pago    VARCHAR(150)  NULL,
+  cuenta        VARCHAR(150)  NULL,
+  responsable   VARCHAR(150)  NULL,
+  observaciones TEXT          NULL,
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Fila única (siempre id=1) -- parámetros globales usados al emitir una
+-- constancia/certificado real (ver certificados/generar.php).
+CREATE TABLE IF NOT EXISTS certificados_parametros (
+  id                 INT PRIMARY KEY DEFAULT 1,
+  nombre_firma       VARCHAR(200) NULL,
+  cargo_firma        VARCHAR(150) NULL,
+  texto_legal        TEXT         NULL,
+  formato_numeracion VARCHAR(100) NULL,
+  updated_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Un estudiante NUNCA ve sus notas ni su certificado por defecto -- el
+-- docente/super_admin lo tiene que habilitar a mano, por estudiante, desde
+-- el mismo módulo donde ya se matricula/inscribe (programa-matriculas y
+-- curso-ligero-inscripciones). mis-notas/list.php y mis-certificados/
+-- list.php ya filtran por estas columnas.
+ALTER TABLE matriculas
+  ADD COLUMN mostrar_notas       TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN mostrar_certificado TINYINT(1) NOT NULL DEFAULT 0;
+
+ALTER TABLE curso_ligero_inscripciones
+  ADD COLUMN mostrar_certificado TINYINT(1) NOT NULL DEFAULT 0;
+
+-- Rendimiento: `matriculas.programa` se consulta constantemente con
+-- `programa = ? OR programa LIKE CONCAT(?, ' - %')` (require_acceso_programa,
+-- require_acceso_asignatura, mis-programas, mis-notas, mis-certificados,
+-- programa-matriculas, asignatura-estudiantes...) y nunca tuvo índice --
+-- cada una de esas consultas recorre la tabla entera. Agregar el índice no
+-- cambia ningún resultado, solo lo hace rápido; mientras la tabla sea
+-- chica no se nota, pero crece con cada período de matrícula.
+ALTER TABLE matriculas ADD INDEX idx_matriculas_programa_estado (programa, estado);

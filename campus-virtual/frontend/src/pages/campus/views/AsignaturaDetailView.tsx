@@ -2,13 +2,14 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ChevronRight, BookOpen, Layers, Plus, Trash2, Loader2,
-  Megaphone, Video, Settings, Upload, Check, UserCog, Users,
+  Megaphone, Video, Settings, Upload, Check, UserCog, Users, Eye, X,
 } from "lucide-react";
 import { apiFetch, apiImage } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { SearchableSelect } from "../SearchableSelect";
 import { ClasesVirtualesTab } from "../ClasesVirtualesTab";
 import { useUrlState } from "../useUrlState";
+import { MiniToggle, CertificadoPreview } from "./ProgramaDetailView";
 // Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
 // ~1.7MB) desde que se le quitó la dependencia de un Worker aparte. Si se
 // importa de una, CADA asignatura tiene que bajar y ejecutar ese bloque
@@ -121,20 +122,58 @@ function AnunciosTab({ asignaturaId }: { asignaturaId: number }) {
 
 interface EstudianteDeAsignatura {
   id: number; estudiante_id: number; estado: string | null; identificacion: string; nombre_completo: string; programa_nombre: string;
+  mostrar_notas: number; mostrar_certificado: number;
 }
 
 /* ── Estudiantes — heredan el acceso por estar matriculados en un programa
      que trae esta asignatura en su pensum (no es matrícula aparte) ───────── */
-function EstudiantesTab({ asignaturaId }: { asignaturaId: number }) {
+function EstudiantesTab({ asignaturaId, asignaturaNombre, certificadoId }: { asignaturaId: number; asignaturaNombre: string; certificadoId: number | null }) {
+  const { currentUser } = useCampusAuth();
+  const canManage = currentUser?.role === "admin" || currentUser?.role === "super_admin" || currentUser?.role === "docente";
   const [items, setItems] = useState<EstudianteDeAsignatura[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
+  const [aplicandoMasivo, setAplicandoMasivo] = useState(false);
+  const [viendoDetalle, setViendoDetalle] = useState<EstudianteDeAsignatura | null>(null);
 
-  useEffect(() => {
+  const load = () => {
     setLoading(true);
     apiFetch<{ matriculados: EstudianteDeAsignatura[] }>(`/asignatura-estudiantes/list.php?asignaturaId=${asignaturaId}`)
       .then((d) => setItems(d.matriculados))
       .finally(() => setLoading(false));
-  }, [asignaturaId]);
+  };
+  useEffect(load, [asignaturaId]);
+
+  // Mismo endpoint que ya usa "Estudiantes" dentro de Programa -- el id que
+  // llega aquí (e.id) es el mismo id de `matriculas`, la asignatura solo
+  // hereda acceso por pensum, así que es la misma fila a prender/apagar.
+  const actualizarPermisos = async (matriculaId: number, cambios: { mostrarNotas?: boolean; mostrarCertificado?: boolean }) => {
+    await apiFetch("/programa-matriculas/permisos.php", { method: "POST", json: { id: matriculaId, ...cambios } });
+    const aplicar = (e: EstudianteDeAsignatura): EstudianteDeAsignatura => e.id !== matriculaId ? e : {
+      ...e,
+      mostrar_notas: cambios.mostrarNotas !== undefined ? (cambios.mostrarNotas ? 1 : 0) : e.mostrar_notas,
+      mostrar_certificado: cambios.mostrarCertificado !== undefined ? (cambios.mostrarCertificado ? 1 : 0) : e.mostrar_certificado,
+    };
+    setItems((prev) => prev.map(aplicar));
+    setViendoDetalle((prev) => (prev ? aplicar(prev) : prev));
+  };
+
+  const aplicarMasivo = async (ids: number[], cambios: { mostrarNotas?: boolean; mostrarCertificado?: boolean }) => {
+    setAplicandoMasivo(true);
+    try {
+      await Promise.all(ids.map((id) => actualizarPermisos(id, cambios)));
+    } finally {
+      setAplicandoMasivo(false);
+    }
+  };
+
+  const toggleSeleccionado = (id: number) => {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-3">
@@ -146,28 +185,170 @@ function EstudiantesTab({ asignaturaId }: { asignaturaId: number }) {
           Aún no hay estudiantes matriculados en un programa que traiga esta asignatura en su pensum.
         </p>
       ) : (
+        <>
+        {canManage && (
+          <div className="flex items-center gap-3 flex-wrap p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+            <span className="text-slate-500 font-medium">
+              {seleccionados.size > 0 ? `${seleccionados.size} seleccionado${seleccionados.size !== 1 ? "s" : ""}` : "Ninguno seleccionado"}
+            </span>
+            <div className="flex items-center gap-2 ml-auto flex-wrap">
+              <span className="text-slate-400">Para los seleccionados:</span>
+              <button disabled={seleccionados.size === 0 || aplicandoMasivo} onClick={() => aplicarMasivo([...seleccionados], { mostrarNotas: true })}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:border-[#C41717]/30 disabled:opacity-40 disabled:cursor-not-allowed">
+                Mostrar notas
+              </button>
+              <button disabled={seleccionados.size === 0 || aplicandoMasivo} onClick={() => aplicarMasivo([...seleccionados], { mostrarCertificado: true })}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:border-[#C41717]/30 disabled:opacity-40 disabled:cursor-not-allowed">
+                Mostrar certificado
+              </button>
+              <button disabled={seleccionados.size === 0 || aplicandoMasivo} onClick={() => aplicarMasivo([...seleccionados], { mostrarNotas: false, mostrarCertificado: false })}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 disabled:opacity-40 disabled:cursor-not-allowed">
+                Ocultar ambos
+              </button>
+              <span className="text-slate-300">|</span>
+              <span className="text-slate-400">Para TODOS ({items.length}):</span>
+              <button disabled={aplicandoMasivo} onClick={() => aplicarMasivo(items.map((e) => e.id), { mostrarNotas: true, mostrarCertificado: true })}
+                className="px-2.5 py-1 rounded-lg bg-[#C41717] hover:bg-[#B01313] text-white font-semibold disabled:opacity-60">
+                Mostrar certificado y notas a todos
+              </button>
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto border border-slate-200 rounded-xl">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
+                {canManage && (
+                  <th className="px-3 py-2 w-8">
+                    <input type="checkbox" checked={seleccionados.size === items.length && items.length > 0}
+                      onChange={() => setSeleccionados((prev) => (prev.size === items.length ? new Set() : new Set(items.map((e) => e.id))))} className="cursor-pointer" />
+                  </th>
+                )}
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estudiante</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Identificación</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Programa</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estado</th>
+                {canManage && <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Notas / Certificado</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {items.map((e) => (
                 <tr key={e.id} className="hover:bg-slate-50/70">
-                  <td className="px-3 py-2 text-slate-800 font-medium text-xs whitespace-nowrap">{e.nombre_completo}</td>
+                  {canManage && (
+                    <td className="px-3 py-2">
+                      <input type="checkbox" checked={seleccionados.has(e.id)} onChange={() => toggleSeleccionado(e.id)} className="cursor-pointer" />
+                    </td>
+                  )}
+                  <td className="px-3 py-2 text-xs whitespace-nowrap">
+                    {canManage ? (
+                      <button onClick={() => setViendoDetalle(e)} className="text-slate-800 font-medium hover:text-[#C41717] hover:underline text-left">
+                        {e.nombre_completo}
+                      </button>
+                    ) : (
+                      <span className="text-slate-800 font-medium">{e.nombre_completo}</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-slate-600 text-xs font-mono">{e.identificacion}</td>
                   <td className="px-3 py-2 text-slate-500 text-xs">{e.programa_nombre}</td>
                   <td className="px-3 py-2 text-slate-500 text-xs">{e.estado ?? "—"}</td>
+                  {canManage && (
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-center gap-3">
+                        <MiniToggle label="Notas" checked={!!e.mostrar_notas} onChange={(v) => actualizarPermisos(e.id, { mostrarNotas: v })} />
+                        <MiniToggle label="Cert." checked={!!e.mostrar_certificado} onChange={(v) => actualizarPermisos(e.id, { mostrarCertificado: v })} />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        </>
+      )}
+      {viendoDetalle && (
+        <EstudianteAsignaturaDetallePanel
+          estudiante={viendoDetalle}
+          asignaturaNombre={asignaturaNombre}
+          certificadoId={certificadoId}
+          onClose={() => setViendoDetalle(null)}
+          onToggleNotas={(v) => actualizarPermisos(viendoDetalle.id, { mostrarNotas: v })}
+          onToggleCertificado={(v) => actualizarPermisos(viendoDetalle.id, { mostrarCertificado: v })}
+        />
+      )}
+    </div>
+  );
+}
+
+function EstudianteAsignaturaDetallePanel({
+  estudiante, asignaturaNombre, certificadoId, onClose, onToggleNotas, onToggleCertificado,
+}: {
+  estudiante: EstudianteDeAsignatura; asignaturaNombre: string; certificadoId: number | null;
+  onClose: () => void; onToggleNotas: (v: boolean) => void; onToggleCertificado: (v: boolean) => void;
+}) {
+  const [evaluaciones, setEvaluaciones] = useState<{ id: number; asignatura: string | null; periodo: string | null; parametro: string | null; nota: number | null }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [previsualizando, setPrevisualizando] = useState(false);
+
+  useEffect(() => {
+    apiFetch<{ evaluaciones: typeof evaluaciones }>(`/evaluaciones/list.php?identificacion=${estudiante.identificacion}`)
+      .then((d) => setEvaluaciones(d.evaluaciones))
+      .catch(() => setEvaluaciones([]))
+      .finally(() => setLoading(false));
+  }, [estudiante.identificacion]);
+
+  const mostrarAmbos = () => { onToggleNotas(true); onToggleCertificado(true); };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="h-1 bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40 shrink-0" />
+        <div className="p-5 overflow-y-auto">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-bold text-slate-900">{estudiante.nombre_completo}</h2>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+          </div>
+          <p className="text-xs text-slate-400 mb-4">{estudiante.identificacion} · {asignaturaNombre}</p>
+
+          <div className="flex items-center gap-4 mb-4 p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <MiniToggle label="Mostrar notas" checked={!!estudiante.mostrar_notas} onChange={onToggleNotas} />
+            <MiniToggle label="Mostrar certificado" checked={!!estudiante.mostrar_certificado} onChange={onToggleCertificado} />
+            {(!estudiante.mostrar_notas || !estudiante.mostrar_certificado) && (
+              <button onClick={mostrarAmbos} className="text-[11px] font-semibold text-[#C41717] hover:text-[#B01313] ml-auto">
+                Mostrar certificado y notas
+              </button>
+            )}
+          </div>
+
+          <p className="text-xs font-semibold text-slate-600 mb-2.5">Evaluaciones ({evaluaciones.length})</p>
+          {loading ? (
+            <div className="flex justify-center py-6 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
+          ) : evaluaciones.length === 0 ? (
+            <p className="text-xs text-slate-400 py-3">Este estudiante todavía no tiene evaluaciones registradas.</p>
+          ) : (
+            <div className="space-y-1.5 mb-4">
+              {evaluaciones.map((e) => (
+                <div key={e.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-slate-50 text-xs">
+                  <div className="min-w-0">
+                    <p className="text-slate-700 font-medium truncate">{e.asignatura ?? "—"} · {e.parametro ?? "—"}</p>
+                    <p className="text-[10px] text-slate-400">{e.periodo ?? "—"}</p>
+                  </div>
+                  <span className="font-bold text-slate-800 shrink-0">{e.nota ?? "—"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {certificadoId && (
+            <button onClick={() => setPrevisualizando(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:border-[#C41717]/30 text-xs font-semibold transition-colors">
+              <Eye className="w-3.5 h-3.5" /> Vista previa del certificado
+            </button>
+          )}
+        </div>
+      </div>
+      {previsualizando && certificadoId && (
+        <CertificadoPreview certificadoId={certificadoId} nombreEstudiante={estudiante.nombre_completo} onClose={() => setPrevisualizando(false)} />
       )}
     </div>
   );
@@ -371,7 +552,7 @@ export default function AsignaturaDetailView({
                 </div>
               )
             )}
-            {tab === "estudiantes" && <EstudiantesTab asignaturaId={asignatura.id} />}
+            {tab === "estudiantes" && <EstudiantesTab asignaturaId={asignatura.id} asignaturaNombre={asignatura.nombre} certificadoId={asignatura.certificado_id} />}
             {tab === "ajustes" && <AjustesTab asignatura={asignatura} canEdit={canEditSettings} onUpdated={onUpdated} />}
           </div>
         </div>
