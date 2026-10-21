@@ -74,7 +74,7 @@ interface ClaseProximaEstudiante {
   grabacion_url: string | null;
   grabacion_password?: string | null;
 }
-type Activo = { nombre: string; contentBase: string; questionsBase: string; ownerIdKey: string; ownerId: number };
+type Activo = { nombre: string; contentBase: string; questionsBase: string; intentosBase: string; ownerIdKey: string; ownerId: number };
 
 const CATEGORIA_COLOR: Record<string, string> = {
   "Salud y bienestar": "#0EA5A6",
@@ -368,13 +368,13 @@ export default function EstudianteDashboard() {
             </button>
           ))}
           {cursosVirtuales.map((c) => (
-            <button key={`cv-${c.id}`} onClick={() => { setActivo({ nombre: c.codigo_nombre ?? "Curso", contentBase: "/curso-contenido", questionsBase: "/curso-preguntas", ownerIdKey: "cursoId", ownerId: c.id }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            <button key={`cv-${c.id}`} onClick={() => { setActivo({ nombre: c.codigo_nombre ?? "Curso", contentBase: "/curso-contenido", questionsBase: "/curso-preguntas", intentosBase: "/curso-cuestionario-intentos", ownerIdKey: "cursoId", ownerId: c.id }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className="text-left px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-[#C41717] hover:bg-slate-50 transition-colors truncate">
               {c.codigo_nombre ?? "—"}
             </button>
           ))}
           {cursos.map((c) => (
-            <button key={`cl-${c.id}`} onClick={() => { setActivo({ nombre: c.nombre, contentBase: "/curso-ligero-contenido", questionsBase: "/curso-ligero-preguntas", ownerIdKey: "cursoLigeroId", ownerId: c.id }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            <button key={`cl-${c.id}`} onClick={() => { setActivo({ nombre: c.nombre, contentBase: "/curso-ligero-contenido", questionsBase: "/curso-ligero-preguntas", intentosBase: "/curso-ligero-cuestionario-intentos", ownerIdKey: "cursoLigeroId", ownerId: c.id }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className="text-left px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-[#C41717] hover:bg-slate-50 transition-colors truncate">
               {c.nombre}
             </button>
@@ -568,6 +568,7 @@ export default function EstudianteDashboard() {
                 <ContenidoEditor
                   contentBase={activo.contentBase}
                   questionsBase={activo.questionsBase}
+                  intentosBase={activo.intentosBase}
                   ownerIdKey={activo.ownerIdKey}
                   ownerId={activo.ownerId}
                 />
@@ -691,7 +692,7 @@ export default function EstudianteDashboard() {
                     return (
                       <div key={a.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col sm:flex-row">
                         <button
-                          onClick={() => setActivo({ nombre: a.nombre, contentBase: "/asignatura-contenido", questionsBase: "/asignatura-preguntas", ownerIdKey: "asignaturaId", ownerId: a.id })}
+                          onClick={() => setActivo({ nombre: a.nombre, contentBase: "/asignatura-contenido", questionsBase: "/asignatura-preguntas", intentosBase: "/asignatura-cuestionario-intentos", ownerIdKey: "asignaturaId", ownerId: a.id })}
                           className="group relative w-full sm:w-48 h-36 sm:h-auto shrink-0 overflow-hidden"
                         >
                           {a.imagen_path ? (
@@ -931,7 +932,7 @@ export default function EstudianteDashboard() {
                               subtitle={c.descripcion}
                               imagePath={c.imagen_path ? `/cursos/imagen.php?id=${c.id}` : null}
                               accent={accentFor(c.codigo_nombre ?? String(c.id))}
-                              onClick={() => setActivo({ nombre: c.codigo_nombre ?? "Curso", contentBase: "/curso-contenido", questionsBase: "/curso-preguntas", ownerIdKey: "cursoId", ownerId: c.id })}
+                              onClick={() => setActivo({ nombre: c.codigo_nombre ?? "Curso", contentBase: "/curso-contenido", questionsBase: "/curso-preguntas", intentosBase: "/curso-cuestionario-intentos", ownerIdKey: "cursoId", ownerId: c.id })}
                               footer={
                                 <div className="space-y-1.5">
                                   {c.docente_nombre && (
@@ -968,7 +969,7 @@ export default function EstudianteDashboard() {
                                 subtitle={c.categoria}
                                 imagePath={c.imagen_path ? `/cursos-ligeros/imagen.php?id=${c.id}` : null}
                                 accent={color}
-                                onClick={() => setActivo({ nombre: c.nombre, contentBase: "/curso-ligero-contenido", questionsBase: "/curso-ligero-preguntas", ownerIdKey: "cursoLigeroId", ownerId: c.id })}
+                                onClick={() => setActivo({ nombre: c.nombre, contentBase: "/curso-ligero-contenido", questionsBase: "/curso-ligero-preguntas", intentosBase: "/curso-ligero-cuestionario-intentos", ownerIdKey: "cursoLigeroId", ownerId: c.id })}
                                 footer={
                                   <div className="space-y-1.5">
                                     {c.docente_nombre && (

@@ -374,7 +374,7 @@ export default function CursoDetailView({
             {tab === "contenido" && (
               <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
                 <ContenidoEditor
-                  contentBase="/curso-contenido" questionsBase="/curso-preguntas" ownerIdKey="cursoId" ownerId={curso.id}
+                  contentBase="/curso-contenido" questionsBase="/curso-preguntas" intentosBase="/curso-cuestionario-intentos" ownerIdKey="cursoId" ownerId={curso.id}
                   heading="Contenido del curso" addLabel="Agregar curso"
                 />
               </Suspense>

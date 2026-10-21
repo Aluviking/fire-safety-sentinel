@@ -24,7 +24,7 @@ if ($item['tipo'] === 'Cuestionario') {
         $opciones = $optStmt->fetchAll();
         if ($user['role'] === 'estudiante') {
             $opciones = array_map(static function (array $o): array {
-                unset($o['es_correcta']);
+                unset($o['es_correcta'], $o['pareja_texto']);
                 return $o;
             }, $opciones);
         }

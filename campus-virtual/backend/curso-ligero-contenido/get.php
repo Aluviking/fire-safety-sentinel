@@ -22,12 +22,13 @@ if ($item['tipo'] === 'Cuestionario') {
     foreach ($preguntas as &$p) {
         $optStmt->execute([$p['id']]);
         $opciones = $optStmt->fetchAll();
-        // Un estudiante no debe recibir cuál opción es la correcta — todavía
-        // no existe un flujo real de "presentar y calificar" el cuestionario,
-        // así que por ahora esto queda como material de repaso, no examen.
+        // Este endpoint es solo vista previa de material -- el intento real
+        // (curso-ligero-cuestionario-intentos/iniciar.php) es quien hoy
+        // presenta y califica el cuestionario de verdad. pareja_texto en
+        // "asociación" ES la respuesta correcta, se oculta igual que es_correcta.
         if ($user['role'] === 'estudiante') {
             $opciones = array_map(static function (array $o): array {
-                unset($o['es_correcta']);
+                unset($o['es_correcta'], $o['pareja_texto']);
                 return $o;
             }, $opciones);
         }

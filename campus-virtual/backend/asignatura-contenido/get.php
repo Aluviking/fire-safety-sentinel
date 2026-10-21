@@ -23,8 +23,13 @@ if ($item['tipo'] === 'Cuestionario') {
         $optStmt->execute([$p['id']]);
         $opciones = $optStmt->fetchAll();
         if ($user['role'] === 'estudiante') {
+            // En "asociación" pareja_texto ES la respuesta correcta (a qué
+            // definición corresponde cada ítem) -- se oculta igual que
+            // es_correcta. Este endpoint es solo vista previa de material;
+            // el intento real (asignatura-cuestionario-intentos/iniciar.php)
+            // ya revuelve las definiciones antes de mostrarlas.
             $opciones = array_map(static function (array $o): array {
-                unset($o['es_correcta']);
+                unset($o['es_correcta'], $o['pareja_texto']);
                 return $o;
             }, $opciones);
         }

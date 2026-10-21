@@ -21,15 +21,19 @@ import {
 // scopeadas a "solo lo del docente" tanto en lo que listan (list.php) como
 // en lo que dejan crear/editar/borrar (candado de dueño agregado en el
 // backend), así que se reutilizan tal cual en vez de reconstruir
-// formularios de creación desde cero.
-import ProgramasView from "./views/ProgramasView";
-import AsignaturasView from "./views/AsignaturasView";
-import CursosLigerosView from "./views/CursosLigerosView";
-import CursosVirtualesView from "./views/CursosVirtualesView";
-import EvaluacionesView from "./views/EvaluacionesView";
-import InformacionBasicaView from "./views/InformacionBasicaView";
-import SalasVirtualesView from "./views/SalasVirtualesView";
-import ConsolidadoNotasView from "./views/ConsolidadoNotasView";
+// formularios de creación desde cero. Carga diferida (lazy): son 8 pantallas
+// completas del panel admin -- si se importaran de forma normal, entrar a
+// /docente bajaría ese peso entero aunque el docente nunca abra "Crear y
+// gestionar". Con lazy(), cada una solo se descarga la primera vez que se
+// hace clic en su pestaña.
+const ProgramasView = lazy(() => import("./views/ProgramasView"));
+const AsignaturasView = lazy(() => import("./views/AsignaturasView"));
+const CursosLigerosView = lazy(() => import("./views/CursosLigerosView"));
+const CursosVirtualesView = lazy(() => import("./views/CursosVirtualesView"));
+const EvaluacionesView = lazy(() => import("./views/EvaluacionesView"));
+const InformacionBasicaView = lazy(() => import("./views/InformacionBasicaView"));
+const SalasVirtualesView = lazy(() => import("./views/SalasVirtualesView"));
+const ConsolidadoNotasView = lazy(() => import("./views/ConsolidadoNotasView"));
 // Carga diferida — mismo motivo que en la vista de estudiante: ContenidoEditor
 // trae adentro el visor de PDF (pdf.js, ~1.7MB), no tiene sentido bajarlo
 // hasta que el docente de verdad entre a ver/editar contenido.
@@ -45,8 +49,16 @@ interface ClaseVirtualDocente {
 }
 interface ClaseConOrigen extends ClaseResumen { origen_id: number }
 interface ResumenDocente { anuncios: AnuncioResumen[]; clases: ClaseConOrigen[]; clasesHistorial: ClaseConOrigen[] }
-type Activo = { nombre: string; contentBase: string; questionsBase: string; ownerIdKey: string; ownerId: number };
+type Activo = { nombre: string; contentBase: string; questionsBase: string; intentosBase: string; ownerIdKey: string; ownerId: number };
 type ProgramaAbierto = { id: number; nombre: string };
+
+function VistaCargando() {
+  return (
+    <div className="flex justify-center py-16 text-slate-400">
+      <Loader2 className="w-5 h-5 animate-spin" />
+    </div>
+  );
+}
 
 export default function DocenteDashboard() {
   const { currentUser: user, loading: authLoading, logout, isImpersonando, volverAMiCuenta } = useCampusAuth();
@@ -186,13 +198,13 @@ export default function DocenteDashboard() {
             </button>
           ))}
           {cursosVirtuales.map((c) => (
-            <button key={`cv-${c.id}`} onClick={() => { setActivo({ nombre: c.codigo_nombre ?? "Curso", contentBase: "/curso-contenido", questionsBase: "/curso-preguntas", ownerIdKey: "cursoId", ownerId: c.id }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            <button key={`cv-${c.id}`} onClick={() => { setActivo({ nombre: c.codigo_nombre ?? "Curso", contentBase: "/curso-contenido", questionsBase: "/curso-preguntas", intentosBase: "/curso-cuestionario-intentos", ownerIdKey: "cursoId", ownerId: c.id }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className="text-left px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-[#C41717] hover:bg-slate-50 transition-colors truncate">
               {c.codigo_nombre ?? "—"}
             </button>
           ))}
           {cursos.map((c) => (
-            <button key={`cl-${c.id}`} onClick={() => { setActivo({ nombre: c.nombre, contentBase: "/curso-ligero-contenido", questionsBase: "/curso-ligero-preguntas", ownerIdKey: "cursoLigeroId", ownerId: c.id }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            <button key={`cl-${c.id}`} onClick={() => { setActivo({ nombre: c.nombre, contentBase: "/curso-ligero-contenido", questionsBase: "/curso-ligero-preguntas", intentosBase: "/curso-ligero-cuestionario-intentos", ownerIdKey: "cursoLigeroId", ownerId: c.id }); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className="text-left px-2.5 py-1.5 rounded-lg text-xs text-slate-500 hover:text-[#C41717] hover:bg-slate-50 transition-colors truncate">
               {c.nombre}
             </button>
@@ -427,6 +439,7 @@ export default function DocenteDashboard() {
                 <ContenidoEditor
                   contentBase={activo.contentBase}
                   questionsBase={activo.questionsBase}
+                  intentosBase={activo.intentosBase}
                   ownerIdKey={activo.ownerIdKey}
                   ownerId={activo.ownerId}
                   esDueno
@@ -469,7 +482,7 @@ export default function DocenteDashboard() {
                     return (
                       <div key={a.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col sm:flex-row">
                         <button
-                          onClick={() => setActivo({ nombre: a.nombre, contentBase: "/asignatura-contenido", questionsBase: "/asignatura-preguntas", ownerIdKey: "asignaturaId", ownerId: a.id })}
+                          onClick={() => setActivo({ nombre: a.nombre, contentBase: "/asignatura-contenido", questionsBase: "/asignatura-preguntas", intentosBase: "/asignatura-cuestionario-intentos", ownerIdKey: "asignaturaId", ownerId: a.id })}
                           className="group relative w-full sm:w-48 h-36 sm:h-auto shrink-0 overflow-hidden"
                         >
                           {a.imagen_path ? (
@@ -685,7 +698,7 @@ export default function DocenteDashboard() {
                               subtitle={c.descripcion}
                               imagePath={c.imagen_path ? `/cursos/imagen.php?id=${c.id}` : null}
                               accent={accentFor(c.codigo_nombre ?? String(c.id))}
-                              onClick={() => setActivo({ nombre: c.codigo_nombre ?? "Curso", contentBase: "/curso-contenido", questionsBase: "/curso-preguntas", ownerIdKey: "cursoId", ownerId: c.id })}
+                              onClick={() => setActivo({ nombre: c.codigo_nombre ?? "Curso", contentBase: "/curso-contenido", questionsBase: "/curso-preguntas", intentosBase: "/curso-cuestionario-intentos", ownerIdKey: "cursoId", ownerId: c.id })}
                               footer={
                                 <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
                                   <User className="w-3 h-3 text-slate-400" /> {c.matriculados} matriculado{c.matriculados !== 1 ? "s" : ""}
@@ -709,7 +722,7 @@ export default function DocenteDashboard() {
                               subtitle={c.descripcion ?? c.categoria}
                               imagePath={c.imagen_path ? `/cursos-ligeros/imagen.php?id=${c.id}` : null}
                               accent={accentFor(c.nombre)}
-                              onClick={() => setActivo({ nombre: c.nombre, contentBase: "/curso-ligero-contenido", questionsBase: "/curso-ligero-preguntas", ownerIdKey: "cursoLigeroId", ownerId: c.id })}
+                              onClick={() => setActivo({ nombre: c.nombre, contentBase: "/curso-ligero-contenido", questionsBase: "/curso-ligero-preguntas", intentosBase: "/curso-ligero-cuestionario-intentos", ownerIdKey: "cursoLigeroId", ownerId: c.id })}
                               footer={
                                 <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
                                   <User className="w-3 h-3 text-slate-400" /> {c.usuarios_inscritos} inscrito{c.usuarios_inscritos !== 1 ? "s" : ""}
@@ -793,39 +806,39 @@ export default function DocenteDashboard() {
           </motion.div>
         ) : vistaHome === "estudiantes" ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <InformacionBasicaView />
+            <Suspense fallback={<VistaCargando />}><InformacionBasicaView /></Suspense>
           </motion.div>
         ) : vistaHome === "evaluaciones" ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <EvaluacionesView />
+            <Suspense fallback={<VistaCargando />}><EvaluacionesView /></Suspense>
           </motion.div>
         ) : vistaHome === "gestionProgramas" ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <ProgramasView />
+            <Suspense fallback={<VistaCargando />}><ProgramasView /></Suspense>
           </motion.div>
         ) : vistaHome === "gestionAsignaturas" ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <AsignaturasView />
+            <Suspense fallback={<VistaCargando />}><AsignaturasView /></Suspense>
           </motion.div>
         ) : vistaHome === "gestionCursos" ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <ProgramasView soloTipo="curso" />
+            <Suspense fallback={<VistaCargando />}><ProgramasView soloTipo="curso" /></Suspense>
           </motion.div>
         ) : vistaHome === "gestionCursosLigeros" ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <CursosLigerosView />
+            <Suspense fallback={<VistaCargando />}><CursosLigerosView /></Suspense>
           </motion.div>
         ) : vistaHome === "gestionCursosVirtuales" ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <CursosVirtualesView />
+            <Suspense fallback={<VistaCargando />}><CursosVirtualesView /></Suspense>
           </motion.div>
         ) : vistaHome === "aulas" ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <SalasVirtualesView />
+            <Suspense fallback={<VistaCargando />}><SalasVirtualesView /></Suspense>
           </motion.div>
         ) : vistaHome === "consolidado" ? (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <ConsolidadoNotasView />
+            <Suspense fallback={<VistaCargando />}><ConsolidadoNotasView /></Suspense>
           </motion.div>
         ) : null}
       </main>

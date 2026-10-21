@@ -1293,3 +1293,100 @@ ALTER TABLE programa_clases_virtuales
   ADD COLUMN link_reunion    VARCHAR(500) NULL,
   ADD COLUMN zoom_meeting_id VARCHAR(50)  NULL,
   ADD COLUMN grabacion_url   VARCHAR(500) NULL;
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- Motor real de "presentar y calificar" un Cuestionario — antes solo existía
+-- el banco de preguntas (asignatura_preguntas/curso_preguntas/
+-- curso_ligero_preguntas), sin ninguna tabla para guardar lo que un
+-- estudiante responde. Un intento por envío (se permite reintentar hasta
+-- `intentos_disponibles` de asignatura_contenido/curso_contenido/
+-- curso_ligero_contenido); única/múltiple/asociación se califican solas al
+-- enviar, descriptiva queda pendiente de que el docente/admin la califique
+-- a mano (pendiente_calificar = 1).  Solo 3 dominios: Programas y Plantillas
+-- nunca abren un Cuestionario como contenido real desde la interfaz, así que
+-- no lo necesitan.
+-- ══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS asignatura_cuestionario_intentos (
+  id                        INT AUTO_INCREMENT PRIMARY KEY,
+  contenido_id              INT NOT NULL,
+  estudiante_identificacion VARCHAR(50) NOT NULL,
+  estudiante_nombre         VARCHAR(255) NULL,
+  numero_intento            INT NOT NULL DEFAULT 1,
+  iniciado_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  enviado_at                DATETIME NULL,
+  puntos_obtenidos          DECIMAL(6,2) NULL,
+  puntos_totales            DECIMAL(6,2) NULL,
+  porcentaje                DECIMAL(5,2) NULL,
+  aprobado                  TINYINT(1) NULL,
+  pendiente_calificar       TINYINT(1) NOT NULL DEFAULT 0,
+  FOREIGN KEY (contenido_id) REFERENCES asignatura_contenido(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS asignatura_cuestionario_respuestas (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  intento_id       INT NOT NULL,
+  pregunta_id      INT NOT NULL,
+  opcion_ids       TEXT NULL,
+  texto_respuesta  TEXT NULL,
+  es_correcta      TINYINT(1) NULL,
+  puntos_obtenidos DECIMAL(6,2) NULL DEFAULT 0,
+  FOREIGN KEY (intento_id) REFERENCES asignatura_cuestionario_intentos(id) ON DELETE CASCADE,
+  FOREIGN KEY (pregunta_id) REFERENCES asignatura_preguntas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS curso_cuestionario_intentos (
+  id                        INT AUTO_INCREMENT PRIMARY KEY,
+  contenido_id              INT NOT NULL,
+  estudiante_identificacion VARCHAR(50) NOT NULL,
+  estudiante_nombre         VARCHAR(255) NULL,
+  numero_intento            INT NOT NULL DEFAULT 1,
+  iniciado_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  enviado_at                DATETIME NULL,
+  puntos_obtenidos          DECIMAL(6,2) NULL,
+  puntos_totales            DECIMAL(6,2) NULL,
+  porcentaje                DECIMAL(5,2) NULL,
+  aprobado                  TINYINT(1) NULL,
+  pendiente_calificar       TINYINT(1) NOT NULL DEFAULT 0,
+  FOREIGN KEY (contenido_id) REFERENCES curso_contenido(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS curso_cuestionario_respuestas (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  intento_id       INT NOT NULL,
+  pregunta_id      INT NOT NULL,
+  opcion_ids       TEXT NULL,
+  texto_respuesta  TEXT NULL,
+  es_correcta      TINYINT(1) NULL,
+  puntos_obtenidos DECIMAL(6,2) NULL DEFAULT 0,
+  FOREIGN KEY (intento_id) REFERENCES curso_cuestionario_intentos(id) ON DELETE CASCADE,
+  FOREIGN KEY (pregunta_id) REFERENCES curso_preguntas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS curso_ligero_cuestionario_intentos (
+  id                        INT AUTO_INCREMENT PRIMARY KEY,
+  contenido_id              INT NOT NULL,
+  estudiante_identificacion VARCHAR(50) NOT NULL,
+  estudiante_nombre         VARCHAR(255) NULL,
+  numero_intento            INT NOT NULL DEFAULT 1,
+  iniciado_at               DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  enviado_at                DATETIME NULL,
+  puntos_obtenidos          DECIMAL(6,2) NULL,
+  puntos_totales            DECIMAL(6,2) NULL,
+  porcentaje                DECIMAL(5,2) NULL,
+  aprobado                  TINYINT(1) NULL,
+  pendiente_calificar       TINYINT(1) NOT NULL DEFAULT 0,
+  FOREIGN KEY (contenido_id) REFERENCES curso_ligero_contenido(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS curso_ligero_cuestionario_respuestas (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  intento_id       INT NOT NULL,
+  pregunta_id      INT NOT NULL,
+  opcion_ids       TEXT NULL,
+  texto_respuesta  TEXT NULL,
+  es_correcta      TINYINT(1) NULL,
+  puntos_obtenidos DECIMAL(6,2) NULL DEFAULT 0,
+  FOREIGN KEY (intento_id) REFERENCES curso_ligero_cuestionario_intentos(id) ON DELETE CASCADE,
+  FOREIGN KEY (pregunta_id) REFERENCES curso_ligero_preguntas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

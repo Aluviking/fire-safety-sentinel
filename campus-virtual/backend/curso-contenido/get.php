@@ -23,8 +23,10 @@ if ($item['tipo'] === 'Cuestionario') {
         $optStmt->execute([$p['id']]);
         $opciones = $optStmt->fetchAll();
         if ($user['role'] === 'estudiante') {
+            // pareja_texto en "asociación" ES la respuesta correcta -- se
+            // oculta igual que es_correcta (ver mismo fix en asignatura-contenido).
             $opciones = array_map(static function (array $o): array {
-                unset($o['es_correcta']);
+                unset($o['es_correcta'], $o['pareja_texto']);
                 return $o;
             }, $opciones);
         }

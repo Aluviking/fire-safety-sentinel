@@ -70,7 +70,7 @@ const TIPO_RESPUESTA_LABEL: Record<TipoRespuesta, string> = {
   unica: "Única respuesta", multiple: "Múltiple respuesta", asociacion: "Asociación", descriptiva: "Descriptiva",
 };
 
-interface ApiCtx { contentBase: string; questionsBase: string; ownerIdKey: string; ownerId: number }
+interface ApiCtx { contentBase: string; questionsBase: string; intentosBase?: string; ownerIdKey: string; ownerId: number }
 
 function AgregarRecursoMenu({ onSelect, label = "Agregar recurso" }: { onSelect: (tipo: string) => void; label?: string }) {
   const [open, setOpen] = useState(false);
@@ -677,9 +677,22 @@ function ConfiguracionCuestionario({
 }
 
 function CuestionarioViewer({
-  contentBase, questionsBase, contenido, canEdit, onChanged,
-}: { contentBase: string; questionsBase: string; contenido: Contenido; canEdit: boolean; onChanged: () => void }) {
-  const [subtab, setSubtab] = useState<"preguntas" | "configuracion">("preguntas");
+  contentBase, questionsBase, intentosBase, contenido, canEdit, onChanged,
+}: { contentBase: string; questionsBase: string; intentosBase?: string; contenido: Contenido; canEdit: boolean; onChanged: () => void }) {
+  const { currentUser } = useCampusAuth();
+  const [subtab, setSubtab] = useState<"preguntas" | "intentos" | "configuracion">("preguntas");
+
+  // Un estudiante nunca ve el banco de preguntas ni la configuración del
+  // cuestionario — solo presentarlo (o ver el resultado de lo que ya
+  // presentó). Si este dominio no tiene motor de intentos (Programas,
+  // Plantillas), queda como material de solo lectura (comportamiento previo).
+  if (currentUser?.role === "estudiante") {
+    if (!intentosBase) {
+      return <PreguntasPanel questionsBase={questionsBase} contenido={contenido} canEdit={false} onChanged={onChanged} />;
+    }
+    return <ResponderCuestionario intentosBase={intentosBase} contenido={contenido} />;
+  }
+
   return (
     <div>
       <div className="flex items-center gap-5 border-b border-slate-200 mb-4">
@@ -687,6 +700,12 @@ function CuestionarioViewer({
           className={`pb-2.5 text-xs font-semibold border-b-2 -mb-px transition-colors ${subtab === "preguntas" ? "border-[#C41717] text-[#C41717]" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
           Preguntas
         </button>
+        {intentosBase && (
+          <button onClick={() => setSubtab("intentos")}
+            className={`pb-2.5 text-xs font-semibold border-b-2 -mb-px transition-colors ${subtab === "intentos" ? "border-[#C41717] text-[#C41717]" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
+            Intentos
+          </button>
+        )}
         <button onClick={() => setSubtab("configuracion")}
           className={`pb-2.5 text-xs font-semibold border-b-2 -mb-px transition-colors ${subtab === "configuracion" ? "border-[#C41717] text-[#C41717]" : "border-transparent text-slate-400 hover:text-slate-600"}`}>
           Configuración
@@ -694,9 +713,463 @@ function CuestionarioViewer({
       </div>
       {subtab === "preguntas" ? (
         <PreguntasPanel questionsBase={questionsBase} contenido={contenido} canEdit={canEdit} onChanged={onChanged} />
+      ) : subtab === "intentos" && intentosBase ? (
+        <RevisarIntentos intentosBase={intentosBase} contenido={contenido} canCalificar={canEdit} />
       ) : (
         <ConfiguracionCuestionario contentBase={contentBase} contenido={contenido} canEdit={canEdit} onChanged={onChanged} />
       )}
+    </div>
+  );
+}
+
+/* ── Cuestionario · Responder (estudiante) ────────────────────────────────── */
+interface PreguntaIntento {
+  id: number; texto: string; tipo_respuesta: TipoRespuesta; puntos: number;
+  opciones: { id: number; texto: string }[]; definiciones?: string[];
+}
+interface IntentoResumen {
+  id: number; numero_intento: number; iniciado_at: string; enviado_at: string | null;
+  estudiante_nombre: string | null;
+  puntos_obtenidos: number | null; puntos_totales: number | null; porcentaje: number | null;
+  aprobado: number | null; pendiente_calificar: number;
+}
+interface RespuestaDetalle {
+  id: number; pregunta_id: number; pregunta_texto: string; tipo_respuesta: TipoRespuesta;
+  opcion_ids: string | null; texto_respuesta: string | null; es_correcta: number | null;
+  puntos_obtenidos: number | null; puntos_max: number; retroalimentacion: string | null;
+  opciones: { id: number; texto: string; pareja_texto: string | null; es_correcta: number }[];
+}
+interface IntentoDetalle extends IntentoResumen { respuestas: RespuestaDetalle[] }
+
+// En 'asociacion', opcion_ids guarda JSON ([{opcionId, parejaElegida}]), no
+// una lista de ids separada por comas como en única/múltiple -- necesita su
+// propio parseo y su propia forma de mostrar correcto/incorrecto.
+function paresDeRespuesta(opcionIds: string | null): { opcionId: number; parejaElegida: string }[] {
+  if (!opcionIds) return [];
+  try {
+    const parsed = JSON.parse(opcionIds);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function AsociacionDetalle({ r }: { r: RespuestaDetalle }) {
+  const pares = paresDeRespuesta(r.opcion_ids);
+  return (
+    <div className="space-y-1">
+      {r.opciones.map((o) => {
+        const elegida = pares.find((p) => p.opcionId === o.id)?.parejaElegida ?? "(sin responder)";
+        const correcta = elegida === o.pareja_texto;
+        return (
+          <div key={o.id} className={`flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs ${correcta ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+            {correcta ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <X className="w-3.5 h-3.5 shrink-0" />}
+            <span className="font-medium">{o.texto}</span> → {elegida}
+            {!correcta && <span className="text-[10px] text-slate-400">(correcta: {o.pareja_texto})</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ResponderCuestionario({ intentosBase, contenido }: { intentosBase: string; contenido: Contenido }) {
+  const [cargando, setCargando] = useState(true);
+  const [mios, setMios] = useState<IntentoResumen[]>([]);
+  const [presentando, setPresentando] = useState<{ intentoId: number; preguntas: PreguntaIntento[]; mostrarPuntaje: boolean; verDetalle: boolean } | null>(null);
+  const [respuestas, setRespuestas] = useState<Record<number, { opcionIds?: number[]; texto?: string; pares?: { opcionId: number; parejaElegida: string }[] }>>({});
+  const [enviando, setEnviando] = useState(false);
+  const [resultado, setResultado] = useState<{ intentoId: number; puntosObtenidos: number; puntosTotales: number; porcentaje: number; aprobado: boolean | null; pendienteCalificar: boolean; mostrarPuntaje: boolean; verDetalle: boolean } | null>(null);
+  const [detalle, setDetalle] = useState<IntentoDetalle | null>(null);
+  const [error, setError] = useState("");
+
+  const cargar = () => {
+    setCargando(true);
+    apiFetch<{ intentos: IntentoResumen[] }>(`${intentosBase}/intentos.php?contenidoId=${contenido.id}`)
+      .then((d) => setMios(d.intentos))
+      .catch(() => setMios([]))
+      .finally(() => setCargando(false));
+  };
+  useEffect(cargar, [intentosBase, contenido.id]);
+
+  const enviadosCount = mios.filter((i) => i.enviado_at !== null).length;
+  const limite = contenido.intentos_disponibles;
+  const puedeIntentar = limite === null || enviadosCount < limite;
+  const enProgreso = mios.find((i) => i.enviado_at === null);
+  const ultimoEnviado = [...mios].reverse().find((i) => i.enviado_at !== null) ?? null;
+
+  const iniciar = async () => {
+    setError("");
+    try {
+      const d = await apiFetch<{ intentoId: number; preguntas: PreguntaIntento[]; mostrarPuntaje: boolean; permitirVerificarAntesEnviar: boolean }>(
+        `${intentosBase}/iniciar.php`, { method: "POST", json: { contenidoId: contenido.id } }
+      );
+      setPresentando({ intentoId: d.intentoId, preguntas: d.preguntas, mostrarPuntaje: d.mostrarPuntaje, verDetalle: !!contenido.ver_detalle_resultados });
+      setRespuestas({});
+      setResultado(null);
+      setDetalle(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo iniciar el cuestionario.");
+    }
+  };
+
+  const verResultadoDetallado = (intentoId: number) => {
+    apiFetch<{ intento: IntentoDetalle }>(`${intentosBase}/intentos.php?id=${intentoId}`)
+      .then((d) => setDetalle(d.intento))
+      .catch(() => setDetalle(null));
+  };
+
+  const enviar = async () => {
+    if (!presentando) return;
+    if (contenido.permitir_verificar_antes_enviar && !window.confirm("¿Enviar tus respuestas? No podrás editarlas después de enviar.")) return;
+    setEnviando(true);
+    setError("");
+    try {
+      const payload = presentando.preguntas.map((p) => {
+        const r = respuestas[p.id] ?? {};
+        if (p.tipo_respuesta === "descriptiva") return { preguntaId: p.id, texto: r.texto ?? "" };
+        if (p.tipo_respuesta === "asociacion") return { preguntaId: p.id, pares: r.pares ?? [] };
+        return { preguntaId: p.id, opcionIds: r.opcionIds ?? [] };
+      });
+      const res = await apiFetch<{ puntosObtenidos: number; puntosTotales: number; porcentaje: number; aprobado: boolean | null; pendienteCalificar: boolean; mostrarPuntaje: boolean; verDetalle: boolean }>(
+        `${intentosBase}/enviar.php`, { method: "POST", json: { intentoId: presentando.intentoId, respuestas: payload } }
+      );
+      setResultado({ ...res, intentoId: presentando.intentoId });
+      setPresentando(null);
+      cargar();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo enviar el cuestionario.");
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  if (cargando) return <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+
+  // Pantalla de detalle de un intento ya enviado (correctas/incorrectas).
+  if (detalle) {
+    return (
+      <div className="space-y-3">
+        <button onClick={() => setDetalle(null)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#C41717]">
+          <ArrowLeft className="w-3.5 h-3.5" /> Volver
+        </button>
+        {detalle.respuestas.map((r, idx) => (
+          <div key={r.id} className="p-3.5 rounded-xl border border-slate-200">
+            <p className="text-sm font-semibold text-slate-800 mb-1.5">Pregunta {idx + 1}. {r.pregunta_texto}</p>
+            {r.tipo_respuesta === "descriptiva" ? (
+              <p className="text-xs text-slate-600 italic">Tu respuesta: {r.texto_respuesta || "(sin responder)"}</p>
+            ) : r.tipo_respuesta === "asociacion" ? (
+              <AsociacionDetalle r={r} />
+            ) : (
+              <div className="space-y-1">
+                {r.opciones.map((o) => {
+                  const marcada = (r.opcion_ids ?? "").split(",").map(Number).includes(o.id);
+                  return (
+                    <div key={o.id} className={`flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs ${o.es_correcta ? "bg-emerald-50 text-emerald-700" : marcada ? "bg-red-50 text-red-600" : "text-slate-500"}`}>
+                      {o.es_correcta ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : marcada ? <X className="w-3.5 h-3.5 shrink-0" /> : <Circle className="w-3 h-3 text-slate-300 shrink-0" />}
+                      {o.texto}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <p className={`mt-1.5 text-[11px] font-semibold ${r.es_correcta ? "text-emerald-600" : r.es_correcta === null ? "text-amber-600" : "text-red-500"}`}>
+              {r.es_correcta === null ? "Pendiente de calificación" : r.es_correcta ? "Correcta" : "Incorrecta"} · {r.puntos_obtenidos ?? 0}/{r.puntos_max} pts
+            </p>
+            {r.retroalimentacion && <p className="mt-1 text-[11px] text-slate-500">{r.retroalimentacion}</p>}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Pantalla de resultado inmediato tras enviar.
+  if (resultado) {
+    return (
+      <div className="text-center py-8 space-y-3">
+        {resultado.mostrarPuntaje ? (
+          <>
+            <p className="text-4xl font-extrabold text-slate-900">{resultado.porcentaje}%</p>
+            <p className="text-sm text-slate-500">{resultado.puntosObtenidos} / {resultado.puntosTotales} puntos</p>
+          </>
+        ) : (
+          <p className="text-sm text-slate-600">Tus respuestas se enviaron correctamente.</p>
+        )}
+        {resultado.aprobado !== null && (
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${resultado.aprobado ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+            {resultado.aprobado ? "Aprobado" : "No aprobado"}
+          </span>
+        )}
+        {resultado.pendienteCalificar && (
+          <p className="text-xs text-amber-600">Tiene preguntas de respuesta abierta — tu docente las calificará pronto.</p>
+        )}
+        <div className="flex items-center justify-center gap-4 pt-2">
+          {resultado.verDetalle && (
+            <button onClick={() => { verResultadoDetallado(resultado.intentoId); setResultado(null); }}
+              className="text-xs font-semibold text-[#C41717] hover:text-[#B01313]">
+              Ver detalle de mis respuestas
+            </button>
+          )}
+          <button onClick={() => setResultado(null)} className="text-xs font-semibold text-slate-500 hover:text-slate-700">
+            Volver
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Pantalla de presentación activa.
+  if (presentando) {
+    const faltan = presentando.preguntas.filter((p) => {
+      const r = respuestas[p.id];
+      if (p.tipo_respuesta === "descriptiva") return !r?.texto?.trim();
+      if (p.tipo_respuesta === "asociacion") return !r?.pares || r.pares.length < p.opciones.length;
+      return !r?.opcionIds?.length;
+    }).length;
+    return (
+      <div className="space-y-4">
+        {error && <p className="text-xs text-red-600">{error}</p>}
+        {presentando.preguntas.map((p, idx) => {
+          const r = respuestas[p.id] ?? {};
+          return (
+            <div key={p.id} className="p-3.5 rounded-xl border border-slate-200">
+              <p className="text-sm font-semibold text-slate-800 mb-2.5">Pregunta {idx + 1}. {p.texto} <span className="text-[10px] text-slate-400 font-normal">({p.puntos} pts)</span></p>
+              {p.tipo_respuesta === "descriptiva" ? (
+                <textarea value={r.texto ?? ""} onChange={(e) => setRespuestas((prev) => ({ ...prev, [p.id]: { texto: e.target.value } }))}
+                  rows={3} className={inputCls} placeholder="Escribe tu respuesta..." />
+              ) : p.tipo_respuesta === "asociacion" ? (
+                <div className="space-y-2">
+                  {p.opciones.map((o) => {
+                    const par = r.pares?.find((x) => x.opcionId === o.id);
+                    return (
+                      <div key={o.id} className="flex items-center gap-2.5">
+                        <span className="text-xs text-slate-700 min-w-[40%]">{o.texto}</span>
+                        <select value={par?.parejaElegida ?? ""} onChange={(e) => {
+                          const nuevos = (r.pares ?? []).filter((x) => x.opcionId !== o.id);
+                          nuevos.push({ opcionId: o.id, parejaElegida: e.target.value });
+                          setRespuestas((prev) => ({ ...prev, [p.id]: { pares: nuevos } }));
+                        }} className={`${inputCls} flex-1`}>
+                          <option value="">Selecciona...</option>
+                          {(p.definiciones ?? []).map((def, di) => <option key={di} value={def}>{def}</option>)}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {p.opciones.map((o) => {
+                    const marcada = r.opcionIds?.includes(o.id) ?? false;
+                    return (
+                      <button key={o.id} type="button" onClick={() => {
+                        const actuales = r.opcionIds ?? [];
+                        const nuevos = p.tipo_respuesta === "unica" ? [o.id]
+                          : marcada ? actuales.filter((x) => x !== o.id) : [...actuales, o.id];
+                        setRespuestas((prev) => ({ ...prev, [p.id]: { opcionIds: nuevos } }));
+                      }} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left transition-colors ${marcada ? "bg-[#C41717]/8 text-[#C41717] font-medium" : "text-slate-600 hover:bg-slate-50"}`}>
+                        {p.tipo_respuesta === "multiple"
+                          ? (marcada ? <CheckSquare className="w-3.5 h-3.5 shrink-0" /> : <Square className="w-3.5 h-3.5 text-slate-300 shrink-0" />)
+                          : (marcada ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <Circle className="w-3.5 h-3.5 text-slate-300 shrink-0" />)}
+                        {o.texto}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <div className="flex items-center gap-3">
+          <button onClick={enviar} disabled={enviando}
+            className="px-5 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold disabled:opacity-60 transition-colors">
+            {enviando ? "Enviando..." : "Enviar respuestas"}
+          </button>
+          {faltan > 0 && <span className="text-[11px] text-slate-400">Faltan {faltan} pregunta{faltan !== 1 ? "s" : ""} por responder.</span>}
+        </div>
+      </div>
+    );
+  }
+
+  // Pantalla inicial: historial de intentos + botón para empezar/reanudar.
+  return (
+    <div className="space-y-4">
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      {mios.length > 0 && (
+        <div className="space-y-2">
+          {mios.map((i) => (
+            <div key={i.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200">
+              <div>
+                <p className="text-xs font-semibold text-slate-700">Intento {i.numero_intento}</p>
+                <p className="text-[11px] text-slate-400">
+                  {i.enviado_at ? new Date(i.enviado_at).toLocaleString("es-CO") : "En progreso"}
+                </p>
+              </div>
+              {i.enviado_at ? (
+                <div className="flex items-center gap-3">
+                  {contenido.mostrar_puntaje ? (
+                    <span className="text-sm font-bold text-slate-800">{i.porcentaje}%</span>
+                  ) : i.pendiente_calificar ? (
+                    <span className="text-[11px] text-amber-600">Pendiente de calificar</span>
+                  ) : null}
+                  <button onClick={() => verResultadoDetallado(i.id)} className="text-xs font-semibold text-[#C41717] hover:text-[#B01313]">Ver detalle</button>
+                </div>
+              ) : (
+                <button onClick={iniciar} className="text-xs font-semibold text-[#C41717] hover:text-[#B01313]">Continuar</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {!enProgreso && (
+        puedeIntentar ? (
+          <button onClick={iniciar}
+            className="px-5 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold transition-colors">
+            {mios.length > 0 ? "Intentar de nuevo" : "Presentar cuestionario"}
+          </button>
+        ) : (
+          <p className="text-xs text-slate-400">Ya usaste todos tus intentos disponibles ({limite}).</p>
+        )
+      )}
+      {!enProgreso && mios.length === 0 && ultimoEnviado === null && (
+        <p className="text-xs text-slate-400">{contenido.descripcion}</p>
+      )}
+    </div>
+  );
+}
+
+/* ── Cuestionario · Intentos (docente/admin: revisar y calificar) ────────── */
+function RevisarIntentos({
+  intentosBase, contenido, canCalificar,
+}: { intentosBase: string; contenido: Contenido; canCalificar: boolean }) {
+  const [intentos, setIntentos] = useState<IntentoResumen[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [abierto, setAbierto] = useState<IntentoDetalle | null>(null);
+  const [calificaciones, setCalificaciones] = useState<Record<number, { puntos: string; esCorrecta: boolean }>>({});
+  const [guardando, setGuardando] = useState(false);
+
+  const cargar = () => {
+    setLoading(true);
+    apiFetch<{ intentos: IntentoResumen[] }>(`${intentosBase}/intentos.php?contenidoId=${contenido.id}`)
+      .then((d) => setIntentos(d.intentos)).catch(() => setIntentos([])).finally(() => setLoading(false));
+  };
+  useEffect(cargar, [intentosBase, contenido.id]);
+
+  const abrir = (id: number) => {
+    apiFetch<{ intento: IntentoDetalle }>(`${intentosBase}/intentos.php?id=${id}`).then((d) => {
+      setAbierto(d.intento);
+      const iniciales: Record<number, { puntos: string; esCorrecta: boolean }> = {};
+      d.intento.respuestas.forEach((r) => {
+        if (r.tipo_respuesta === "descriptiva") {
+          iniciales[r.id] = { puntos: String(r.puntos_obtenidos ?? 0), esCorrecta: !!r.es_correcta };
+        }
+      });
+      setCalificaciones(iniciales);
+    }).catch((err) => window.alert(err instanceof Error ? err.message : "No se pudo abrir el intento."));
+  };
+
+  const guardar = async () => {
+    if (!abierto) return;
+    setGuardando(true);
+    try {
+      const payload = Object.entries(calificaciones).map(([respuestaId, c]) => ({
+        respuestaId: Number(respuestaId), puntos: Number(c.puntos) || 0, esCorrecta: c.esCorrecta,
+      }));
+      await apiFetch(`${intentosBase}/calificar.php`, { method: "POST", json: { intentoId: abierto.id, calificaciones: payload } });
+      setAbierto(null);
+      cargar();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "No se pudo guardar la calificación.");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+
+  if (abierto) {
+    const hayDescriptivas = abierto.respuestas.some((r) => r.tipo_respuesta === "descriptiva");
+    return (
+      <div className="space-y-3">
+        <button onClick={() => setAbierto(null)} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#C41717]">
+          <ArrowLeft className="w-3.5 h-3.5" /> Volver a la lista
+        </button>
+        <p className="text-sm font-semibold text-slate-800">{abierto.estudiante_nombre ?? "Estudiante"} · Intento {abierto.numero_intento}</p>
+        {abierto.respuestas.map((r, idx) => (
+          <div key={r.id} className="p-3.5 rounded-xl border border-slate-200">
+            <p className="text-sm font-semibold text-slate-800 mb-1.5">Pregunta {idx + 1}. {r.pregunta_texto}</p>
+            {r.tipo_respuesta === "descriptiva" ? (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-600 italic bg-slate-50 rounded-lg p-2.5">{r.texto_respuesta || "(sin responder)"}</p>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <input type="checkbox" checked={calificaciones[r.id]?.esCorrecta ?? false}
+                      onChange={(e) => setCalificaciones((prev) => ({ ...prev, [r.id]: { ...prev[r.id], esCorrecta: e.target.checked } }))} />
+                    Correcta
+                  </label>
+                  <input type="number" min={0} max={r.puntos_max} value={calificaciones[r.id]?.puntos ?? "0"}
+                    onChange={(e) => setCalificaciones((prev) => ({ ...prev, [r.id]: { ...prev[r.id], puntos: e.target.value } }))}
+                    className={`${inputCls} w-20 text-center`} />
+                  <span className="text-[11px] text-slate-400">/ {r.puntos_max} pts</span>
+                </div>
+              </div>
+            ) : r.tipo_respuesta === "asociacion" ? (
+              <>
+                <AsociacionDetalle r={r} />
+                <p className={`mt-1.5 text-[11px] font-semibold ${r.es_correcta ? "text-emerald-600" : "text-red-500"}`}>
+                  {r.es_correcta ? "Correcta" : "Incorrecta"} · {r.puntos_obtenidos ?? 0}/{r.puntos_max} pts
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  {r.opciones.map((o) => {
+                    const marcada = (r.opcion_ids ?? "").split(",").map(Number).includes(o.id);
+                    return (
+                      <div key={o.id} className={`flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs ${o.es_correcta ? "bg-emerald-50 text-emerald-700" : marcada ? "bg-red-50 text-red-600" : "text-slate-500"}`}>
+                        {o.es_correcta ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : marcada ? <X className="w-3.5 h-3.5 shrink-0" /> : <Circle className="w-3 h-3 text-slate-300 shrink-0" />}
+                        {o.texto}
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className={`mt-1.5 text-[11px] font-semibold ${r.es_correcta ? "text-emerald-600" : "text-red-500"}`}>
+                  {r.es_correcta ? "Correcta" : "Incorrecta"} · {r.puntos_obtenidos ?? 0}/{r.puntos_max} pts
+                </p>
+              </>
+            )}
+          </div>
+        ))}
+        {canCalificar && hayDescriptivas && (
+          <button onClick={guardar} disabled={guardando}
+            className="px-5 py-2.5 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold disabled:opacity-60 transition-colors">
+            {guardando ? "Guardando..." : "Guardar calificación"}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (intentos.length === 0) return <p className="text-sm text-slate-400">Todavía ningún estudiante ha presentado este cuestionario.</p>;
+
+  return (
+    <div className="space-y-2">
+      {intentos.map((i) => (
+        <button key={i.id} onClick={() => abrir(i.id)}
+          className="w-full flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 hover:border-[#C41717]/30 transition-colors text-left">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-slate-700 truncate">{i.estudiante_nombre ?? "Estudiante"} · Intento {i.numero_intento}</p>
+            <p className="text-[11px] text-slate-400">{i.enviado_at ? new Date(i.enviado_at).toLocaleString("es-CO") : "En progreso"}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {i.pendiente_calificar ? (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">Pendiente</span>
+            ) : i.enviado_at ? (
+              <span className="text-sm font-bold text-slate-800">{i.porcentaje}%</span>
+            ) : null}
+            <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+          </div>
+        </button>
+      ))}
     </div>
   );
 }
@@ -856,7 +1329,7 @@ function RecursoViewer({
             </div>
           )}
           {full.tipo === "Cuestionario" && (
-            <CuestionarioViewer contentBase={api.contentBase} questionsBase={api.questionsBase} contenido={full} canEdit={canEdit} onChanged={refetch} />
+            <CuestionarioViewer contentBase={api.contentBase} questionsBase={api.questionsBase} intentosBase={api.intentosBase} contenido={full} canEdit={canEdit} onChanged={refetch} />
           )}
         </>
       )}
@@ -883,10 +1356,12 @@ function RecursoViewer({
 /* ── Contenido del curso (componente exportado, reutilizado por Cursos
    ligeros y Plantillas — cada uno pasa su propio par de endpoints) ───────── */
 export default function ContenidoEditor({
-  contentBase, questionsBase, ownerIdKey, ownerId, heading = "Contenido del curso", addLabel = "Agregar recurso", readOnly = false, esDueno = false,
+  contentBase, questionsBase, intentosBase, ownerIdKey, ownerId, heading = "Contenido del curso", addLabel = "Agregar recurso", readOnly = false, esDueno = false,
 }: {
   contentBase: string; questionsBase: string; ownerIdKey: string; ownerId: number; heading?: string; addLabel?: string;
   readOnly?: boolean;
+  /** Habilita presentar/revisar el Cuestionario (asignatura/curso/curso ligero) — Programas y Plantillas no lo usan. */
+  intentosBase?: string;
   /** El docente dueño de esta asignatura/curso (asignatura_docentes / programa_docentes) también puede editar, igual que Admin. */
   esDueno?: boolean;
 }) {
@@ -895,7 +1370,7 @@ export default function ContenidoEditor({
   // misma asignatura se ve "de prestado" desde el pensum de un programa/curso
   // (ahí el contenido solo se puede crear/editar desde el módulo Asignaturas).
   const canEdit = !readOnly && (currentUser?.role === "admin" || currentUser?.role === "super_admin" || (currentUser?.role === "docente" && esDueno));
-  const api: ApiCtx = { contentBase, questionsBase, ownerIdKey, ownerId };
+  const api: ApiCtx = { contentBase, questionsBase, intentosBase, ownerIdKey, ownerId };
   const [items, setItems] = useState<Contenido[]>([]);
   const [loading, setLoading] = useState(true);
   const [creatingTipo, setCreatingTipo] = useState<string | null>(null);

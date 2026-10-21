@@ -586,7 +586,7 @@ function VerContenidoAsignaturaTab({ programaId }: { programaId: number }) {
         </button>
         <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
           <ContenidoEditor
-            contentBase="/asignatura-contenido" questionsBase="/asignatura-preguntas"
+            contentBase="/asignatura-contenido" questionsBase="/asignatura-preguntas" intentosBase="/asignatura-cuestionario-intentos"
             ownerIdKey="asignaturaId" ownerId={seleccionada.asignatura_id}
             heading={`Contenido de ${seleccionada.asignatura_nombre}`}
             readOnly

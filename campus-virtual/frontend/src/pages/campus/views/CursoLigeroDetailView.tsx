@@ -427,7 +427,7 @@ export default function CursoLigeroDetailView({ curso, onBack, onUpdated }: { cu
             {tab === "contenido" && (
               <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
                 <ContenidoEditor
-                  contentBase="/curso-ligero-contenido" questionsBase="/curso-ligero-preguntas" ownerIdKey="cursoLigeroId" ownerId={curso.id}
+                  contentBase="/curso-ligero-contenido" questionsBase="/curso-ligero-preguntas" intentosBase="/curso-ligero-cuestionario-intentos" ownerIdKey="cursoLigeroId" ownerId={curso.id}
                   addLabel="Agregar curso"
                 />
               </Suspense>

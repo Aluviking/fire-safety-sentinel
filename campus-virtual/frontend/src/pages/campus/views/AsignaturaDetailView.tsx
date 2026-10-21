@@ -336,7 +336,7 @@ export default function AsignaturaDetailView({
           <div className="flex-1 p-5 min-w-0">
             {tab === "contenido" && (
               <Suspense fallback={<div className="flex justify-center py-8 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /></div>}>
-                <ContenidoEditor contentBase="/asignatura-contenido" questionsBase="/asignatura-preguntas" ownerIdKey="asignaturaId" ownerId={asignatura.id} esDueno={esDocenteDueno} />
+                <ContenidoEditor contentBase="/asignatura-contenido" questionsBase="/asignatura-preguntas" intentosBase="/asignatura-cuestionario-intentos" ownerIdKey="asignaturaId" ownerId={asignatura.id} esDueno={esDocenteDueno} />
               </Suspense>
             )}
             {tab === "anuncios" && <AnunciosTab asignaturaId={asignatura.id} />}
