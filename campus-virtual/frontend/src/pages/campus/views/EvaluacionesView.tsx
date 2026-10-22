@@ -19,6 +19,7 @@ interface Evaluacion {
   observaciones: string | null;
   origen: "q10" | "cuestionario";
   empresa: string | null;
+  fueraDeBaseDe: string | null;
 }
 interface NotaFinal {
   id: number;
@@ -226,6 +227,12 @@ function CursoRosterPanel({
                   <td className="px-3 py-2 text-slate-800 font-medium text-xs whitespace-nowrap">
                     {nombre}
                     <div className="text-slate-400 font-mono text-[11px]">{identificacion}</div>
+                    {studentRows[0]?.empresa && (
+                      <div className="text-emerald-700 text-[10px] font-medium">{studentRows[0].empresa}</div>
+                    )}
+                    {!studentRows[0]?.empresa && studentRows[0]?.fueraDeBaseDe && (
+                      <div className="text-amber-600 text-[10px] font-medium">Fuera de la base de {studentRows[0].fueraDeBaseDe}</div>
+                    )}
                   </td>
                   {parametros.map((p) => {
                     const cell = studentRows.find((r) => r.parametro === p);
@@ -326,7 +333,7 @@ export default function EvaluacionesView() {
   const filteredEvaluaciones = useMemo(() => {
     const q = searchActive.trim().toLowerCase();
     return evaluaciones.filter((e) =>
-      (!q || (e.identificacion_estudiante ?? "").includes(q) || (e.codigo_curso ?? "").toLowerCase().includes(q)) &&
+      (!q || (e.identificacion_estudiante ?? "").includes(q) || (e.codigo_curso ?? "").toLowerCase().includes(q) || (e.empresa ?? "").toLowerCase().includes(q)) &&
       (!filterAsignatura || e.asignatura === filterAsignatura) &&
       (!filterCurso || e.codigo_curso === filterCurso || e.empresa === filterCurso)
     );
@@ -348,9 +355,9 @@ export default function EvaluacionesView() {
   // Descarga exactamente lo que está filtrado en pantalla en ese momento
   // (misma mecánica que la plantilla de Cursos para empresas).
   const exportarExcel = () => {
-    const headers = ["Identificación", "Curso", "Empresa", "Asignatura", "Parámetro", "%", "Nota", "Inasist.", "Origen"];
+    const headers = ["Identificación", "Curso", "Empresa", "Fuera de base de", "Asignatura", "Parámetro", "%", "Nota", "Inasist.", "Origen"];
     const data = filteredEvaluaciones.map((e) => [
-      e.identificacion_estudiante ?? "", e.codigo_curso ?? "", e.empresa ?? "", e.asignatura ?? "",
+      e.identificacion_estudiante ?? "", e.codigo_curso ?? "", e.empresa ?? "", e.fueraDeBaseDe ?? "", e.asignatura ?? "",
       e.parametro ?? "", e.porcentaje ?? "", e.origen === "q10" ? (e.nota ?? "") : "",
       e.origen === "q10" ? (e.inasistencias ?? 0) : "", e.origen === "q10" ? "Antigua" : "Cuestionario",
     ]);
@@ -408,7 +415,7 @@ export default function EvaluacionesView() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder={tab === "Evaluaciones detalladas" ? "Buscar por identificación o código de curso..." : "Buscar por identificación o asignatura..."}
+                placeholder={tab === "Evaluaciones detalladas" ? "Buscar por identificación, curso o empresa..." : "Buscar por identificación o asignatura..."}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-9 py-2 text-slate-800 text-sm placeholder:text-slate-400 focus:outline-none focus:border-[#C41717]/40 focus:bg-white focus:ring-2 focus:ring-[#C41717]/8 transition-all" />
               {searchInput && (
                 <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
@@ -445,12 +452,13 @@ export default function EvaluacionesView() {
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">%</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Nota</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Inasist.</th>
+                      <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Empresa</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Origen</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {evalPage.length === 0 ? (
-                      <tr><td colSpan={8} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
+                      <tr><td colSpan={9} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
                     ) : evalPage.map((e, idx) => (
                       <tr key={e.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
                         <td className="px-4 py-2 text-slate-600 font-mono text-[13px]">{e.identificacion_estudiante ?? "—"}</td>
@@ -460,6 +468,15 @@ export default function EvaluacionesView() {
                         <td className="px-4 py-2 text-slate-500 text-xs">{e.porcentaje ?? "—"}</td>
                         <td className="px-4 py-2 text-slate-700 font-medium text-xs">{e.origen === "q10" ? (e.nota ?? "—") : "—"}</td>
                         <td className="px-4 py-2 text-slate-500 text-xs">{e.origen === "q10" ? (e.inasistencias ?? 0) : "—"}</td>
+                        <td className="px-4 py-2 text-xs">
+                          {e.empresa ? (
+                            <span className="text-emerald-700 font-medium">{e.empresa}</span>
+                          ) : e.fueraDeBaseDe ? (
+                            <span className="text-amber-600 font-medium">Fuera de la base de {e.fueraDeBaseDe}</span>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-2 text-xs">
                           {e.origen === "q10" ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[11px] font-medium">Antigua</span>
