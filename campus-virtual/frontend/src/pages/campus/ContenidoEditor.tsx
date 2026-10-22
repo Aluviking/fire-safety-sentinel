@@ -50,14 +50,27 @@ export interface Pregunta {
 
 const inputCls = "w-full text-sm bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
 
+// Convierte un link normal de YouTube/Vimeo (el que se copia del navegador)
+// a su versión incrustable -- si se pega tal cual en un <iframe>, YouTube no
+// lo deja cargar. Cualquier otro link (ya incrustable, o un .mp4 directo) se
+// deja igual.
+function urlDeVideoEmbed(url: string): string {
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([\w-]+)/);
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+  const vimeo = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
+  return url;
+}
+
 const TIPO_ICON: Record<string, React.ElementType> = {
   Texto: FileText, Archivo: FileIcon, Video, Audio: Music, Tarea: ClipboardCheck,
-  Cuestionario: ListChecks, Foro: MessageSquare, Iframe: LinkIcon,
+  Cuestionario: ListChecks, Foro: MessageSquare, Iframe: LinkIcon, Link: LinkIcon,
 };
 const TIPOS_MENU = [
   { tipo: "Texto", label: "Texto", icon: FileText },
   { tipo: "Archivo", label: "Archivo (.docx, .pdf, .pptx...)", icon: FileIcon },
   { tipo: "Video", label: "Video", icon: Video },
+  { tipo: "Link", label: "Link (URL de video)", icon: LinkIcon },
   { tipo: "Audio", label: "Audio", icon: Music },
   { tipo: "Tarea", label: "Tarea", icon: ClipboardCheck },
   { tipo: "Cuestionario", label: "Cuestionario", icon: ListChecks },
@@ -149,7 +162,7 @@ function RecursoFormModal({
     setError("");
     if (!titulo.trim()) { setError("El título es obligatorio."); return; }
     if (needsFile && !file && !editing?.archivo_path) { setError("Selecciona un archivo."); return; }
-    if (tipo === "Iframe" && !urlExterna.trim()) { setError("La URL es obligatoria."); return; }
+    if ((tipo === "Iframe" || tipo === "Link") && !urlExterna.trim()) { setError("La URL es obligatoria."); return; }
     setSubmitting(true);
     try {
       const payload = {
@@ -202,6 +215,9 @@ function RecursoFormModal({
           )}
           {tipo === "Iframe" && (
             <input value={urlExterna} onChange={(e) => setUrlExterna(e.target.value)} placeholder="URL a incrustar (https://...)" className={inputCls} />
+          )}
+          {tipo === "Link" && (
+            <input value={urlExterna} onChange={(e) => setUrlExterna(e.target.value)} placeholder="URL del video (YouTube, Vimeo, etc.)" className={inputCls} />
           )}
           {tipo === "Cuestionario" && (
             <textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Introducción del cuestionario (opcional)" rows={3} className={inputCls} />
@@ -1343,6 +1359,10 @@ function RecursoViewer({
           )}
           {full.tipo === "Iframe" && full.url_externa && (
             <iframe src={full.url_externa} className="w-full h-[65vh] rounded-xl border border-slate-200" title={full.titulo} />
+          )}
+          {full.tipo === "Link" && full.url_externa && (
+            <iframe src={urlDeVideoEmbed(full.url_externa)} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen className="w-full h-[65vh] rounded-xl border border-slate-200" title={full.titulo} />
           )}
           {(full.tipo === "Archivo" || full.tipo === "Video" || full.tipo === "Audio") && (
             <>

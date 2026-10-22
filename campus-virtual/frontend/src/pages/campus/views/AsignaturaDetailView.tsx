@@ -122,7 +122,7 @@ function AnunciosTab({ asignaturaId }: { asignaturaId: number }) {
 
 interface EstudianteDeAsignatura {
   id: number; estudiante_id: number; estado: string | null; identificacion: string; nombre_completo: string; programa_nombre: string;
-  mostrar_notas: number; mostrar_certificado: number;
+  mostrar_notas: number; mostrar_certificado: number; periodo: string | null;
   empresa: string | null; fueraDeBaseDe: string | null;
 }
 
@@ -228,8 +228,8 @@ function EstudiantesTab({ asignaturaId, asignaturaNombre, certificadoId }: { asi
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estudiante</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Identificación</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Programa</th>
+                <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Periodo</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estado</th>
-                {canManage && <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Notas / Certificado</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -257,15 +257,8 @@ function EstudiantesTab({ asignaturaId, asignaturaNombre, certificadoId }: { asi
                   </td>
                   <td className="px-3 py-2 text-slate-600 text-xs font-mono">{e.identificacion}</td>
                   <td className="px-3 py-2 text-slate-500 text-xs">{e.programa_nombre}</td>
+                  <td className="px-3 py-2 text-slate-500 text-xs">{e.periodo ?? "—"}</td>
                   <td className="px-3 py-2 text-slate-500 text-xs">{e.estado ?? "—"}</td>
-                  {canManage && (
-                    <td className="px-3 py-2">
-                      <div className="flex items-center justify-center gap-3">
-                        <MiniToggle label="Notas" checked={!!e.mostrar_notas} onChange={(v) => actualizarPermisos(e.id, { mostrarNotas: v })} />
-                        <MiniToggle label="Cert." checked={!!e.mostrar_certificado} onChange={(v) => actualizarPermisos(e.id, { mostrarCertificado: v })} />
-                      </div>
-                    </td>
-                  )}
                 </tr>
               ))}
             </tbody>

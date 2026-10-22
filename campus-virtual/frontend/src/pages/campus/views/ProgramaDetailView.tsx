@@ -1333,7 +1333,6 @@ function EstudiantesTab({ programaId, programaNombre, certificadoId }: { program
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Jornada</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Nivel</th>
                 <th className="text-left px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Estado</th>
-                {canManage && <th className="text-center px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Notas / Certificado</th>}
                 {isSuperAdmin && <th className="text-right px-3 py-2 text-slate-500 font-semibold text-[11px] uppercase whitespace-nowrap">Acciones</th>}
               </tr>
             </thead>
@@ -1369,16 +1368,6 @@ function EstudiantesTab({ programaId, programaNombre, certificadoId }: { program
                       {m.estado}
                     </span>
                   </td>
-                  {canManage && (
-                    <td className="px-3 py-2">
-                      <div className="flex items-center justify-center gap-3">
-                        <MiniToggle label="Notas" checked={!!m.mostrar_notas}
-                          onChange={(v) => actualizarPermisos(m.id, { mostrarNotas: v })} />
-                        <MiniToggle label="Cert." checked={!!m.mostrar_certificado}
-                          onChange={(v) => actualizarPermisos(m.id, { mostrarCertificado: v })} />
-                      </div>
-                    </td>
-                  )}
                   {isSuperAdmin && (
                     <td className="px-3 py-2">
                       <div className="flex items-center justify-end gap-2.5">

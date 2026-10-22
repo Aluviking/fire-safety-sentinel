@@ -9,7 +9,7 @@ import { useCampusAuth } from "@/context/CampusAuthContext";
 import { SearchableSelect } from "../SearchableSelect";
 import { ClasesVirtualesTab } from "../ClasesVirtualesTab";
 import { useUrlState } from "../useUrlState";
-import { MiniToggle, CertificadoPreview } from "./ProgramaDetailView";
+import { CertificadoPreview } from "./ProgramaDetailView";
 // Carga diferida — ContenidoEditor trae adentro el visor de PDF (pdf.js,
 // ~1.7MB) desde que se le quitó la dependencia de un Worker aparte. Si se
 // importa de una, CADA curso ligero tiene que bajar y ejecutar ese bloque
@@ -301,7 +301,6 @@ function UsuariosTab({ cursoId, certificadoId }: { cursoId: number; certificadoI
                   </td>
                   <td className="px-2 py-2">
                     <div className="flex items-center justify-center gap-2">
-                      <MiniToggle label="Cert." checked={!!i.mostrar_certificado} onChange={(v) => toggleCertificado(i.id, v)} />
                       {certificadoId && (
                         <button onClick={() => setPrevisualizando(i)} title="Vista previa del certificado" className="text-slate-400 hover:text-[#C41717]">
                           <Eye className="w-3.5 h-3.5" />

@@ -140,6 +140,20 @@ function CursoRosterPanel({
     [rows]
   );
 
+  // El peso (%) de cada parámetro en la nota final nunca debe sumar más de
+  // 100 entre todos -- si alguien configuró mal los porcentajes (ej. 50 en
+  // uno y 60 en otro) se avisa clarito, en vez de calcular un promedio
+  // engañoso sin decir nada. No se topa el promedio a la fuerza: se avisa
+  // del problema real, que es la suma de los pesos.
+  const sumaPesos = useMemo(() => {
+    let total = 0;
+    for (const p of parametros) {
+      const conPeso = rows.find((r) => r.parametro === p && r.porcentaje != null);
+      if (conPeso) total += Number(conPeso.porcentaje);
+    }
+    return total;
+  }, [parametros, rows]);
+
   const porEstudiante = useMemo(() => {
     const map = new Map<string, Evaluacion[]>();
     for (const r of rows) {
@@ -227,6 +241,11 @@ function CursoRosterPanel({
           </button>
         </div>
       </div>
+      {sumaPesos > 100 && (
+        <div className="px-4 py-2 bg-red-50 border-b border-red-200 text-xs font-semibold text-red-700">
+          ⚠️ Estás superando el límite: los parámetros de este curso suman {sumaPesos}% entre todos — nunca debe pasar de 100%.
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
@@ -339,6 +358,17 @@ function PeriodoRosterPanel({
     [rowsFiltradas]
   );
 
+  // Mismo aviso que en el roster por Curso: los pesos (%) de los parámetros
+  // de esta asignatura/periodo nunca deben sumar más de 100 entre todos.
+  const sumaPesos = useMemo(() => {
+    let total = 0;
+    for (const p of parametros) {
+      const conPeso = rowsFiltradas.find((r) => r.parametro === p && r.porcentaje != null);
+      if (conPeso) total += Number(conPeso.porcentaje);
+    }
+    return total;
+  }, [parametros, rowsFiltradas]);
+
   const porEstudiante = useMemo(() => {
     const map = new Map<string, Evaluacion[]>();
     for (const r of rowsFiltradas) {
@@ -440,6 +470,11 @@ function PeriodoRosterPanel({
           ))}
         </div>
       </div>
+      {sumaPesos > 100 && (
+        <div className="px-4 py-2 bg-red-50 border-b border-red-200 text-xs font-semibold text-red-700">
+          ⚠️ Estás superando el límite: los parámetros de este periodo suman {sumaPesos}% entre todos — nunca debe pasar de 100%.
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
