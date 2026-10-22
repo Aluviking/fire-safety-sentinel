@@ -803,7 +803,7 @@ function ResponderCuestionario({ intentosBase, contenido }: { intentosBase: stri
   const [respuestas, setRespuestas] = useState<Record<number, { opcionIds?: number[]; texto?: string; pares?: { opcionId: number; parejaElegida: string }[] }>>({});
   const [paginaActual, setPaginaActual] = useState(0);
   const [enviando, setEnviando] = useState(false);
-  const [resultado, setResultado] = useState<{ intentoId: number; puntosObtenidos: number; puntosTotales: number; porcentaje: number; aprobado: boolean | null; pendienteCalificar: boolean; mostrarPuntaje: boolean; verDetalle: boolean } | null>(null);
+  const [resultado, setResultado] = useState<{ intentoId: number; puntosObtenidos: number; puntosTotales: number; porcentaje: number; aprobado: boolean | null; pendienteCalificar: boolean; mostrarPuntaje: boolean; verDetalle: boolean; tiempoAgotado: boolean } | null>(null);
   const [detalle, setDetalle] = useState<IntentoDetalle | null>(null);
   const [error, setError] = useState("");
 
@@ -856,7 +856,7 @@ function ResponderCuestionario({ intentosBase, contenido }: { intentosBase: stri
         if (p.tipo_respuesta === "asociacion") return { preguntaId: p.id, pares: r.pares ?? [] };
         return { preguntaId: p.id, opcionIds: r.opcionIds ?? [] };
       });
-      const res = await apiFetch<{ puntosObtenidos: number; puntosTotales: number; porcentaje: number; aprobado: boolean | null; pendienteCalificar: boolean; mostrarPuntaje: boolean; verDetalle: boolean }>(
+      const res = await apiFetch<{ puntosObtenidos: number; puntosTotales: number; porcentaje: number; aprobado: boolean | null; pendienteCalificar: boolean; mostrarPuntaje: boolean; verDetalle: boolean; tiempoAgotado: boolean }>(
         `${intentosBase}/enviar.php`, { method: "POST", json: { intentoId: presentando.intentoId, respuestas: payload } }
       );
       setResultado({ ...res, intentoId: presentando.intentoId });
@@ -927,6 +927,9 @@ function ResponderCuestionario({ intentosBase, contenido }: { intentosBase: stri
         )}
         {resultado.pendienteCalificar && (
           <p className="text-xs text-amber-600">Tiene preguntas de respuesta abierta — tu docente las calificará pronto.</p>
+        )}
+        {resultado.tiempoAgotado && (
+          <p className="text-xs text-amber-600">Se envió automáticamente porque se agotó el tiempo máximo.</p>
         )}
         <div className="flex items-center justify-center gap-4 pt-2">
           {resultado.verDetalle && (

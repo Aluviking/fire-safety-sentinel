@@ -30,9 +30,15 @@ $segundos = time() - strtotime($intento['iniciado_at']);
 if ($contenido['tiempo_minimo_min'] && $segundos < ((int) $contenido['tiempo_minimo_min'] * 60)) {
     fail('Todavía no ha pasado el tiempo mínimo para enviar este cuestionario.', 403);
 }
-if ($contenido['tiempo_maximo_min'] && $segundos > ((int) $contenido['tiempo_maximo_min'] * 60 + 90)) {
-    fail('Se agotó el tiempo máximo para presentar este cuestionario.', 403);
-}
+// Si ya se pasó del tiempo máximo NO se bloquea el envío -- antes se
+// rechazaba con fail() y el intento quedaba sin enviar_at para siempre, y
+// como iniciar.php siempre reanuda el intento sin enviar que ya existe (en
+// vez de crear uno nuevo), el estudiante quedaba atascado sin poder volver a
+// presentar el cuestionario NUNCA, ni gastando otro de sus intentos
+// disponibles. Ahora se envía igual (como un examen real: se acaba el
+// tiempo y se califica con lo que alcanzó a responder) y queda marcado
+// aparte como tardío para que el docente lo sepa.
+$tiempoAgotado = $contenido['tiempo_maximo_min'] && $segundos > ((int) $contenido['tiempo_maximo_min'] * 60 + 90);
 
 $stmt = db()->prepare('SELECT * FROM curso_ligero_preguntas WHERE contenido_id = ?');
 $stmt->execute([$intento['contenido_id']]);
@@ -102,4 +108,5 @@ respond([
     'verDetalle' => (bool) $contenido['ver_detalle_resultados'],
     'puntosObtenidos' => $puntosObtenidos, 'puntosTotales' => $puntosTotales,
     'porcentaje' => $porcentaje, 'aprobado' => $aprobado, 'pendienteCalificar' => $pendiente,
+    'tiempoAgotado' => $tiempoAgotado,
 ]);
