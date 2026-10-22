@@ -4,7 +4,7 @@ import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2, Users, Do
 import * as XLSX from "xlsx";
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
-import { SearchableSelect } from "../SearchableSelect";
+import { SearchableSelect, normalizarBusqueda } from "../SearchableSelect";
 
 interface Evaluacion {
   id: number | string;
@@ -350,12 +350,12 @@ function PeriodoRosterPanel({
   }, [rowsFiltradas]);
 
   const porEstudianteFiltrado = useMemo(() => {
-    const q = busquedaEstudiante.trim().toLowerCase();
+    const q = normalizarBusqueda(busquedaEstudiante);
     if (!q) return porEstudiante;
     return new Map(
       Array.from(porEstudiante.entries()).filter(([identificacion]) => {
-        const nombre = (estudiantesMap.get(identificacion) ?? "").toLowerCase();
-        return identificacion.toLowerCase().includes(q) || nombre.includes(q);
+        const nombre = normalizarBusqueda(estudiantesMap.get(identificacion) ?? "");
+        return normalizarBusqueda(identificacion).includes(q) || nombre.includes(q);
       })
     );
   }, [porEstudiante, busquedaEstudiante, estudiantesMap]);
@@ -604,18 +604,18 @@ export default function EvaluacionesView() {
   const cursoResuelto = cursoDeEmpresa.get(filterCurso) ?? filterCurso;
 
   const filteredEvaluaciones = useMemo(() => {
-    const q = searchActive.trim().toLowerCase();
+    const q = normalizarBusqueda(searchActive);
     return evaluaciones.filter((e) =>
-      (!q || (e.identificacion_estudiante ?? "").includes(q) || (e.codigo_curso ?? "").toLowerCase().includes(q) || (e.empresa ?? "").toLowerCase().includes(q)) &&
+      (!q || normalizarBusqueda(e.identificacion_estudiante ?? "").includes(q) || normalizarBusqueda(e.codigo_curso ?? "").includes(q) || normalizarBusqueda(e.empresa ?? "").includes(q)) &&
       (!filterAsignatura || e.asignatura === filterAsignatura) &&
       (!filterCurso || (modoPeriodo ? e.periodo === filterCurso : e.codigo_curso === cursoResuelto))
     );
   }, [evaluaciones, searchActive, filterAsignatura, filterCurso, cursoResuelto, modoPeriodo]);
 
   const filteredNotas = useMemo(() => {
-    const q = searchActive.trim().toLowerCase();
+    const q = normalizarBusqueda(searchActive);
     return notasFinales.filter((n) =>
-      (!q || (n.identificacion_estudiante ?? "").includes(q) || (n.asignatura ?? "").toLowerCase().includes(q)) &&
+      (!q || normalizarBusqueda(n.identificacion_estudiante ?? "").includes(q) || normalizarBusqueda(n.asignatura ?? "").includes(q)) &&
       (!filterAsignatura || n.asignatura === filterAsignatura)
     );
   }, [notasFinales, searchActive, filterAsignatura]);

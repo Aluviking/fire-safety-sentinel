@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Loader2, UserPlus, Search, Eye, Pencil, Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
-import { SearchableSelect } from "../SearchableSelect";
+import { SearchableSelect, normalizarBusqueda } from "../SearchableSelect";
 import { ConfirmModal } from "../ConfirmModal";
 import { TIPOS_ID } from "@/data/academicCatalog";
 
@@ -198,9 +198,9 @@ export default function InscritosView() {
     apiFetch<Opciones>("/preinscripciones/opciones.php").then(setOpciones).catch(() => {});
   }, []);
 
-  const q = busqueda.trim().toLowerCase();
+  const q = normalizarBusqueda(busqueda);
   const filtrados = q
-    ? items.filter((p) => `${p.nombres} ${p.apellidos}`.toLowerCase().includes(q) || p.identificacion.includes(q))
+    ? items.filter((p) => normalizarBusqueda(`${p.nombres} ${p.apellidos}`).includes(q) || p.identificacion.includes(q))
     : items;
 
   const matricular = async (id: number) => {

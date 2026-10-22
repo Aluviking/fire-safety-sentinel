@@ -6,6 +6,7 @@ import {
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { ConfirmModal } from "../ConfirmModal";
+import { normalizarBusqueda } from "../SearchableSelect";
 
 /* ── Modelo real de Q10 (calcado del banco de preguntas) ─────────────────── */
 interface Etiqueta { id: number; nombre: string; color: string | null }
@@ -573,14 +574,14 @@ export default function BancoPreguntasView() {
     return m;
   }, [preguntas]);
   const etiquetasSidebar = useMemo(() => {
-    const q = busquedaEtiquetaSidebar.trim().toLowerCase();
-    return etiquetas.filter((et) => (conteoEtiquetas.get(et.id) ?? 0) > 0 && (!q || et.nombre.toLowerCase().includes(q)));
+    const q = normalizarBusqueda(busquedaEtiquetaSidebar);
+    return etiquetas.filter((et) => (conteoEtiquetas.get(et.id) ?? 0) > 0 && (!q || normalizarBusqueda(et.nombre).includes(q)));
   }, [etiquetas, conteoEtiquetas, busquedaEtiquetaSidebar]);
 
   const filtered = useMemo(() => {
-    const q = searchActive.trim().toLowerCase();
+    const q = normalizarBusqueda(searchActive);
     return preguntas.filter((p) => {
-      if (q && !p.titulo.toLowerCase().includes(q)) return false;
+      if (q && !normalizarBusqueda(p.titulo).includes(q)) return false;
       if (filtroEtiquetas.length > 0 && !p.etiquetas.some((e) => filtroEtiquetas.includes(e.id))) return false;
       return true;
     });

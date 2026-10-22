@@ -73,7 +73,15 @@ $sql = "SELECT i.id, i.estudiante_identificacion, i.numero_intento, i.porcentaje
                 JOIN curso_empresas ce ON ce.id = cee.empresa_id
                 JOIN programa_asignaturas pa2 ON pa2.programa_id = ce.programa_id
                 WHERE pa2.asignatura_id = a.id AND cee.identificacion = i.estudiante_identificacion
-                LIMIT 1) AS empresa
+                LIMIT 1) AS empresa,
+               (SELECT m.periodo FROM matriculas m
+                JOIN estudiantes e2 ON e2.id = m.estudiante_id
+                JOIN programa_asignaturas pa3 ON pa3.asignatura_id = a.id
+                JOIN programas p3 ON p3.id = pa3.programa_id
+                WHERE e2.identificacion = i.estudiante_identificacion
+                  AND (m.programa = p3.nombre OR m.programa LIKE CONCAT(p3.nombre, ' - %'))
+                  AND m.periodo IS NOT NULL
+                LIMIT 1) AS periodo
         FROM asignatura_cuestionario_intentos i
         JOIN asignatura_contenido c ON c.id = i.contenido_id
         JOIN asignaturas a ON a.id = c.asignatura_id
@@ -89,7 +97,7 @@ $stmt = db()->prepare($sql);
 $stmt->execute($params);
 foreach ($stmt->fetchAll() as $r) {
     $rows[] = [
-        'id' => 'cv-asig-' . $r['id'], 'codigo_curso' => $r['curso'], 'periodo' => null,
+        'id' => 'cv-asig-' . $r['id'], 'codigo_curso' => $r['curso'], 'periodo' => $r['periodo'],
         'identificacion_estudiante' => $r['estudiante_identificacion'], 'asignatura' => $r['asignatura'],
         'parametro' => $r['parametro'] . ' (Intento ' . $r['numero_intento'] . ')',
         'porcentaje' => $r['porcentaje'], 'nota' => null, 'inasistencias' => null, 'observaciones' => null,
@@ -103,7 +111,13 @@ $sql = "SELECT i.id, i.estudiante_identificacion, i.numero_intento, i.porcentaje
                (SELECT ce.razon_social FROM curso_empresa_empleados cee
                 JOIN curso_empresas ce ON ce.id = cee.empresa_id
                 WHERE ce.programa_id = p.id AND cee.identificacion = i.estudiante_identificacion
-                LIMIT 1) AS empresa
+                LIMIT 1) AS empresa,
+               (SELECT m.periodo FROM matriculas m
+                JOIN estudiantes e2 ON e2.id = m.estudiante_id
+                WHERE e2.identificacion = i.estudiante_identificacion
+                  AND (m.programa = p.nombre OR m.programa LIKE CONCAT(p.nombre, ' - %'))
+                  AND m.periodo IS NOT NULL
+                LIMIT 1) AS periodo
         FROM curso_cuestionario_intentos i
         JOIN curso_contenido c ON c.id = i.contenido_id
         JOIN programas p ON p.id = c.curso_id
@@ -119,7 +133,7 @@ $stmt = db()->prepare($sql);
 $stmt->execute($params);
 foreach ($stmt->fetchAll() as $r) {
     $rows[] = [
-        'id' => 'cv-curso-' . $r['id'], 'codigo_curso' => $r['curso'], 'periodo' => null,
+        'id' => 'cv-curso-' . $r['id'], 'codigo_curso' => $r['curso'], 'periodo' => $r['periodo'],
         'identificacion_estudiante' => $r['estudiante_identificacion'], 'asignatura' => $r['curso'],
         'parametro' => $r['parametro'] . ' (Intento ' . $r['numero_intento'] . ')',
         'porcentaje' => $r['porcentaje'], 'nota' => null, 'inasistencias' => null, 'observaciones' => null,
@@ -163,7 +177,7 @@ foreach ($stmt->fetchAll() as $r) {
 
 // -- Vía asignatura (ej. Legislación dentro del pensum de un curso) --
 $sql = "SELECT DISTINCT e.identificacion, a.nombre AS asignatura, c.id AS contenido_id, c.titulo AS parametro,
-               p.id AS programa_id, p.nombre AS curso
+               p.id AS programa_id, p.nombre AS curso, m.periodo
         FROM curso_empresas ce0
         JOIN programas p ON p.id = ce0.programa_id
         JOIN programa_asignaturas pa ON pa.programa_id = p.id
@@ -186,7 +200,7 @@ $stmt->execute($params);
 $pendientesAsignatura = $stmt->fetchAll();
 
 // -- Vía curso directo --
-$sql = "SELECT DISTINCT e.identificacion, p.nombre AS curso, c.id AS contenido_id, c.titulo AS parametro, p.id AS programa_id
+$sql = "SELECT DISTINCT e.identificacion, p.nombre AS curso, c.id AS contenido_id, c.titulo AS parametro, p.id AS programa_id, m.periodo
         FROM curso_empresas ce0
         JOIN programas p ON p.id = ce0.programa_id
         JOIN curso_contenido c ON c.curso_id = p.id AND c.tipo = 'Cuestionario'
@@ -207,8 +221,8 @@ $stmt->execute($params);
 $pendientesCurso = $stmt->fetchAll();
 
 $pendientes = array_merge(
-    array_map(static fn($r) => ['asignatura' => $r['asignatura'], 'curso' => $r['curso'], 'parametro' => $r['parametro'], 'identificacion' => $r['identificacion'], 'programa_id' => $r['programa_id']], $pendientesAsignatura),
-    array_map(static fn($r) => ['asignatura' => $r['curso'], 'curso' => $r['curso'], 'parametro' => $r['parametro'], 'identificacion' => $r['identificacion'], 'programa_id' => $r['programa_id']], $pendientesCurso)
+    array_map(static fn($r) => ['asignatura' => $r['asignatura'], 'curso' => $r['curso'], 'parametro' => $r['parametro'], 'identificacion' => $r['identificacion'], 'programa_id' => $r['programa_id'], 'periodo' => $r['periodo']], $pendientesAsignatura),
+    array_map(static fn($r) => ['asignatura' => $r['curso'], 'curso' => $r['curso'], 'parametro' => $r['parametro'], 'identificacion' => $r['identificacion'], 'programa_id' => $r['programa_id'], 'periodo' => $r['periodo']], $pendientesCurso)
 );
 
 if (!empty($pendientes)) {
@@ -243,7 +257,7 @@ if (!empty($pendientes)) {
         }
         $rows[] = [
             'id' => 'cv-pend-' . $r['programa_id'] . '-' . $r['identificacion'] . '-' . md5($r['parametro']),
-            'codigo_curso' => $r['curso'], 'periodo' => null,
+            'codigo_curso' => $r['curso'], 'periodo' => $r['periodo'],
             'identificacion_estudiante' => $r['identificacion'], 'asignatura' => $r['asignatura'],
             'parametro' => $r['parametro'] . ' (Sin presentar)',
             'porcentaje' => null, 'nota' => null, 'inasistencias' => null, 'observaciones' => null,

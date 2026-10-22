@@ -3,6 +3,18 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, ChevronDown, X } from "lucide-react";
 
+// Quita tildes/diacríticos y pasa a minúsculas, para que buscar sin tilde o
+// en cualquier combinación de mayúsculas/minúsculas igual encuentre todo.
+// Se exporta para que los buscadores de texto plano (no este combo) usen el
+// mismo criterio en vez de cada uno normalizar distinto.
+export function normalizarBusqueda(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 export interface SearchableOption {
   value: string;
   label: string;
@@ -78,8 +90,11 @@ export function SearchableSelect({
   }, [open]);
 
   const selected = options.find((o) => o.value === value);
-  const filtered = query.trim()
-    ? options.filter((o) => `${o.label} ${o.keywords ?? ""}`.toLowerCase().includes(query.trim().toLowerCase()))
+  // Sin tildes y sin importar mayúsculas/minúsculas -- escribir "evacuacion"
+  // debe encontrar "Evacuación" igual que "EVACUACIÓN".
+  const q = normalizarBusqueda(query);
+  const filtered = q
+    ? options.filter((o) => normalizarBusqueda(`${o.label} ${o.keywords ?? ""}`).includes(q))
     : options;
 
   const triggerSize = size === "md" ? "text-sm px-3.5 py-2.5 rounded-xl" : "text-xs px-2.5 py-1.5 rounded-lg";
