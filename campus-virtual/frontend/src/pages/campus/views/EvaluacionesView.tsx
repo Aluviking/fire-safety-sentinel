@@ -150,6 +150,34 @@ function CursoRosterPanel({
     return map;
   }, [rows]);
 
+  const [incluirFueraDeBase, setIncluirFueraDeBase] = useState(true);
+  const exportarExcel = () => {
+    const entradas = Array.from(porEstudiante.entries()).filter(
+      ([, studentRows]) => incluirFueraDeBase || !studentRows[0]?.fueraDeBaseDe
+    );
+    const headers = ["N°", "Estudiante", "Identificación", "Empresa / Fuera de base", ...parametros, "Prom.", "Inas.", "Observaciones"];
+    const data = entradas.map(([identificacion, studentRows], idx) => {
+      const nombre = estudiantesMap.get(identificacion) ?? identificacion;
+      const withPct = studentRows.filter((r) => r.nota != null && r.porcentaje != null);
+      const sumPct = withPct.reduce((s, r) => s + Number(r.porcentaje), 0);
+      const prom = withPct.length === 0 ? "" : (sumPct > 0
+        ? withPct.reduce((s, r) => s + Number(r.nota) * Number(r.porcentaje), 0) / sumPct
+        : withPct.reduce((s, r) => s + Number(r.nota), 0) / withPct.length
+      ).toFixed(1);
+      const empresaInfo = studentRows[0]?.empresa ?? (studentRows[0]?.fueraDeBaseDe ? `Fuera de la base de ${studentRows[0].fueraDeBaseDe}` : "");
+      const cols = parametros.map((p) => {
+        const cell = studentRows.find((r) => r.parametro === p);
+        return cell ? (cell.nota ?? (cell.porcentaje != null ? `${cell.porcentaje}%` : "")) : "";
+      });
+      return [idx + 1, nombre, identificacion, empresaInfo, ...cols, prom, studentRows[0]?.inasistencias ?? 0, studentRows.find((r) => r.observaciones)?.observaciones ?? ""];
+    });
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    ws["!cols"] = headers.map(() => ({ wch: 22 }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, curso.slice(0, 31) || "Curso");
+    XLSX.writeFile(wb, `evaluaciones-${curso.replace(/[^a-z0-9]+/gi, "-")}.xlsx`);
+  };
+
   // Las filas que vienen de un Cuestionario de Campus Virtual se califican
   // solas (y no tienen fila real en la tabla `evaluaciones`) -- no se pueden
   // editar desde aquí, por eso su id es un texto ("cv-...") en vez de un
@@ -184,10 +212,20 @@ function CursoRosterPanel({
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="h-[3px] bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/30" />
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 flex-wrap">
         <Users className="w-4 h-4 text-[#C41717]" />
         <h2 className="text-sm font-semibold text-slate-800 truncate">{curso}</h2>
-        <span className="ml-auto text-xs text-slate-400">{porEstudiante.size} {porEstudiante.size === 1 ? "estudiante" : "estudiantes"}</span>
+        <span className="text-xs text-slate-400">{porEstudiante.size} {porEstudiante.size === 1 ? "estudiante" : "estudiantes"}</span>
+        <div className="ml-auto flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 font-medium whitespace-nowrap cursor-pointer select-none">
+            <input type="checkbox" checked={incluirFueraDeBase} onChange={(e) => setIncluirFueraDeBase(e.target.checked)} className="accent-[#C41717]" />
+            Incluir los de fuera de la base
+          </label>
+          <button onClick={exportarExcel}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 text-xs font-semibold transition-all">
+            <Download className="w-3.5 h-3.5" /> Descargar Excel
+          </button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
