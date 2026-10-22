@@ -16,7 +16,7 @@ $contenidoId = isset($_GET['contenidoId']) ? (int) $_GET['contenidoId'] : 0;
 
 if ($id > 0) {
     $stmt = db()->prepare(
-        'SELECT i.*, c.asignatura_id FROM asignatura_cuestionario_intentos i
+        'SELECT i.*, c.asignatura_id, c.ver_detalle_resultados FROM asignatura_cuestionario_intentos i
          JOIN asignatura_contenido c ON c.id = i.contenido_id WHERE i.id = ?'
     );
     $stmt->execute([$id]);
@@ -25,6 +25,11 @@ if ($id > 0) {
 
     if ($user['role'] === 'estudiante') {
         if ($intento['estudiante_identificacion'] !== ($user['identificacion'] ?? null)) fail('No autorizado.', 403);
+        // "Ver detalle de resultados" apagado = el estudiante no debe poder
+        // ver cuáles respondió bien o mal -- antes esto solo se ocultaba en
+        // el botón del frontend, pero llamando este endpoint directo igual
+        // se veía todo (el toggle no protegía nada de verdad).
+        if (!$intento['ver_detalle_resultados']) fail('El detalle de resultados no está habilitado para este cuestionario.', 403);
     } else {
         require_ver_o_gestion_asignatura($user, (int) $intento['asignatura_id']);
     }

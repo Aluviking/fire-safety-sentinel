@@ -1064,7 +1064,9 @@ function ResponderCuestionario({ intentosBase, contenido }: { intentosBase: stri
                   ) : i.pendiente_calificar ? (
                     <span className="text-[11px] text-amber-600">Pendiente de calificar</span>
                   ) : null}
-                  <button onClick={() => verResultadoDetallado(i.id)} className="text-xs font-semibold text-[#C41717] hover:text-[#B01313]">Ver detalle</button>
+                  {contenido.ver_detalle_resultados ? (
+                    <button onClick={() => verResultadoDetallado(i.id)} className="text-xs font-semibold text-[#C41717] hover:text-[#B01313]">Ver detalle</button>
+                  ) : null}
                 </div>
               ) : (
                 <button onClick={iniciar} className="text-xs font-semibold text-[#C41717] hover:text-[#B01313]">Continuar</button>
