@@ -19,6 +19,7 @@ interface Preinscripcion {
   item_nombre: string;
   estado: "Pendiente" | "Matriculado";
   estudiante_id: number | null;
+  periodo: string | null;
   created_at: string;
 }
 interface Opcion { id: number; nombre: string }
@@ -26,6 +27,14 @@ interface Opciones { programas: Opcion[]; diplomados: Opcion[]; cursos: Opcion[]
 
 const TIPO_LABEL: Record<string, string> = { curso: "Curso", programa: "Programa", diplomado: "Diplomado" };
 const inputCls = "w-full text-sm bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10";
+
+// GFO maneja 2 periodos por año (AAAA-1 = primeros 6 meses, AAAA-2 = los
+// otros 6) -- se ofrece el año actual y el siguiente, para que ya se pueda
+// matricular con el periodo que viene antes de que empiece.
+function periodosDisponibles(): string[] {
+  const anioActual = new Date().getFullYear();
+  return [anioActual, anioActual + 1].flatMap((a) => [`${a}-1`, `${a}-2`]);
+}
 
 /* ── Ver el detalle de una inscripción (solo lectura) ─────────────────────── */
 function VerModal({ item, onClose }: { item: Preinscripcion; onClose: () => void }) {
@@ -71,6 +80,7 @@ function EditarModal({ item, opciones, onClose, onSaved }: { item: Preinscripcio
   const [correo, setCorreo] = useState(item.correo ?? "");
   const [tipoInteres, setTipoInteres] = useState(item.tipo_interes);
   const [itemNombre, setItemNombre] = useState(item.item_nombre);
+  const [periodo, setPeriodo] = useState(item.periodo ?? "");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -91,7 +101,7 @@ function EditarModal({ item, opciones, onClose, onSaved }: { item: Preinscripcio
           id: item.id, nombres: nombres.trim(), apellidos: apellidos.trim(),
           tipoDocumento: tipoDocumento || null, identificacion: identificacion.trim(),
           celular: celular.trim() || null, correo: correo.trim() || null,
-          tipoInteres, itemNombre,
+          tipoInteres, itemNombre, periodo: periodo || null,
         },
       });
       onSaved();
@@ -144,6 +154,11 @@ function EditarModal({ item, opciones, onClose, onSaved }: { item: Preinscripcio
             </div>
             <SearchableSelect value={itemNombre} onChange={setItemNombre}
               options={listaActual.map((o) => ({ value: o.nombre, label: o.nombre }))} placeholder="Seleccione una opción..." />
+          </div>
+          <div>
+            <label className="block text-slate-500 text-[11px] font-semibold mb-1">Seleccionar Periodo</label>
+            <SearchableSelect value={periodo} onChange={setPeriodo}
+              options={periodosDisponibles().map((p) => ({ value: p, label: p }))} placeholder="Seleccione el periodo..." />
           </div>
           {error && <p className="text-[11px] text-red-500">{error}</p>}
           <div className="flex gap-2 pt-1">

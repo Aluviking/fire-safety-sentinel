@@ -16,6 +16,7 @@ $celular        = trim($body['celular'] ?? '') ?: null;
 $correo         = trim($body['correo'] ?? '') ?: null;
 $tipoInteres    = $body['tipoInteres'] ?? '';
 $itemNombre     = trim($body['itemNombre'] ?? '');
+$periodo        = trim($body['periodo'] ?? '') ?: null;
 
 if ($id === 0 || $nombres === '' || $apellidos === '' || $identificacion === '') {
     fail('Nombres, apellidos e identificación son requeridos.');
@@ -31,8 +32,8 @@ if (!$pre) fail('Preinscripción no encontrada.', 404);
 
 db()->prepare(
     'UPDATE preinscripciones SET nombres = ?, apellidos = ?, tipo_documento = ?, identificacion = ?,
-        celular = ?, correo = ?, tipo_interes = ?, item_nombre = ? WHERE id = ?'
-)->execute([$nombres, $apellidos, $tipoDocumento, $identificacion, $celular, $correo, $tipoInteres, $itemNombre, $id]);
+        celular = ?, correo = ?, tipo_interes = ?, item_nombre = ?, periodo = ? WHERE id = ?'
+)->execute([$nombres, $apellidos, $tipoDocumento, $identificacion, $celular, $correo, $tipoInteres, $itemNombre, $periodo, $id]);
 
 // Si ya se matriculó, el estudiante real que se creó desde acá debe quedar
 // sincronizado — sin esto, corregir un dato aquí después de matricular no
@@ -45,6 +46,12 @@ if ($pre['estado'] === 'Matriculado' && $pre['estudiante_id']) {
             'UPDATE estudiantes SET nombre_completo = ?, tipo_documento = ?, identificacion = ?, celular = ?, correo = ? WHERE id = ?'
         )->execute([trim("$nombres $apellidos"), $tipoDocumento, $identificacion, $celular, $correo, $pre['estudiante_id']]);
     }
+    // Mismo criterio: si el periodo cambió después de matricular, se refleja
+    // en la matrícula real (se busca por estudiante + mismo nombre de
+    // programa, igual cruce sin FK que usa todo el resto del sistema).
+    db()->prepare(
+        'UPDATE matriculas SET periodo = ? WHERE estudiante_id = ? AND (programa = ? OR programa LIKE CONCAT(?, \' - %\'))'
+    )->execute([$periodo, $pre['estudiante_id'], $itemNombre, $itemNombre]);
 }
 
 log_trace($user, 'preinscripcion_update', "Editó la inscripción de $nombres $apellidos");

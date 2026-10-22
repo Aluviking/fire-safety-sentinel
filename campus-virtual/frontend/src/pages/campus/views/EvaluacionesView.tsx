@@ -309,6 +309,215 @@ function CursoRosterPanel({
   );
 }
 
+/* ── Roster de una asignatura en un periodo puntual: estudiantes x
+     parámetro, sin nada de empresas (ese concepto es solo para "Curso") ── */
+function PeriodoRosterPanel({
+  asignatura, periodo, evaluaciones, estudiantesMap, canEdit, onUpdated,
+}: {
+  asignatura: string; periodo: string; evaluaciones: Evaluacion[]; estudiantesMap: Map<string, string>;
+  canEdit: boolean; onUpdated: (updated: Evaluacion) => void;
+}) {
+  const rows = useMemo(
+    () => evaluaciones.filter((e) => e.asignatura === asignatura && e.periodo === periodo),
+    [evaluaciones, asignatura, periodo]
+  );
+
+  // Filtro por origen de la data -- "antigua" = Q10, "nueva" = cuestionarios
+  // de Campus Virtual. Más un buscador por estudiante, para que no se
+  // mezclen visualmente cuando hay de los dos tipos en el mismo periodo.
+  const [filtroOrigen, setFiltroOrigen] = useState<"todos" | "antigua" | "nueva">("todos");
+  const [busquedaEstudiante, setBusquedaEstudiante] = useState("");
+
+  const rowsFiltradas = useMemo(() => {
+    if (filtroOrigen === "todos") return rows;
+    const origen = filtroOrigen === "antigua" ? "q10" : "cuestionario";
+    return rows.filter((r) => r.origen === origen);
+  }, [rows, filtroOrigen]);
+
+  const parametros = useMemo(
+    () => Array.from(new Set(rowsFiltradas.map((r) => r.parametro).filter((p): p is string => !!p))),
+    [rowsFiltradas]
+  );
+
+  const porEstudiante = useMemo(() => {
+    const map = new Map<string, Evaluacion[]>();
+    for (const r of rowsFiltradas) {
+      const id = r.identificacion_estudiante ?? "";
+      if (!map.has(id)) map.set(id, []);
+      map.get(id)!.push(r);
+    }
+    return map;
+  }, [rowsFiltradas]);
+
+  const porEstudianteFiltrado = useMemo(() => {
+    const q = busquedaEstudiante.trim().toLowerCase();
+    if (!q) return porEstudiante;
+    return new Map(
+      Array.from(porEstudiante.entries()).filter(([identificacion]) => {
+        const nombre = (estudiantesMap.get(identificacion) ?? "").toLowerCase();
+        return identificacion.toLowerCase().includes(q) || nombre.includes(q);
+      })
+    );
+  }, [porEstudiante, busquedaEstudiante, estudiantesMap]);
+
+  const exportarExcel = () => {
+    const headers = ["N°", "Estudiante", "Identificación", ...parametros, "Prom.", "Inas.", "Observaciones"];
+    const data = Array.from(porEstudianteFiltrado.entries()).map(([identificacion, studentRows], idx) => {
+      const nombre = estudiantesMap.get(identificacion) ?? identificacion;
+      const withPct = studentRows.filter((r) => r.nota != null && r.porcentaje != null);
+      const sumPct = withPct.reduce((s, r) => s + Number(r.porcentaje), 0);
+      const prom = withPct.length === 0 ? "" : (sumPct > 0
+        ? withPct.reduce((s, r) => s + Number(r.nota) * Number(r.porcentaje), 0) / sumPct
+        : withPct.reduce((s, r) => s + Number(r.nota), 0) / withPct.length
+      ).toFixed(1);
+      const cols = parametros.map((p) => {
+        const cell = studentRows.find((r) => r.parametro === p);
+        return cell ? (cell.nota ?? (cell.porcentaje != null ? `${cell.porcentaje}%` : "")) : "";
+      });
+      return [idx + 1, nombre, identificacion, ...cols, prom, studentRows[0]?.inasistencias ?? 0, studentRows.find((r) => r.observaciones)?.observaciones ?? ""];
+    });
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    ws["!cols"] = headers.map(() => ({ wch: 22 }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, periodo.slice(0, 31) || "Periodo");
+    XLSX.writeFile(wb, `evaluaciones-${asignatura.replace(/[^a-z0-9]+/gi, "-")}-${periodo}.xlsx`);
+  };
+
+  const save = async (id: number | string, field: "nota" | "inasistencias" | "observaciones", value: string) => {
+    if (typeof id !== "number") return;
+    try {
+      const updated = await apiFetch<{ ok: true }>("/evaluaciones/update.php", { method: "POST", json: { id, [field]: value } });
+      if (updated.ok) onUpdated({ ...rows.find((r) => r.id === id)!, [field]: value });
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Error al guardar el cambio.");
+    }
+  };
+  const saveShared = async (studentRows: Evaluacion[], field: "inasistencias" | "observaciones", value: string) => {
+    await Promise.all(studentRows.filter((r) => r.origen === "q10").map((r) => save(r.id, field, value)));
+  };
+
+  if (rows.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center text-slate-400 text-sm">
+        Sin evaluaciones registradas para este periodo.
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="h-[3px] bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/30" />
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 flex-wrap">
+        <Users className="w-4 h-4 text-[#C41717]" />
+        <h2 className="text-sm font-semibold text-slate-800 truncate">{asignatura} · {periodo}</h2>
+        <span className="text-xs text-slate-400">{porEstudianteFiltrado.size} {porEstudianteFiltrado.size === 1 ? "estudiante" : "estudiantes"}</span>
+        <button onClick={exportarExcel}
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 text-xs font-semibold transition-all">
+          <Download className="w-3.5 h-3.5" /> Descargar Excel
+        </button>
+      </div>
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 flex-wrap bg-slate-50/50">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          <input
+            className="w-full text-xs bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
+            placeholder="Buscar estudiante por nombre o identificación..."
+            value={busquedaEstudiante} onChange={(e) => setBusquedaEstudiante(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5">
+          {([
+            { v: "todos", label: "Todos" },
+            { v: "antigua", label: "Ver base de datos antigua" },
+            { v: "nueva", label: "Base de datos nueva" },
+          ] as const).map((o) => (
+            <button key={o.v} onClick={() => setFiltroOrigen(o.v)}
+              className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all ${
+                filtroOrigen === o.v ? "bg-[#C41717] text-white" : "text-slate-500 hover:text-slate-800"
+              }`}>
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">N°</th>
+              <th className="text-left px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Estudiante</th>
+              {parametros.map((p) => {
+                const esCuestionario = rows.find((r) => r.parametro === p)?.origen === "cuestionario";
+                return (
+                  <th key={p} className="text-center px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">
+                    {p}
+                    {esCuestionario && <span className="block normal-case font-normal text-[10px] text-slate-400">Cuestionario · no editable</span>}
+                  </th>
+                );
+              })}
+              <th className="text-center px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Prom.</th>
+              <th className="text-center px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Inas.</th>
+              <th className="text-left px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Observaciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {porEstudianteFiltrado.size === 0 ? (
+              <tr><td colSpan={parametros.length + 5} className="text-center py-8 text-slate-400 text-sm">Sin resultados para este filtro.</td></tr>
+            ) : Array.from(porEstudianteFiltrado.entries()).map(([identificacion, studentRows], idx) => {
+              const nombre = estudiantesMap.get(identificacion) ?? identificacion;
+              const withPct = studentRows.filter((r) => r.nota != null && r.porcentaje != null);
+              const sumPct = withPct.reduce((s, r) => s + Number(r.porcentaje), 0);
+              const prom = withPct.length === 0 ? null
+                : sumPct > 0
+                  ? withPct.reduce((s, r) => s + Number(r.nota) * Number(r.porcentaje), 0) / sumPct
+                  : withPct.reduce((s, r) => s + Number(r.nota), 0) / withPct.length;
+              const inas = studentRows[0]?.inasistencias ?? 0;
+              const obs = studentRows.find((r) => r.observaciones)?.observaciones ?? "";
+
+              return (
+                <tr key={identificacion} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
+                  <td className="px-3 py-2 text-slate-400 text-xs">{idx + 1}</td>
+                  <td className="px-3 py-2 text-slate-800 font-medium text-xs whitespace-nowrap">
+                    {nombre}
+                    <div className="text-slate-400 font-mono text-[11px]">{identificacion}</div>
+                  </td>
+                  {parametros.map((p) => {
+                    const cell = studentRows.find((r) => r.parametro === p);
+                    const valorCuestionario = cell?.origen === "cuestionario" && cell.porcentaje != null ? `${cell.porcentaje}%` : "";
+                    return (
+                      <td key={p} className="px-3 py-2 w-24">
+                        {cell ? (
+                          <EditableCell
+                            value={cell.nota ?? valorCuestionario} canEdit={canEdit && cell.origen === "q10"} align="center"
+                            onSave={(v) => save(cell.id, "nota", v)}
+                          />
+                        ) : <span className="block text-center text-slate-300">—</span>}
+                      </td>
+                    );
+                  })}
+                  <td className="px-3 py-2 text-center text-slate-700 font-semibold text-xs">{prom != null ? prom.toFixed(1) : "—"}</td>
+                  <td className="px-3 py-2 w-16">
+                    <EditableCell
+                      value={String(inas ?? "")} canEdit={canEdit && studentRows.some((r) => r.origen === "q10")} align="center"
+                      onSave={(v) => saveShared(studentRows, "inasistencias", v)}
+                    />
+                  </td>
+                  <td className="px-3 py-2 min-w-[160px]">
+                    <EditableCell
+                      value={obs ?? ""} canEdit={canEdit && studentRows.some((r) => r.origen === "q10")}
+                      onSave={(v) => saveShared(studentRows, "observaciones", v)}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function EvaluacionesView() {
   const { currentUser } = useCampusAuth();
   const canEdit = currentUser?.role === "admin" || currentUser?.role === "super_admin" || currentUser?.role === "docente";
@@ -366,6 +575,19 @@ export default function EvaluacionesView() {
     return Array.from(new Set([...cursos, ...empresas])).sort();
   }, [evaluaciones, filterAsignatura]);
 
+  // Con una Asignatura elegida, el segundo selector deja de ser "Curso" y
+  // pasa a ser "Periodo" -- cada matriculado queda ligado a un periodo
+  // (2026-1, 2026-2...), eso es lo que de verdad agrupa sus notas dentro de
+  // una asignatura puntual. Sin asignatura elegida, sigue siendo "Curso"
+  // como antes (ahí sí aplica lo de empresas).
+  const modoPeriodo = !!filterAsignatura;
+  const periodoOpts = useMemo(() => {
+    if (!filterAsignatura) return [];
+    return Array.from(new Set(
+      evaluaciones.filter((e) => e.asignatura === filterAsignatura).map((e) => e.periodo).filter((p): p is string => !!p)
+    )).sort();
+  }, [evaluaciones, filterAsignatura]);
+
   const handleAsignaturaChange = (v: string) => { setFilterAsignatura(v); setFilterCurso(""); setPage(1); };
   const handleCursoChange = (v: string) => { setFilterCurso(v); setPage(1); };
 
@@ -386,9 +608,9 @@ export default function EvaluacionesView() {
     return evaluaciones.filter((e) =>
       (!q || (e.identificacion_estudiante ?? "").includes(q) || (e.codigo_curso ?? "").toLowerCase().includes(q) || (e.empresa ?? "").toLowerCase().includes(q)) &&
       (!filterAsignatura || e.asignatura === filterAsignatura) &&
-      (!filterCurso || e.codigo_curso === cursoResuelto)
+      (!filterCurso || (modoPeriodo ? e.periodo === filterCurso : e.codigo_curso === cursoResuelto))
     );
-  }, [evaluaciones, searchActive, filterAsignatura, filterCurso, cursoResuelto]);
+  }, [evaluaciones, searchActive, filterAsignatura, filterCurso, cursoResuelto, modoPeriodo]);
 
   const filteredNotas = useMemo(() => {
     const q = searchActive.trim().toLowerCase();
@@ -433,13 +655,21 @@ export default function EvaluacionesView() {
           options={asignaturaOpts} placeholder="Seleccione asignatura"
         />
         <FilterSelect
-          label="Curso" value={filterCurso} onChange={handleCursoChange}
-          options={cursoOpts} placeholder="Seleccione curso"
+          label={modoPeriodo ? "Periodo" : "Curso"} value={filterCurso} onChange={handleCursoChange}
+          options={modoPeriodo ? periodoOpts : cursoOpts} placeholder={modoPeriodo ? "Seleccione periodo" : "Seleccione curso"}
         />
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-12 text-slate-400 gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</div>
+      ) : filterCurso && modoPeriodo ? (
+        <PeriodoRosterPanel
+          asignatura={filterAsignatura} periodo={filterCurso}
+          evaluaciones={evaluaciones}
+          estudiantesMap={estudiantesMap}
+          canEdit={canEdit}
+          onUpdated={handleEvaluacionUpdated}
+        />
       ) : filterCurso ? (
         <CursoRosterPanel
           curso={cursoResuelto}
@@ -481,10 +711,12 @@ export default function EvaluacionesView() {
             </button>
             {tab === "Evaluaciones detalladas" && (
               <>
-                <label className="flex items-center gap-1.5 text-xs text-slate-600 font-medium whitespace-nowrap cursor-pointer select-none">
-                  <input type="checkbox" checked={incluirFueraDeBase} onChange={(e) => setIncluirFueraDeBase(e.target.checked)} className="accent-[#C41717]" />
-                  Incluir los de fuera de la base
-                </label>
+                {!modoPeriodo && (
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 font-medium whitespace-nowrap cursor-pointer select-none">
+                    <input type="checkbox" checked={incluirFueraDeBase} onChange={(e) => setIncluirFueraDeBase(e.target.checked)} className="accent-[#C41717]" />
+                    Incluir los de fuera de la base
+                  </label>
+                )}
                 <button onClick={exportarExcel}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 text-sm font-semibold transition-all">
                   <Download className="w-3.5 h-3.5" /> Descargar Excel

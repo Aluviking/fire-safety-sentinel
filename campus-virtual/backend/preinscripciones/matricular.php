@@ -38,8 +38,8 @@ if ($existente) {
 // tabla `programas`, separadas solo por el prefijo del nombre real.
 if (in_array($pre['tipo_interes'], ['curso', 'programa', 'diplomado'], true)) {
     db()->prepare(
-        "INSERT INTO matriculas (estudiante_id, estado, formalizada, programa) VALUES (?, 'Activo', 1, ?)"
-    )->execute([$estudianteId, $pre['item_nombre']]);
+        "INSERT INTO matriculas (estudiante_id, estado, formalizada, programa, periodo) VALUES (?, 'Activo', 1, ?, ?)"
+    )->execute([$estudianteId, $pre['item_nombre'], $pre['periodo'] ?? null]);
 }
 
 // Cuenta de acceso automática (rol estudiante) — usuario y clave son la identificación.
