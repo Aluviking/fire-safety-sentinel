@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Archivos sueltos que Eric deja en el repo, no deben rastrearse ni subirse
+campus-virtual/Agregar al banco de preguntas/
