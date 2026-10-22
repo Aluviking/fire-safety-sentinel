@@ -46,12 +46,15 @@ const inputCls = "w-full text-sm bg-white border border-slate-300 rounded-lg px-
 const textareaCls = inputCls + " resize-y min-h-[70px]";
 
 /* ── Chip de etiqueta ──────────────────────────────────────────────────────── */
+// El color propio de la etiqueta queda solo como puntico de acento -- usarlo
+// directo como color de letra (como estaba antes) dejaba el texto casi
+// invisible con los colores pálidos que trae la mayoría de etiquetas (ej.
+// #d5d5d5). El texto siempre queda en slate-700 sobre fondo claro fijo, así
+// se lee bien sin importar qué color tenga la etiqueta.
 function EtiquetaChip({ etiqueta }: { etiqueta: Etiqueta }) {
   return (
-    <span
-      className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
-      style={{ background: `${etiqueta.color ?? "#94A3B8"}22`, color: etiqueta.color ?? "#64748B" }}
-    >
+    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: etiqueta.color ?? "#94A3B8" }} />
       {etiqueta.nombre}
     </span>
   );
@@ -521,6 +524,7 @@ export default function BancoPreguntasView() {
   const [searchActive, setSearchActive] = useState("");
   const [filtroEtiquetas, setFiltroEtiquetas] = useState<number[]>([]);
   const [page, setPage] = useState(1);
+  const [busquedaEtiquetaSidebar, setBusquedaEtiquetaSidebar] = useState("");
 
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [formTipo, setFormTipo] = useState<number | null>(null);
@@ -540,7 +544,14 @@ export default function BancoPreguntasView() {
       apiFetch<{ etiquetas: Etiqueta[] }>("/banco-etiquetas/list.php"),
       apiFetch<{ preguntas: PreguntaSlim[] }>("/banco-preguntas/list.php"),
     ])
-      .then(([et, pr]) => { setEtiquetas(et.etiquetas); setPreguntas(pr.preguntas); })
+      .then(([et, pr]) => {
+        // Orden numérico real (ej. "APH BASICAS 2" antes que "APH BASICAS 10"),
+        // no alfabético plano -- pedido explícito del cliente, mismo criterio
+        // que ya usamos para ordenar el pensum por código.
+        const ordenadas = [...et.etiquetas].sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true, sensitivity: "base" }));
+        setEtiquetas(ordenadas);
+        setPreguntas(pr.preguntas);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "Error al cargar."))
       .finally(() => setLoading(false));
   };
@@ -552,6 +563,19 @@ export default function BancoPreguntasView() {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
+
+  // Cuántas preguntas tiene cada etiqueta -- las que están en 0 se ocultan
+  // del panel izquierdo (pedido explícito del cliente), aunque la etiqueta
+  // siga existiendo (sigue disponible al crear/editar una pregunta).
+  const conteoEtiquetas = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const p of preguntas) for (const e of p.etiquetas) m.set(e.id, (m.get(e.id) ?? 0) + 1);
+    return m;
+  }, [preguntas]);
+  const etiquetasSidebar = useMemo(() => {
+    const q = busquedaEtiquetaSidebar.trim().toLowerCase();
+    return etiquetas.filter((et) => (conteoEtiquetas.get(et.id) ?? 0) > 0 && (!q || et.nombre.toLowerCase().includes(q)));
+  }, [etiquetas, conteoEtiquetas, busquedaEtiquetaSidebar]);
 
   const filtered = useMemo(() => {
     const q = searchActive.trim().toLowerCase();
@@ -608,7 +632,7 @@ export default function BancoPreguntasView() {
           nuevaEtiquetaInline ? (
             <div className="flex items-center gap-1 mb-2">
               <input
-                autoFocus className="flex-1 text-xs border border-slate-300 rounded-md px-2 py-1"
+                autoFocus className="flex-1 min-w-0 text-xs border border-slate-300 rounded-md px-2 py-1"
                 value={nuevaEtiquetaNombre} onChange={(e) => setNuevaEtiquetaNombre(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") crearEtiquetaInline(); if (e.key === "Escape") setNuevaEtiquetaInline(false); }}
               />
@@ -621,12 +645,26 @@ export default function BancoPreguntasView() {
             </button>
           )
         )}
+        <div className="relative mb-2">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+          <input
+            className="w-full text-xs border border-slate-300 rounded-md pl-7 pr-6 py-1.5 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10"
+            placeholder="Buscar etiqueta..."
+            value={busquedaEtiquetaSidebar} onChange={(e) => setBusquedaEtiquetaSidebar(e.target.value)}
+          />
+          {busquedaEtiquetaSidebar && (
+            <button onClick={() => setBusquedaEtiquetaSidebar("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
         <div className="space-y-0.5 max-h-[60vh] overflow-y-auto">
-          {etiquetas.map((et) => (
+          {etiquetasSidebar.map((et) => (
             <div key={et.id} className="flex items-center gap-2 px-1 py-1.5 rounded-md hover:bg-slate-50 group">
               <input type="checkbox" checked={filtroEtiquetas.includes(et.id)} onChange={() => toggleEtiquetaSidebar(et.id)} className="rounded shrink-0" />
               <span className="w-2 h-2 rounded-full shrink-0" style={{ background: et.color ?? "#94A3B8" }} />
-              <span className="text-xs text-slate-700 truncate flex-1" title={et.nombre}>{et.nombre}</span>
+              <span className="text-xs text-slate-700 flex-1 min-w-0 break-words" title={et.nombre}>{et.nombre}</span>
+              <span className="text-[10px] text-slate-400 shrink-0">{conteoEtiquetas.get(et.id) ?? 0}</span>
               <EtiquetaMenu
                 etiqueta={et} canManage={canManage}
                 onEdit={() => setEtiquetaTarget(et)}
@@ -634,7 +672,9 @@ export default function BancoPreguntasView() {
               />
             </div>
           ))}
-          {etiquetas.length === 0 && !loading && <p className="text-xs text-slate-400 px-1">Sin etiquetas todavía.</p>}
+          {etiquetasSidebar.length === 0 && !loading && (
+            <p className="text-xs text-slate-400 px-1">{busquedaEtiquetaSidebar ? "Sin coincidencias." : "Sin etiquetas con preguntas todavía."}</p>
+          )}
         </div>
       </div>
 
