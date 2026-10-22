@@ -32,6 +32,7 @@ $curso = $stmt->fetch();
 if (!$curso) fail('Empresa/curso no encontrado.', 404);
 $cursoNombre = $curso['nombre'];
 
+$buscarEmpleado = db()->prepare('SELECT id FROM curso_empresa_empleados WHERE empresa_id = ? AND identificacion = ?');
 $insertEmpleado = db()->prepare(
     'INSERT INTO curso_empresa_empleados (empresa_id, nombres, apellidos, tipo_documento, identificacion, celular, correo)
      VALUES (?,?,?,?,?,?,?)'
@@ -47,9 +48,10 @@ $crearMatricula = db()->prepare(
     "INSERT INTO matriculas (estudiante_id, estado, sede, programa) VALUES (?, 'ACTIVO', 'Principal', ?)"
 );
 
-$insertados   = 0;
-$omitidos     = 0;
-$matriculados = 0;
+$insertados     = 0;
+$yaCargados     = 0;
+$omitidos       = 0;
+$matriculados   = 0;
 $cuentasCreadas = 0;
 
 foreach ($filas as $fila) {
@@ -65,8 +67,17 @@ foreach ($filas as $fila) {
         continue;
     }
 
-    $insertEmpleado->execute([$empresaId, $nombres, $apellidos, $tipoDocumento, $identificacion, $celular, $correo]);
-    $insertados++;
+    // Si ya está cargado en esta empresa (re-subir el mismo Excel, o uno
+    // actualizado con gente repetida) no se duplica la fila -- pero SÍ se
+    // revisan matrícula/cuenta por si esa persona quedó coja de una carga
+    // vieja (de antes de que esto matriculara automáticamente).
+    $buscarEmpleado->execute([$empresaId, $identificacion]);
+    if ($buscarEmpleado->fetch()) {
+        $yaCargados++;
+    } else {
+        $insertEmpleado->execute([$empresaId, $nombres, $apellidos, $tipoDocumento, $identificacion, $celular, $correo]);
+        $insertados++;
+    }
 
     $nombreCompleto = trim("$nombres $apellidos");
 
@@ -91,6 +102,6 @@ foreach ($filas as $fila) {
 }
 
 log_trace($user, 'curso_empresa_empleados_import',
-    "Importó $insertados empleados a la empresa #$empresaId y los matriculó en \"$cursoNombre\"" . ($omitidos > 0 ? " ($omitidos filas omitidas)" : ''));
+    "Importó $insertados empleados nuevos a la empresa #$empresaId y los matriculó en \"$cursoNombre\"" . ($omitidos > 0 ? " ($omitidos filas omitidas)" : ''));
 
-respond(['ok' => true, 'insertados' => $insertados, 'omitidos' => $omitidos, 'matriculados' => $matriculados, 'cuentasCreadas' => $cuentasCreadas]);
+respond(['ok' => true, 'insertados' => $insertados, 'yaCargados' => $yaCargados, 'omitidos' => $omitidos, 'matriculados' => $matriculados, 'cuentasCreadas' => $cuentasCreadas]);
