@@ -187,7 +187,7 @@ function ImportarEmpleadosModal({ empresaId, onClose, onSaved }: { empresaId: nu
   const [nombreArchivo, setNombreArchivo] = useState("");
   const [error, setError] = useState("");
   const [importando, setImportando] = useState(false);
-  const [resultado, setResultado] = useState<{ insertados: number; omitidos: number } | null>(null);
+  const [resultado, setResultado] = useState<{ insertados: number; omitidos: number; matriculados: number; cuentasCreadas: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
@@ -238,7 +238,7 @@ function ImportarEmpleadosModal({ empresaId, onClose, onSaved }: { empresaId: nu
     setImportando(true);
     setError("");
     try {
-      const r = await apiFetch<{ insertados: number; omitidos: number }>("/curso-empresa-empleados/import.php", {
+      const r = await apiFetch<{ insertados: number; omitidos: number; matriculados: number; cuentasCreadas: number }>("/curso-empresa-empleados/import.php", {
         method: "POST",
         json: { empresaId, empleados: filas },
       });
@@ -265,8 +265,8 @@ function ImportarEmpleadosModal({ empresaId, onClose, onSaved }: { empresaId: nu
             <div className="text-center py-4">
               <p className="text-slate-800 font-semibold text-sm">Importación completada</p>
               <p className="text-slate-500 text-xs mt-1">
-                {resultado.insertados} empleado(s) agregado(s)
-                {resultado.omitidos > 0 && `, ${resultado.omitidos} fila(s) omitida(s) por datos incompletos`}.
+                {resultado.insertados} empleado(s) agregado(s), {resultado.matriculados} matriculado(s) en el curso y {resultado.cuentasCreadas} cuenta(s) de estudiante nueva(s) (usuario y clave: su número de identificación)
+                {resultado.omitidos > 0 && `. ${resultado.omitidos} fila(s) omitida(s) por datos incompletos`}.
               </p>
               <button onClick={onClose} className="mt-4 px-4 py-2 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-xs font-semibold">Cerrar</button>
             </div>
