@@ -41,4 +41,42 @@ foreach ($rows as &$r) {
 }
 unset($r);
 
+// Si este curso/programa tiene empresas con empleados cargados en "Cursos
+// para empresas", cada estudiante se marca con la empresa de la que vino, o
+// con "fuera de esa base" si quedó matriculado aquí por otro lado (agregado
+// a mano, de otra empresa que no es de este curso, etc.) -- pedido explícito
+// del cliente, para no mezclarlos aunque estén en el mismo curso.
+$stmt = db()->prepare('SELECT id, razon_social FROM curso_empresas WHERE programa_id = ?');
+$stmt->execute([(int) $programaId]);
+$empresas = $stmt->fetchAll();
+
+if (!empty($empresas)) {
+    $empresaIds = array_map(static fn($e) => (int) $e['id'], $empresas);
+    $placeholders = implode(',', array_fill(0, count($empresaIds), '?'));
+    $stmt = db()->prepare("SELECT identificacion, empresa_id FROM curso_empresa_empleados WHERE empresa_id IN ($placeholders)");
+    $stmt->execute($empresaIds);
+    $empresaPorIdentificacion = [];
+    foreach ($stmt->fetchAll() as $emp) {
+        $empresaPorIdentificacion[$emp['identificacion']] = $emp['empresa_id'];
+    }
+    $nombrePorEmpresaId = [];
+    foreach ($empresas as $e) { $nombrePorEmpresaId[$e['id']] = $e['razon_social']; }
+    $todasLasEmpresas = implode(', ', array_column($empresas, 'razon_social'));
+
+    foreach ($rows as &$r) {
+        $empresaId = $empresaPorIdentificacion[$r['identificacion']] ?? null;
+        if ($empresaId !== null) {
+            $r['empresa'] = $nombrePorEmpresaId[$empresaId];
+            $r['fueraDeBaseDe'] = null;
+        } else {
+            $r['empresa'] = null;
+            $r['fueraDeBaseDe'] = $todasLasEmpresas;
+        }
+    }
+    unset($r);
+} else {
+    foreach ($rows as &$r) { $r['empresa'] = null; $r['fueraDeBaseDe'] = null; }
+    unset($r);
+}
+
 respond(['ok' => true, 'matriculados' => $rows]);

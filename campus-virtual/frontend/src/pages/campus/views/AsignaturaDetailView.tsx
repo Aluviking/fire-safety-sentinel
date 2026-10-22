@@ -123,6 +123,7 @@ function AnunciosTab({ asignaturaId }: { asignaturaId: number }) {
 interface EstudianteDeAsignatura {
   id: number; estudiante_id: number; estado: string | null; identificacion: string; nombre_completo: string; programa_nombre: string;
   mostrar_notas: number; mostrar_certificado: number;
+  empresa: string | null; fueraDeBaseDe: string | null;
 }
 
 /* ── Estudiantes — heredan el acceso por estar matriculados en un programa
@@ -246,6 +247,12 @@ function EstudiantesTab({ asignaturaId, asignaturaNombre, certificadoId }: { asi
                       </button>
                     ) : (
                       <span className="text-slate-800 font-medium">{e.nombre_completo}</span>
+                    )}
+                    {e.empresa && (
+                      <span className="block mt-0.5 text-[10px] font-medium text-emerald-700">{e.empresa}</span>
+                    )}
+                    {e.fueraDeBaseDe && (
+                      <span className="block mt-0.5 text-[10px] font-medium text-amber-600">Fuera de la base de {e.fueraDeBaseDe}</span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-slate-600 text-xs font-mono">{e.identificacion}</td>

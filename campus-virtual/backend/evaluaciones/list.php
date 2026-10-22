@@ -48,7 +48,7 @@ foreach ($antiguas as $r) {
         'identificacion_estudiante' => $r['identificacion_estudiante'], 'asignatura' => $r['asignatura'],
         'parametro' => $r['parametro'], 'porcentaje' => $r['porcentaje'], 'nota' => $r['nota'],
         'inasistencias' => $r['inasistencias'], 'observaciones' => $r['observaciones'],
-        'origen' => 'q10',
+        'origen' => 'q10', 'empresa' => null,
     ];
 }
 
@@ -68,7 +68,12 @@ $sql = "SELECT i.id, i.estudiante_identificacion, i.numero_intento, i.porcentaje
                c.titulo AS parametro, a.nombre AS asignatura,
                (SELECT GROUP_CONCAT(DISTINCT p.nombre ORDER BY p.nombre SEPARATOR ', ')
                 FROM programa_asignaturas pa JOIN programas p ON p.id = pa.programa_id
-                WHERE pa.asignatura_id = a.id) AS curso
+                WHERE pa.asignatura_id = a.id) AS curso,
+               (SELECT ce.razon_social FROM curso_empresa_empleados cee
+                JOIN curso_empresas ce ON ce.id = cee.empresa_id
+                JOIN programa_asignaturas pa2 ON pa2.programa_id = ce.programa_id
+                WHERE pa2.asignatura_id = a.id AND cee.identificacion = i.estudiante_identificacion
+                LIMIT 1) AS empresa
         FROM asignatura_cuestionario_intentos i
         JOIN asignatura_contenido c ON c.id = i.contenido_id
         JOIN asignaturas a ON a.id = c.asignatura_id
@@ -88,13 +93,17 @@ foreach ($stmt->fetchAll() as $r) {
         'identificacion_estudiante' => $r['estudiante_identificacion'], 'asignatura' => $r['asignatura'],
         'parametro' => $r['parametro'] . ' (Intento ' . $r['numero_intento'] . ')',
         'porcentaje' => $r['porcentaje'], 'nota' => null, 'inasistencias' => null, 'observaciones' => null,
-        'origen' => 'cuestionario',
+        'origen' => 'cuestionario', 'empresa' => $r['empresa'],
     ];
 }
 
 // -- Cursos (que en Campus Virtual son filas de `programas` con tipo=curso) --
 $sql = "SELECT i.id, i.estudiante_identificacion, i.numero_intento, i.porcentaje,
-               c.titulo AS parametro, p.nombre AS curso
+               c.titulo AS parametro, p.nombre AS curso,
+               (SELECT ce.razon_social FROM curso_empresa_empleados cee
+                JOIN curso_empresas ce ON ce.id = cee.empresa_id
+                WHERE ce.programa_id = p.id AND cee.identificacion = i.estudiante_identificacion
+                LIMIT 1) AS empresa
         FROM curso_cuestionario_intentos i
         JOIN curso_contenido c ON c.id = i.contenido_id
         JOIN programas p ON p.id = c.curso_id
@@ -114,7 +123,7 @@ foreach ($stmt->fetchAll() as $r) {
         'identificacion_estudiante' => $r['estudiante_identificacion'], 'asignatura' => $r['curso'],
         'parametro' => $r['parametro'] . ' (Intento ' . $r['numero_intento'] . ')',
         'porcentaje' => $r['porcentaje'], 'nota' => null, 'inasistencias' => null, 'observaciones' => null,
-        'origen' => 'cuestionario',
+        'origen' => 'cuestionario', 'empresa' => $r['empresa'],
     ];
 }
 
@@ -140,7 +149,7 @@ foreach ($stmt->fetchAll() as $r) {
         'identificacion_estudiante' => $r['estudiante_identificacion'], 'asignatura' => $r['curso'],
         'parametro' => $r['parametro'] . ' (Intento ' . $r['numero_intento'] . ')',
         'porcentaje' => $r['porcentaje'], 'nota' => null, 'inasistencias' => null, 'observaciones' => null,
-        'origen' => 'cuestionario',
+        'origen' => 'cuestionario', 'empresa' => null,
     ];
 }
 

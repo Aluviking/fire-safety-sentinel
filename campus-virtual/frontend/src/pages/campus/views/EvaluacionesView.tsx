@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2, Users } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2, Users, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
 import { SearchableSelect } from "../SearchableSelect";
@@ -17,6 +18,7 @@ interface Evaluacion {
   inasistencias: number | null;
   observaciones: string | null;
   origen: "q10" | "cuestionario";
+  empresa: string | null;
 }
 interface NotaFinal {
   id: number;
@@ -130,7 +132,7 @@ function CursoRosterPanel({
   curso: string; evaluaciones: Evaluacion[]; estudiantesMap: Map<string, string>;
   canEdit: boolean; onUpdated: (updated: Evaluacion) => void;
 }) {
-  const rows = useMemo(() => evaluaciones.filter((e) => e.codigo_curso === curso), [evaluaciones, curso]);
+  const rows = useMemo(() => evaluaciones.filter((e) => e.codigo_curso === curso || e.empresa === curso), [evaluaciones, curso]);
 
   const parametros = useMemo(
     () => Array.from(new Set(rows.map((r) => r.parametro).filter((p): p is string => !!p))),
@@ -308,9 +310,14 @@ export default function EvaluacionesView() {
     () => Array.from(new Set(evaluaciones.map((e) => e.asignatura).filter((a): a is string => !!a))).sort(),
     [evaluaciones]
   );
+  // El selector de "Curso" también encuentra por nombre de empresa (ej.
+  // escribir "Royal" debe mostrar "Royal Films S.A.S." como opción) --
+  // pedido explícito del cliente, para no tener que agregar un filtro aparte.
   const cursoOpts = useMemo(() => {
     const base = filterAsignatura ? evaluaciones.filter((e) => e.asignatura === filterAsignatura) : evaluaciones;
-    return Array.from(new Set(base.map((e) => e.codigo_curso).filter((c): c is string => !!c))).sort();
+    const cursos = base.map((e) => e.codigo_curso).filter((c): c is string => !!c);
+    const empresas = base.map((e) => e.empresa).filter((c): c is string => !!c);
+    return Array.from(new Set([...cursos, ...empresas])).sort();
   }, [evaluaciones, filterAsignatura]);
 
   const handleAsignaturaChange = (v: string) => { setFilterAsignatura(v); setFilterCurso(""); setPage(1); };
@@ -321,7 +328,7 @@ export default function EvaluacionesView() {
     return evaluaciones.filter((e) =>
       (!q || (e.identificacion_estudiante ?? "").includes(q) || (e.codigo_curso ?? "").toLowerCase().includes(q)) &&
       (!filterAsignatura || e.asignatura === filterAsignatura) &&
-      (!filterCurso || e.codigo_curso === filterCurso)
+      (!filterCurso || e.codigo_curso === filterCurso || e.empresa === filterCurso)
     );
   }, [evaluaciones, searchActive, filterAsignatura, filterCurso]);
 
@@ -337,6 +344,22 @@ export default function EvaluacionesView() {
   const totalPages  = Math.ceil(activeData.length / PAGE_SIZE);
   const evalPage    = filteredEvaluaciones.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const notaPage    = filteredNotas.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Descarga exactamente lo que está filtrado en pantalla en ese momento
+  // (misma mecánica que la plantilla de Cursos para empresas).
+  const exportarExcel = () => {
+    const headers = ["Identificación", "Curso", "Empresa", "Asignatura", "Parámetro", "%", "Nota", "Inasist.", "Origen"];
+    const data = filteredEvaluaciones.map((e) => [
+      e.identificacion_estudiante ?? "", e.codigo_curso ?? "", e.empresa ?? "", e.asignatura ?? "",
+      e.parametro ?? "", e.porcentaje ?? "", e.origen === "q10" ? (e.nota ?? "") : "",
+      e.origen === "q10" ? (e.inasistencias ?? 0) : "", e.origen === "q10" ? "Antigua" : "Cuestionario",
+    ]);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    ws["!cols"] = headers.map(() => ({ wch: 22 }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Evaluaciones");
+    XLSX.writeFile(wb, "evaluaciones.xlsx");
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="space-y-3">
@@ -397,6 +420,12 @@ export default function EvaluacionesView() {
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C41717] hover:bg-[#B01313] text-white text-sm font-semibold shadow-[0_2px_12px_rgba(196,23,23,0.25)] hover:shadow-[0_4px_18px_rgba(196,23,23,0.35)] active:scale-[0.98] transition-all duration-150">
               <Search className="w-3.5 h-3.5" /> Buscar
             </button>
+            {tab === "Evaluaciones detalladas" && (
+              <button onClick={exportarExcel}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 text-sm font-semibold transition-all">
+                <Download className="w-3.5 h-3.5" /> Descargar Excel
+              </button>
+            )}
           </div>
 
           <div className="h-px bg-slate-100" />

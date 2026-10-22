@@ -27,6 +27,7 @@ interface MatriculaReal {
   id: number; estudiante_id: number; identificacion: string; nombre_completo: string;
   periodo: string | null; nivel: string | null; estado: string; sede: string | null; jornada: string | null;
   mostrar_notas: number; mostrar_certificado: number;
+  empresa: string | null; fueraDeBaseDe: string | null;
 }
 interface EstudianteOption { id: number; identificacion: string; nombre_completo: string }
 const ESTADOS_MATRICULA = ["ACTIVO", "INACTIVO", "CANCELADO", "GRADUADO"];
@@ -1351,6 +1352,12 @@ function EstudiantesTab({ programaId, programaNombre, certificadoId }: { program
                       </button>
                     ) : (
                       <span className="text-slate-800 font-medium">{m.nombre_completo}</span>
+                    )}
+                    {m.empresa && (
+                      <span className="block mt-0.5 text-[10px] font-medium text-emerald-700">{m.empresa}</span>
+                    )}
+                    {m.fueraDeBaseDe && (
+                      <span className="block mt-0.5 text-[10px] font-medium text-amber-600">Fuera de la base de {m.fueraDeBaseDe}</span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-slate-500 text-xs">{m.identificacion}</td>
