@@ -6,7 +6,7 @@ import { useCampusAuth } from "@/context/CampusAuthContext";
 import { SearchableSelect } from "../SearchableSelect";
 
 interface Evaluacion {
-  id: number;
+  id: number | string;
   codigo_curso: string | null;
   periodo: string | null;
   identificacion_estudiante: string | null;
@@ -16,6 +16,7 @@ interface Evaluacion {
   nota: string | null;
   inasistencias: number | null;
   observaciones: string | null;
+  origen: "q10" | "cuestionario";
 }
 interface NotaFinal {
   id: number;
@@ -146,7 +147,12 @@ function CursoRosterPanel({
     return map;
   }, [rows]);
 
-  const save = async (id: number, field: "nota" | "inasistencias" | "observaciones", value: string) => {
+  // Las filas que vienen de un Cuestionario de Campus Virtual se califican
+  // solas (y no tienen fila real en la tabla `evaluaciones`) -- no se pueden
+  // editar desde aquí, por eso su id es un texto ("cv-...") en vez de un
+  // número real de esa tabla.
+  const save = async (id: number | string, field: "nota" | "inasistencias" | "observaciones", value: string) => {
+    if (typeof id !== "number") return;
     try {
       const updated = await apiFetch<{ ok: true }>("/evaluaciones/update.php", { method: "POST", json: { id, [field]: value } });
       if (updated.ok) onUpdated({ ...rows.find((r) => r.id === id)!, [field]: value });
@@ -158,9 +164,10 @@ function CursoRosterPanel({
   // Inasistencias y observaciones son iguales en todas las filas de un mismo
   // estudiante+curso en los datos reales (verificado: 0 inconsistencias en
   // 1025 grupos) — al editar, se aplica a todas sus filas de este curso para
-  // que se mantengan consistentes.
+  // que se mantengan consistentes. Solo a las filas antiguas, que son las
+  // únicas que tienen dónde guardarlo.
   const saveShared = async (studentRows: Evaluacion[], field: "inasistencias" | "observaciones", value: string) => {
-    await Promise.all(studentRows.map((r) => save(r.id, field, value)));
+    await Promise.all(studentRows.filter((r) => r.origen === "q10").map((r) => save(r.id, field, value)));
   };
 
   if (rows.length === 0) {
@@ -185,9 +192,15 @@ function CursoRosterPanel({
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="text-left px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">N°</th>
               <th className="text-left px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Estudiante</th>
-              {parametros.map((p) => (
-                <th key={p} className="text-center px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">{p}</th>
-              ))}
+              {parametros.map((p) => {
+                const esCuestionario = rows.find((r) => r.parametro === p)?.origen === "cuestionario";
+                return (
+                  <th key={p} className="text-center px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">
+                    {p}
+                    {esCuestionario && <span className="block normal-case font-normal text-[10px] text-slate-400">Cuestionario · no editable</span>}
+                  </th>
+                );
+              })}
               <th className="text-center px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Prom.</th>
               <th className="text-center px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Inas.</th>
               <th className="text-left px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Observaciones</th>
@@ -214,11 +227,12 @@ function CursoRosterPanel({
                   </td>
                   {parametros.map((p) => {
                     const cell = studentRows.find((r) => r.parametro === p);
+                    const valorCuestionario = cell?.origen === "cuestionario" && cell.porcentaje != null ? `${cell.porcentaje}%` : "";
                     return (
                       <td key={p} className="px-3 py-2 w-24">
                         {cell ? (
                           <EditableCell
-                            value={cell.nota ?? ""} canEdit={canEdit} align="center"
+                            value={cell.nota ?? valorCuestionario} canEdit={canEdit && cell.origen === "q10"} align="center"
                             onSave={(v) => save(cell.id, "nota", v)}
                           />
                         ) : <span className="block text-center text-slate-300">—</span>}
@@ -228,12 +242,15 @@ function CursoRosterPanel({
                   <td className="px-3 py-2 text-center text-slate-700 font-semibold text-xs">{prom != null ? prom.toFixed(1) : "—"}</td>
                   <td className="px-3 py-2 w-16">
                     <EditableCell
-                      value={String(inas ?? "")} canEdit={canEdit} align="center"
+                      value={String(inas ?? "")} canEdit={canEdit && studentRows.some((r) => r.origen === "q10")} align="center"
                       onSave={(v) => saveShared(studentRows, "inasistencias", v)}
                     />
                   </td>
                   <td className="px-3 py-2 min-w-[160px]">
-                    <EditableCell value={obs ?? ""} canEdit={canEdit} onSave={(v) => saveShared(studentRows, "observaciones", v)} />
+                    <EditableCell
+                      value={obs ?? ""} canEdit={canEdit && studentRows.some((r) => r.origen === "q10")}
+                      onSave={(v) => saveShared(studentRows, "observaciones", v)}
+                    />
                   </td>
                 </tr>
               );
@@ -399,11 +416,12 @@ export default function EvaluacionesView() {
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">%</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Nota</th>
                       <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Inasist.</th>
+                      <th className="text-left px-4 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Origen</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {evalPage.length === 0 ? (
-                      <tr><td colSpan={7} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
+                      <tr><td colSpan={8} className="text-center py-12 text-slate-400 text-sm">Sin resultados</td></tr>
                     ) : evalPage.map((e, idx) => (
                       <tr key={e.id} className={`hover:bg-slate-50/70 transition-colors ${idx % 2 === 1 ? "bg-slate-50/30" : ""}`}>
                         <td className="px-4 py-2 text-slate-600 font-mono text-[13px]">{e.identificacion_estudiante ?? "—"}</td>
@@ -411,8 +429,15 @@ export default function EvaluacionesView() {
                         <td className="px-4 py-2 text-slate-600 text-xs">{e.asignatura ?? "—"}</td>
                         <td className="px-4 py-2 text-slate-500 text-xs">{e.parametro ?? "—"}</td>
                         <td className="px-4 py-2 text-slate-500 text-xs">{e.porcentaje ?? "—"}</td>
-                        <td className="px-4 py-2 text-slate-700 font-medium text-xs">{e.nota ?? "—"}</td>
-                        <td className="px-4 py-2 text-slate-500 text-xs">{e.inasistencias ?? 0}</td>
+                        <td className="px-4 py-2 text-slate-700 font-medium text-xs">{e.origen === "q10" ? (e.nota ?? "—") : "—"}</td>
+                        <td className="px-4 py-2 text-slate-500 text-xs">{e.origen === "q10" ? (e.inasistencias ?? 0) : "—"}</td>
+                        <td className="px-4 py-2 text-xs">
+                          {e.origen === "q10" ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[11px] font-medium">Antigua</span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium">Cuestionario</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
