@@ -273,14 +273,15 @@ interface BancoPreguntaDetalle extends BancoPreguntaSlim {
   descripcion: string; puntos: number; aplica_retroalimentacion: number; retroalimentacion: string | null;
   opciones: BancoOpcion[]; pares: BancoPar[];
 }
-const BANCO_TIPO_LABEL: Record<number, string> = { 1: "Única respuesta", 2: "Múltiple respuesta", 4: "Asociación", 6: "Descriptiva" };
-
-function ImportarBancoModal({ onClose, onImport }: { onClose: () => void; onImport: (p: BancoPreguntaDetalle) => void }) {
+function ImportarBancoModal({
+  onClose, questionsBase, contenidoId, onImported,
+}: { onClose: () => void; questionsBase: string; contenidoId: number; onImported: () => void }) {
   const [etiquetas, setEtiquetas] = useState<BancoEtiqueta[]>([]);
   const [preguntas, setPreguntas] = useState<BancoPreguntaSlim[]>([]);
-  const [filtroEtiqueta, setFiltroEtiqueta] = useState<number | null>(null);
+  const [busqueda, setBusqueda] = useState("");
   const [loading, setLoading] = useState(true);
-  const [loadingId, setLoadingId] = useState<number | null>(null);
+  const [importandoId, setImportandoId] = useState<number | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -291,16 +292,48 @@ function ImportarBancoModal({ onClose, onImport }: { onClose: () => void; onImpo
       .finally(() => setLoading(false));
   }, []);
 
-  const filtradas = filtroEtiqueta ? preguntas.filter((p) => p.etiquetas.some((e) => e.id === filtroEtiqueta)) : preguntas;
+  const deLaEtiqueta = (etiquetaId: number) => preguntas.filter((p) => p.etiquetas.some((e) => e.id === etiquetaId));
 
-  const pick = async (id: number) => {
-    setLoadingId(id);
+  const etiquetasFiltradas = busqueda.trim()
+    ? etiquetas.filter((et) => et.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()))
+    : etiquetas;
+
+  const importarEtiqueta = async (etiqueta: BancoEtiqueta) => {
+    const slims = deLaEtiqueta(etiqueta.id);
+    if (slims.length === 0) return;
+    setError("");
+    setImportandoId(etiqueta.id);
     try {
-      const { pregunta } = await apiFetch<{ pregunta: BancoPreguntaDetalle }>(`/banco-preguntas/detail.php?id=${id}`);
-      onImport(pregunta);
+      for (const slim of slims) {
+        const { pregunta } = await apiFetch<{ pregunta: BancoPreguntaDetalle }>(`/banco-preguntas/detail.php?id=${slim.id}`);
+        const texto = pregunta.descripcion.replace(/<[^>]*>/g, "").trim() || pregunta.titulo;
+        let tipoRespuesta: TipoRespuesta;
+        let opciones: { texto: string; parejaTexto?: string; esCorrecta: boolean }[];
+        if (pregunta.tipo === 4) {
+          tipoRespuesta = "asociacion";
+          opciones = pregunta.pares.map((par) => ({ texto: par.termino, parejaTexto: par.respuesta, esCorrecta: false }));
+        } else if (pregunta.tipo === 6) {
+          tipoRespuesta = "descriptiva";
+          opciones = [];
+        } else {
+          tipoRespuesta = pregunta.tipo === 2 ? "multiple" : "unica";
+          opciones = pregunta.opciones.map((o) => ({ texto: o.texto, esCorrecta: o.correcta }));
+        }
+        await apiFetch(`${questionsBase}/create.php`, {
+          method: "POST",
+          json: {
+            contenidoId, texto, tipoRespuesta, puntos: pregunta.puntos,
+            retroalimentacion: pregunta.aplica_retroalimentacion && pregunta.retroalimentacion ? pregunta.retroalimentacion : null,
+            opciones,
+          },
+        });
+      }
+      onImported();
       onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al importar.");
     } finally {
-      setLoadingId(null);
+      setImportandoId(null);
     }
   };
 
@@ -312,26 +345,31 @@ function ImportarBancoModal({ onClose, onImport }: { onClose: () => void; onImpo
           <h3 className="font-bold text-slate-800">Importar del banco de preguntas</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5" /></button>
         </div>
-        <div className="px-5 py-3 border-b border-slate-100 shrink-0">
-          <select value={filtroEtiqueta ?? ""} onChange={(e) => setFiltroEtiqueta(e.target.value ? Number(e.target.value) : null)} className={inputCls}>
-            <option value="">Todas las etiquetas</option>
-            {etiquetas.map((et) => <option key={et.id} value={et.id}>{et.nombre}</option>)}
-          </select>
+        <div className="px-5 py-3 border-b border-slate-100 shrink-0 space-y-1.5">
+          <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar etiqueta... (ej. legislación)" className={inputCls} autoFocus />
+          <p className="text-[11px] text-slate-400">Dale click a una etiqueta para importar de una vez todas sus preguntas.</p>
         </div>
+        {error && <p className="px-5 pt-2 text-[11px] text-red-500 shrink-0">{error}</p>}
         <div className="overflow-y-auto px-5 py-3 space-y-1.5">
           {loading ? (
             <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>
-          ) : filtradas.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-6">Sin preguntas en el banco para este filtro.</p>
-          ) : filtradas.map((p) => (
-            <button key={p.id} onClick={() => pick(p.id)} disabled={loadingId !== null}
-              className="w-full text-left flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-200 disabled:opacity-50">
-              <span className="text-sm text-slate-700 truncate">{p.titulo}</span>
-              <span className="text-[11px] font-semibold text-slate-400 border border-slate-200 rounded-full px-2 py-0.5 shrink-0">
-                {loadingId === p.id ? "..." : BANCO_TIPO_LABEL[p.tipo]}
-              </span>
-            </button>
-          ))}
+          ) : etiquetasFiltradas.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-6">Sin etiquetas que coincidan.</p>
+          ) : etiquetasFiltradas.map((et) => {
+            const total = deLaEtiqueta(et.id).length;
+            return (
+              <button key={et.id} onClick={() => importarEtiqueta(et)} disabled={importandoId !== null || total === 0}
+                className="w-full text-left flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-200 disabled:opacity-50">
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: et.color || "#C41717" }} />
+                  <span className="text-sm text-slate-700 truncate">{et.nombre}</span>
+                </span>
+                <span className="text-[11px] font-semibold text-slate-400 border border-slate-200 rounded-full px-2 py-0.5 shrink-0">
+                  {importandoId === et.id ? "Importando..." : `${total} pregunta${total === 1 ? "" : "s"}`}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -352,21 +390,6 @@ function PreguntaForm({
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [importando, setImportando] = useState(false);
-
-  const applyImport = (p: BancoPreguntaDetalle) => {
-    setTexto(p.descripcion.replace(/<[^>]*>/g, "").trim() || p.titulo);
-    if (p.tipo === 4) {
-      setTipoRespuesta("asociacion");
-      setOpciones(p.pares.map((par) => ({ texto: par.termino, parejaTexto: par.respuesta, esCorrecta: false })));
-    } else if (p.tipo === 6) {
-      setTipoRespuesta("descriptiva");
-    } else {
-      setTipoRespuesta(p.tipo === 2 ? "multiple" : "unica");
-      setOpciones(p.opciones.map((o) => ({ texto: o.texto, parejaTexto: "", esCorrecta: o.correcta })));
-    }
-    setPuntos(String(p.puntos));
-    setRetro(p.aplica_retroalimentacion && p.retroalimentacion ? p.retroalimentacion : "");
-  };
 
   const toggleCorrecta = (i: number) => setOpciones((prev) => prev.map((o, idx) => {
     if (tipoRespuesta === "unica") return { ...o, esCorrecta: idx === i };
@@ -415,7 +438,7 @@ function PreguntaForm({
         </button>
       </div>
       {importando && (
-        <ImportarBancoModal onClose={() => setImportando(false)} onImport={applyImport} />
+        <ImportarBancoModal onClose={() => setImportando(false)} questionsBase={questionsBase} contenidoId={contenidoId} onImported={onDone} />
       )}
       <textarea value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Texto de la pregunta" rows={2} className={inputCls} />
       <div className="flex gap-2">
