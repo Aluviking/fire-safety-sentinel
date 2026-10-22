@@ -886,7 +886,7 @@ function PensumSection({ programa, canEdit, onUpdated }: { programa: Programa; c
                           <input type="checkbox" checked={seleccionadas.has(pa.id)} onChange={() => toggleSeleccionada(pa.id)} className="accent-[#C41717]" />
                         </td>
                       )}
-                      <td className="px-3 py-2 text-slate-500 text-xs whitespace-nowrap">{String(pa.orden).padStart(2, "0")} - {programa.codigo ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-500 text-xs whitespace-nowrap">{pa.asignatura_codigo ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-800 font-medium text-xs">{pa.asignatura_nombre}</td>
                       <td className="px-3 py-2 text-slate-500 text-xs">{pa.nivel ?? "—"}</td>
                       <td className="px-3 py-2 text-center text-slate-500 text-xs">{pa.creditos ?? 0}</td>

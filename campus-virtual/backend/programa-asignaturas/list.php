@@ -22,8 +22,7 @@ if ($soloMias) {
          WHERE pa.programa_id = ? AND EXISTS (
            SELECT 1 FROM asignatura_docentes ad JOIN docentes d ON d.id = ad.docente_id
            WHERE ad.asignatura_id = pa.asignatura_id AND d.identificacion = ?
-         )
-         ORDER BY pa.orden, pa.id'
+         )'
     );
     $stmt->execute([$programaId, $user['identificacion'] ?? '']);
 } else {
@@ -31,9 +30,17 @@ if ($soloMias) {
         'SELECT pa.*, a.codigo AS asignatura_codigo, a.nombre AS asignatura_nombre
          FROM programa_asignaturas pa
          JOIN asignaturas a ON a.id = pa.asignatura_id
-         WHERE pa.programa_id = ?
-         ORDER BY pa.orden, pa.id'
+         WHERE pa.programa_id = ?'
     );
     $stmt->execute([$programaId]);
 }
-respond(['ok' => true, 'asignaturas' => $stmt->fetchAll()]);
+$asignaturas = $stmt->fetchAll();
+
+// El pensum se muestra en orden numérico de código (01, 02, 03…), no por
+// fecha de inserción -- pedido explícito del cliente: al traer/crear una
+// asignatura, debe acomodarse sola en su puesto según su código, no quedar
+// pegada al final. strnatcasecmp entiende números dentro del texto (p.ej.
+// "02 - BCI" antes de "10 - BCI"), a diferencia de un ORDER BY de texto plano.
+usort($asignaturas, fn($a, $b) => strnatcasecmp($a['asignatura_codigo'] ?? '', $b['asignatura_codigo'] ?? ''));
+
+respond(['ok' => true, 'asignaturas' => $asignaturas]);
