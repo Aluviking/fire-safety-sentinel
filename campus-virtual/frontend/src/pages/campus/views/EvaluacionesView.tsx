@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2, Users, Download } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2, Users, Download, Plus } from "lucide-react";
 import * as XLSX from "xlsx";
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
@@ -332,10 +332,10 @@ function CursoRosterPanel({
 /* ── Roster de una asignatura en un periodo puntual: estudiantes x
      parámetro, sin nada de empresas (ese concepto es solo para "Curso") ── */
 function PeriodoRosterPanel({
-  asignatura, periodo, evaluaciones, estudiantesMap, canEdit, onUpdated,
+  asignatura, periodo, evaluaciones, estudiantesMap, canEdit, onUpdated, onParametroCreado,
 }: {
   asignatura: string; periodo: string; evaluaciones: Evaluacion[]; estudiantesMap: Map<string, string>;
-  canEdit: boolean; onUpdated: (updated: Evaluacion) => void;
+  canEdit: boolean; onUpdated: (updated: Evaluacion) => void; onParametroCreado: () => void;
 }) {
   // Lo de Q10 no se filtra por periodo -- es data vieja, de antes de que
   // existiera el sistema de periodos, así que no tiene un periodo real
@@ -438,6 +438,36 @@ function PeriodoRosterPanel({
     await Promise.all(studentRows.filter((r) => r.origen === "q10").map((r) => save(r.id, field, value)));
   };
 
+  // Crear un parámetro de evaluación nuevo a mano (ej. "PARCIAL 2") -- crea
+  // una fila en blanco por cada matriculado de este periodo, lista para
+  // calificar (misma mecánica que las celdas de Q10, por eso sale editable).
+  const [creandoParametro, setCreandoParametro] = useState(false);
+  const [nombreParametro, setNombreParametro] = useState("");
+  const [pesoParametro, setPesoParametro] = useState("");
+  const [guardandoParametro, setGuardandoParametro] = useState(false);
+  const [errorParametro, setErrorParametro] = useState("");
+
+  const crearParametro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nombreParametro.trim()) return;
+    setGuardandoParametro(true);
+    setErrorParametro("");
+    try {
+      await apiFetch<{ ok: true; creadas: number }>("/evaluaciones/crear-parametro.php", {
+        method: "POST",
+        json: { asignatura, periodo, parametro: nombreParametro.trim(), porcentaje: pesoParametro || null },
+      });
+      setCreandoParametro(false);
+      setNombreParametro("");
+      setPesoParametro("");
+      onParametroCreado();
+    } catch (err) {
+      setErrorParametro(err instanceof Error ? err.message : "Error al crear el parámetro.");
+    } finally {
+      setGuardandoParametro(false);
+    }
+  };
+
   if (rows.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center text-slate-400 text-sm">
@@ -458,8 +488,14 @@ function PeriodoRosterPanel({
             incluye data antigua registrada como «{rows.find((r) => r.asignaturaOriginal)?.asignaturaOriginal}»
           </span>
         )}
+        {canEdit && (
+          <button onClick={() => setCreandoParametro(true)}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 text-xs font-semibold transition-all">
+            <Plus className="w-3.5 h-3.5" /> Crear parámetro
+          </button>
+        )}
         <button onClick={exportarExcel}
-          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 text-xs font-semibold transition-all">
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 text-xs font-semibold transition-all ${canEdit ? "" : "ml-auto"}`}>
           <Download className="w-3.5 h-3.5" /> Descargar Excel
         </button>
       </div>
@@ -566,6 +602,44 @@ function PeriodoRosterPanel({
           </tbody>
         </table>
       </div>
+      {creandoParametro && (
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={() => setCreandoParametro(false)} />
+          <div className="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <p className="text-slate-800 font-bold text-[15px]">Crear parámetro</p>
+              <button onClick={() => setCreandoParametro(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            </div>
+            <form onSubmit={crearParametro} className="px-5 py-4 space-y-3">
+              <p className="text-xs text-slate-500">Se crea para <span className="font-semibold text-slate-700">{asignatura} · {periodo}</span>, con una fila en blanco lista para calificar por cada matriculado de este periodo.</p>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Nombre del parámetro</label>
+                <input autoFocus value={nombreParametro} onChange={(e) => setNombreParametro(e.target.value)}
+                  placeholder="Ej. PARCIAL 2"
+                  className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Porcentaje / peso (opcional)</label>
+                <input type="number" min="0" max="100" value={pesoParametro} onChange={(e) => setPesoParametro(e.target.value)}
+                  placeholder="Ej. 20"
+                  className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10" />
+              </div>
+              {errorParametro && <p className="text-xs text-red-600 font-medium">{errorParametro}</p>}
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={() => setCreandoParametro(false)}
+                  className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 text-xs font-semibold transition-all">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={guardandoParametro || !nombreParametro.trim()}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#C41717] text-white hover:bg-[#a51313] disabled:opacity-50 text-xs font-semibold transition-all">
+                  {guardandoParametro ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Crear"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -603,6 +677,15 @@ export default function EvaluacionesView() {
 
   const handleEvaluacionUpdated = (updated: Evaluacion) => {
     setEvaluaciones((prev) => prev.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
+  };
+
+  // Tras crear un parámetro a mano se recarga todo el listado -- se crean
+  // varias filas nuevas de una (una por matriculado), más simple y seguro
+  // que tratar de reconstruirlas a mano en el estado local.
+  const recargarEvaluaciones = () => {
+    apiFetch<{ evaluaciones: Evaluacion[] }>("/evaluaciones/list.php")
+      .then((e) => setEvaluaciones(e.evaluaciones))
+      .catch((e) => window.alert(e instanceof Error ? e.message : "Error al recargar evaluaciones."));
   };
 
   const handleSearch = () => { setSearchActive(searchInput); setPage(1); };
@@ -721,6 +804,7 @@ export default function EvaluacionesView() {
           estudiantesMap={estudiantesMap}
           canEdit={canEdit}
           onUpdated={handleEvaluacionUpdated}
+          onParametroCreado={recargarEvaluaciones}
         />
       ) : filterCurso ? (
         <CursoRosterPanel
