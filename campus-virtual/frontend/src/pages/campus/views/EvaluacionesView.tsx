@@ -350,11 +350,12 @@ function PeriodoRosterPanel({
   // Filtro por origen de la data -- "antigua" = Q10, "nueva" = cuestionarios
   // de Campus Virtual. Más un buscador por estudiante, para que no se
   // mezclen visualmente cuando hay de los dos tipos en el mismo periodo.
-  const [filtroOrigen, setFiltroOrigen] = useState<"todos" | "antigua" | "nueva">("todos");
+  // Arranca siempre en "nueva" -- lo primero que debe verse es la base de
+  // datos nueva (los matriculados de verdad de este periodo), no la vieja.
+  const [filtroOrigen, setFiltroOrigen] = useState<"antigua" | "nueva">("nueva");
   const [busquedaEstudiante, setBusquedaEstudiante] = useState("");
 
   const rowsFiltradas = useMemo(() => {
-    if (filtroOrigen === "todos") return rows;
     const origen = filtroOrigen === "antigua" ? "q10" : "cuestionario";
     return rows.filter((r) => r.origen === origen);
   }, [rows, filtroOrigen]);
@@ -510,9 +511,8 @@ function PeriodoRosterPanel({
         </div>
         <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5">
           {([
-            { v: "todos", label: "Todos" },
-            { v: "antigua", label: "Ver base de datos antigua" },
             { v: "nueva", label: "Base de datos nueva" },
+            { v: "antigua", label: "Ver base de datos antigua" },
           ] as const).map((o) => (
             <button key={o.v} onClick={() => setFiltroOrigen(o.v)}
               className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all ${
