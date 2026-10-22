@@ -168,18 +168,19 @@ foreach ($stmt->fetchAll() as $r) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// 3) Roster completo de los cursos que tienen empresas cargadas -- aunque un
-//    estudiante (de la empresa, o agregado por fuera de esa base) todavía no
-//    haya presentado el cuestionario, igual debe aparecer aquí (con "Sin
-//    presentar"), para que se vea la lista completa desde el día uno, no
-//    solo a quien ya respondió. Pedido explícito del cliente.
+// 3) Roster completo de CUALQUIER curso/asignatura con Cuestionario -- aunque
+//    un estudiante todavía no lo haya presentado, igual debe aparecer aquí
+//    (con "Sin presentar"), para que se vea la lista completa de
+//    matriculados desde el día uno, no solo a quien ya respondió. Antes
+//    esto solo pasaba en cursos con empresas cargadas (Cursos para
+//    empresas) -- pedido explícito del cliente: aplica a TODOS los
+//    programas/cursos, tengan empresa o no.
 // ══════════════════════════════════════════════════════════════════════
 
 // -- Vía asignatura (ej. Legislación dentro del pensum de un curso) --
 $sql = "SELECT DISTINCT e.identificacion, a.nombre AS asignatura, c.id AS contenido_id, c.titulo AS parametro,
                p.id AS programa_id, p.nombre AS curso, m.periodo
-        FROM curso_empresas ce0
-        JOIN programas p ON p.id = ce0.programa_id
+        FROM programas p
         JOIN programa_asignaturas pa ON pa.programa_id = p.id
         JOIN asignaturas a ON a.id = pa.asignatura_id
         JOIN asignatura_contenido c ON c.asignatura_id = a.id AND c.tipo = 'Cuestionario'
@@ -201,8 +202,7 @@ $pendientesAsignatura = $stmt->fetchAll();
 
 // -- Vía curso directo --
 $sql = "SELECT DISTINCT e.identificacion, p.nombre AS curso, c.id AS contenido_id, c.titulo AS parametro, p.id AS programa_id, m.periodo
-        FROM curso_empresas ce0
-        JOIN programas p ON p.id = ce0.programa_id
+        FROM programas p
         JOIN curso_contenido c ON c.curso_id = p.id AND c.tipo = 'Cuestionario'
         JOIN matriculas m ON (m.programa = p.nombre OR m.programa LIKE CONCAT(p.nombre, ' - %')) AND m.estado != 'CANCELADO'
         JOIN estudiantes e ON e.id = m.estudiante_id
@@ -253,7 +253,10 @@ if (!empty($pendientes)) {
             $fueraDeBaseDe = null;
         } else {
             $empresa = null;
-            $fueraDeBaseDe = implode(', ', array_column($empresasDeEstePrograma, 'razon_social'));
+            // Null si el programa ni siquiera tiene empresas cargadas (caso
+            // normal ahora que esto aplica a todos) -- solo se arma el texto
+            // si de verdad hay alguna empresa de la que esté "fuera".
+            $fueraDeBaseDe = empty($empresasDeEstePrograma) ? null : implode(', ', array_column($empresasDeEstePrograma, 'razon_social'));
         }
         $rows[] = [
             'id' => 'cv-pend-' . $r['programa_id'] . '-' . $r['identificacion'] . '-' . md5($r['parametro']),
@@ -264,6 +267,68 @@ if (!empty($pendientes)) {
             'origen' => 'cuestionario', 'empresa' => $empresa, 'fueraDeBaseDe' => $fueraDeBaseDe,
         ];
     }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 4) Roster de matriculados en una asignatura/curso que NO tiene ningún
+//    Cuestionario creado todavía -- sin esto, esos estudiantes quedaban
+//    invisibles en Evaluaciones aunque sí estén matriculados y con periodo,
+//    simplemente porque no hay nada que calificar todavía. "Sin evaluación
+//    configurada" dice justo eso, en vez de que no salga nada y parezca que
+//    el estudiante se perdió.
+// ══════════════════════════════════════════════════════════════════════
+
+// -- Vía asignatura --
+$sql = "SELECT DISTINCT e.identificacion, a.nombre AS asignatura, p.nombre AS curso, m.periodo
+        FROM programas p
+        JOIN programa_asignaturas pa ON pa.programa_id = p.id
+        JOIN asignaturas a ON a.id = pa.asignatura_id
+        JOIN matriculas m ON (m.programa = p.nombre OR m.programa LIKE CONCAT(p.nombre, ' - %')) AND m.estado != 'CANCELADO'
+        JOIN estudiantes e ON e.id = m.estudiante_id
+        WHERE NOT EXISTS (SELECT 1 FROM asignatura_contenido c2 WHERE c2.asignatura_id = a.id AND c2.tipo = 'Cuestionario')";
+$params = [];
+if ($esDocente) {
+    $sql .= ' AND EXISTS (SELECT 1 FROM asignatura_docentes ad JOIN docentes d ON d.id = ad.docente_id WHERE ad.asignatura_id = a.id AND d.identificacion = ?)';
+    $params[] = $idDocente;
+}
+if ($identificacion !== '') { $sql .= ' AND e.identificacion = ?'; $params[] = $identificacion; }
+$stmt = db()->prepare($sql);
+$stmt->execute($params);
+foreach ($stmt->fetchAll() as $r) {
+    $rows[] = [
+        'id' => 'cv-sinev-asig-' . md5($r['asignatura'] . '-' . $r['identificacion']),
+        'codigo_curso' => $r['curso'], 'periodo' => $r['periodo'],
+        'identificacion_estudiante' => $r['identificacion'], 'asignatura' => $r['asignatura'],
+        'parametro' => 'Sin evaluación configurada',
+        'porcentaje' => null, 'nota' => null, 'inasistencias' => null, 'observaciones' => null,
+        'origen' => 'cuestionario', 'empresa' => null, 'fueraDeBaseDe' => null,
+    ];
+}
+
+// -- Vía curso directo --
+$sql = "SELECT DISTINCT e.identificacion, p.nombre AS curso, m.periodo
+        FROM programas p
+        JOIN matriculas m ON (m.programa = p.nombre OR m.programa LIKE CONCAT(p.nombre, ' - %')) AND m.estado != 'CANCELADO'
+        JOIN estudiantes e ON e.id = m.estudiante_id
+        WHERE NOT EXISTS (SELECT 1 FROM curso_contenido c2 WHERE c2.curso_id = p.id AND c2.tipo = 'Cuestionario')
+          AND NOT EXISTS (SELECT 1 FROM programa_asignaturas pa2 WHERE pa2.programa_id = p.id)";
+$params = [];
+if ($esDocente) {
+    $sql .= ' AND EXISTS (SELECT 1 FROM programa_docentes pd JOIN docentes d ON d.id = pd.docente_id WHERE pd.programa_id = p.id AND d.identificacion = ?)';
+    $params[] = $idDocente;
+}
+if ($identificacion !== '') { $sql .= ' AND e.identificacion = ?'; $params[] = $identificacion; }
+$stmt = db()->prepare($sql);
+$stmt->execute($params);
+foreach ($stmt->fetchAll() as $r) {
+    $rows[] = [
+        'id' => 'cv-sinev-curso-' . md5($r['curso'] . '-' . $r['identificacion']),
+        'codigo_curso' => $r['curso'], 'periodo' => $r['periodo'],
+        'identificacion_estudiante' => $r['identificacion'], 'asignatura' => $r['curso'],
+        'parametro' => 'Sin evaluación configurada',
+        'porcentaje' => null, 'nota' => null, 'inasistencias' => null, 'observaciones' => null,
+        'origen' => 'cuestionario', 'empresa' => null, 'fueraDeBaseDe' => null,
+    ];
 }
 
 respond(['ok' => true, 'evaluaciones' => $rows]);
