@@ -20,6 +20,7 @@ interface Evaluacion {
   origen: "q10" | "cuestionario";
   empresa: string | null;
   fueraDeBaseDe: string | null;
+  asignaturaOriginal?: string | null;
 }
 interface NotaFinal {
   id: number;
@@ -336,8 +337,13 @@ function PeriodoRosterPanel({
   asignatura: string; periodo: string; evaluaciones: Evaluacion[]; estudiantesMap: Map<string, string>;
   canEdit: boolean; onUpdated: (updated: Evaluacion) => void;
 }) {
+  // Lo de Q10 no se filtra por periodo -- es data vieja, de antes de que
+  // existiera el sistema de periodos, así que no tiene un periodo real
+  // comparable con "2026-2". Se deja pasar siempre que la asignatura
+  // coincida (ya resuelta por alias en el backend), y es el selector de
+  // Todos/antigua/nueva de abajo el que de verdad controla si se ve o no.
   const rows = useMemo(
-    () => evaluaciones.filter((e) => e.asignatura === asignatura && e.periodo === periodo),
+    () => evaluaciones.filter((e) => e.asignatura === asignatura && (e.origen === "q10" || e.periodo === periodo)),
     [evaluaciones, asignatura, periodo]
   );
 
@@ -441,6 +447,11 @@ function PeriodoRosterPanel({
         <Users className="w-4 h-4 text-[#C41717]" />
         <h2 className="text-sm font-semibold text-slate-800 truncate">{asignatura} · {periodo}</h2>
         <span className="text-xs text-slate-400">{porEstudianteFiltrado.size} {porEstudianteFiltrado.size === 1 ? "estudiante" : "estudiantes"}</span>
+        {rows.some((r) => r.asignaturaOriginal) && (
+          <span className="text-[10px] text-slate-400 italic">
+            incluye data antigua registrada como «{rows.find((r) => r.asignaturaOriginal)?.asignaturaOriginal}»
+          </span>
+        )}
         <button onClick={exportarExcel}
           className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 text-xs font-semibold transition-all">
           <Download className="w-3.5 h-3.5" /> Descargar Excel

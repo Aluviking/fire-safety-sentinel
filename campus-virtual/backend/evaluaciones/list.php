@@ -18,6 +18,33 @@ if ($esDocente && $idDocente === '') {
 $rows = [];
 
 // ══════════════════════════════════════════════════════════════════════
+// 0) Alias de nombre entre el catálogo nuevo y los nombres libres de Q10 --
+//    la numeración del código a veces cambió al migrar (ej. "TAE 12B" en
+//    Q10 pasó a ser "TAE 13B" en el catálogo nuevo) pero la materia es la
+//    misma. Se compara solo la parte descriptiva después del guion, que es
+//    la que de verdad identifica la materia, no el código. Si dos
+//    asignaturas distintas cayeran en la misma clave (ambiguo), ninguna de
+//    las dos se alía, para no mezclar materias por error.
+// ══════════════════════════════════════════════════════════════════════
+function canonicalAsignaturaKey(string $nombre): string {
+    $partes = preg_split('/\s[–-]\s/u', $nombre, 2);
+    $desc = trim($partes[1] ?? $nombre);
+    $desc = strtolower($desc);
+    $desc = iconv('UTF-8', 'ASCII//TRANSLIT', $desc) ?: $desc;
+    $desc = preg_replace('/[^a-z0-9]+/', ' ', $desc);
+    return trim($desc);
+}
+$aliasPorClave = [];
+$claveAmbigua = [];
+foreach (db()->query('SELECT nombre FROM asignaturas')->fetchAll(PDO::FETCH_COLUMN) as $nombreNativo) {
+    $clave = canonicalAsignaturaKey((string) $nombreNativo);
+    if ($clave === '' || strlen($clave) < 6) continue;
+    if (isset($aliasPorClave[$clave]) && $aliasPorClave[$clave] !== $nombreNativo) { $claveAmbigua[$clave] = true; continue; }
+    $aliasPorClave[$clave] = $nombreNativo;
+}
+foreach (array_keys($claveAmbigua) as $clave) unset($aliasPorClave[$clave]);
+
+// ══════════════════════════════════════════════════════════════════════
 // 1) Histórico importado de Q10 -- "data antigua" (no se vuelve a importar,
 //    queda tal como llegó; el campo `origen` es lo que el frontend usa para
 //    marcarla como antigua, nunca se expone la palabra "Q10" en pantalla).
@@ -43,9 +70,12 @@ if ($esDocente) {
     $antiguas = db()->query('SELECT * FROM evaluaciones ORDER BY id DESC')->fetchAll();
 }
 foreach ($antiguas as $r) {
+    $asignaturaOriginal = (string) $r['asignatura'];
+    $asignaturaResuelta = $aliasPorClave[canonicalAsignaturaKey($asignaturaOriginal)] ?? $asignaturaOriginal;
     $rows[] = [
         'id' => (int) $r['id'], 'codigo_curso' => $r['codigo_curso'], 'periodo' => $r['periodo'],
-        'identificacion_estudiante' => $r['identificacion_estudiante'], 'asignatura' => $r['asignatura'],
+        'identificacion_estudiante' => $r['identificacion_estudiante'], 'asignatura' => $asignaturaResuelta,
+        'asignaturaOriginal' => $asignaturaResuelta !== $asignaturaOriginal ? $asignaturaOriginal : null,
         'parametro' => $r['parametro'], 'porcentaje' => $r['porcentaje'], 'nota' => $r['nota'],
         'inasistencias' => $r['inasistencias'], 'observaciones' => $r['observaciones'],
         'origen' => 'q10', 'empresa' => null, 'fueraDeBaseDe' => null,
