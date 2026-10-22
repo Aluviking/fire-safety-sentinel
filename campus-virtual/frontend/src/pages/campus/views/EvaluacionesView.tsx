@@ -359,9 +359,15 @@ function PeriodoRosterPanel({
     return rows.filter((r) => r.origen === origen);
   }, [rows, filtroOrigen]);
 
+  // Las columnas salen de TODO lo que exista para esta asignatura (viejo +
+  // nuevo), nunca solo de lo que sobrevive el filtro de origen -- así el
+  // filtro decide qué estudiantes/valores se ven, pero no hace desaparecer
+  // columnas (ej. si estoy en "Base de datos nueva" y esta asignatura tiene
+  // parámetros antiguos de Q10, esas columnas se siguen viendo, solo que
+  // vacías para los estudiantes nuevos que no tienen esa data).
   const parametros = useMemo(
-    () => Array.from(new Set(rowsFiltradas.map((r) => r.parametro).filter((p): p is string => !!p))),
-    [rowsFiltradas]
+    () => Array.from(new Set(rows.map((r) => r.parametro).filter((p): p is string => !!p))),
+    [rows]
   );
 
   // Mismo aviso que en el roster por Curso: los pesos (%) de los parámetros
