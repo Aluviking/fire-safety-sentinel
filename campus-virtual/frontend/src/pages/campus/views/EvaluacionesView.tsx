@@ -133,7 +133,7 @@ function CursoRosterPanel({
   curso: string; evaluaciones: Evaluacion[]; estudiantesMap: Map<string, string>;
   canEdit: boolean; onUpdated: (updated: Evaluacion) => void;
 }) {
-  const rows = useMemo(() => evaluaciones.filter((e) => e.codigo_curso === curso || e.empresa === curso), [evaluaciones, curso]);
+  const rows = useMemo(() => evaluaciones.filter((e) => e.codigo_curso === curso), [evaluaciones, curso]);
 
   const parametros = useMemo(
     () => Array.from(new Set(rows.map((r) => r.parametro).filter((p): p is string => !!p))),
@@ -285,6 +285,7 @@ export default function EvaluacionesView() {
   const [page, setPage] = useState(1);
   const [filterAsignatura, setFilterAsignatura] = useState("");
   const [filterCurso, setFilterCurso]           = useState("");
+  const [incluirFueraDeBase, setIncluirFueraDeBase] = useState(true);
 
   useEffect(() => {
     Promise.all([
@@ -330,14 +331,26 @@ export default function EvaluacionesView() {
   const handleAsignaturaChange = (v: string) => { setFilterAsignatura(v); setFilterCurso(""); setPage(1); };
   const handleCursoChange = (v: string) => { setFilterCurso(v); setPage(1); };
 
+  // Elegir una empresa debe mostrar el curso COMPLETO al que pertenece (los
+  // de la base de esa empresa + los que se agregaron por fuera), no solo a
+  // los de la empresa -- pedido explícito del cliente. Por eso, si lo
+  // elegido es un nombre de empresa, se resuelve al curso real antes de
+  // filtrar.
+  const cursoDeEmpresa = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of evaluaciones) if (e.empresa && e.codigo_curso) map.set(e.empresa, e.codigo_curso);
+    return map;
+  }, [evaluaciones]);
+  const cursoResuelto = cursoDeEmpresa.get(filterCurso) ?? filterCurso;
+
   const filteredEvaluaciones = useMemo(() => {
     const q = searchActive.trim().toLowerCase();
     return evaluaciones.filter((e) =>
       (!q || (e.identificacion_estudiante ?? "").includes(q) || (e.codigo_curso ?? "").toLowerCase().includes(q) || (e.empresa ?? "").toLowerCase().includes(q)) &&
       (!filterAsignatura || e.asignatura === filterAsignatura) &&
-      (!filterCurso || e.codigo_curso === filterCurso || e.empresa === filterCurso)
+      (!filterCurso || e.codigo_curso === cursoResuelto)
     );
-  }, [evaluaciones, searchActive, filterAsignatura, filterCurso]);
+  }, [evaluaciones, searchActive, filterAsignatura, filterCurso, cursoResuelto]);
 
   const filteredNotas = useMemo(() => {
     const q = searchActive.trim().toLowerCase();
@@ -356,7 +369,8 @@ export default function EvaluacionesView() {
   // (misma mecánica que la plantilla de Cursos para empresas).
   const exportarExcel = () => {
     const headers = ["Identificación", "Curso", "Empresa", "Fuera de base de", "Asignatura", "Parámetro", "%", "Nota", "Inasist.", "Origen"];
-    const data = filteredEvaluaciones.map((e) => [
+    const filas = incluirFueraDeBase ? filteredEvaluaciones : filteredEvaluaciones.filter((e) => !e.fueraDeBaseDe);
+    const data = filas.map((e) => [
       e.identificacion_estudiante ?? "", e.codigo_curso ?? "", e.empresa ?? "", e.fueraDeBaseDe ?? "", e.asignatura ?? "",
       e.parametro ?? "", e.porcentaje ?? "", e.origen === "q10" ? (e.nota ?? "") : "",
       e.origen === "q10" ? (e.inasistencias ?? 0) : "", e.origen === "q10" ? "Antigua" : "Cuestionario",
@@ -390,7 +404,7 @@ export default function EvaluacionesView() {
         <div className="flex items-center justify-center py-12 text-slate-400 gap-2 text-sm"><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</div>
       ) : filterCurso ? (
         <CursoRosterPanel
-          curso={filterCurso}
+          curso={cursoResuelto}
           evaluaciones={evaluaciones}
           estudiantesMap={estudiantesMap}
           canEdit={canEdit}
@@ -428,10 +442,16 @@ export default function EvaluacionesView() {
               <Search className="w-3.5 h-3.5" /> Buscar
             </button>
             {tab === "Evaluaciones detalladas" && (
-              <button onClick={exportarExcel}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 text-sm font-semibold transition-all">
-                <Download className="w-3.5 h-3.5" /> Descargar Excel
-              </button>
+              <>
+                <label className="flex items-center gap-1.5 text-xs text-slate-600 font-medium whitespace-nowrap cursor-pointer select-none">
+                  <input type="checkbox" checked={incluirFueraDeBase} onChange={(e) => setIncluirFueraDeBase(e.target.checked)} className="accent-[#C41717]" />
+                  Incluir los de fuera de la base
+                </label>
+                <button onClick={exportarExcel}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 text-sm font-semibold transition-all">
+                  <Download className="w-3.5 h-3.5" /> Descargar Excel
+                </button>
+              </>
             )}
           </div>
 
