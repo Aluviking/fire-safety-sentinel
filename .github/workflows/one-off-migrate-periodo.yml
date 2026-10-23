@@ -1,10 +1,15 @@
-name: One-off - migrar periodo 2026-2
+name: One-off - script de servidor
 
 on:
   workflow_dispatch:
+    inputs:
+      script:
+        description: 'Ruta del script PHP a correr (relativa a campus-api/)'
+        required: true
+        default: 'scripts/migrate-periodo-2026-2.php'
 
 jobs:
-  migrate:
+  run:
     runs-on: ubuntu-latest
     steps:
       - name: Set up SSH
@@ -14,8 +19,8 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
-      - name: Run migration on server
+      - name: Run script on server
         run: |
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o UserKnownHostsFile=~/.ssh/known_hosts \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
-            "php ${{ secrets.DEPLOY_PATH }}/campus-api/scripts/migrate-periodo-2026-2.php"
+            "php ${{ secrets.DEPLOY_PATH }}/campus-api/${{ github.event.inputs.script }}"
