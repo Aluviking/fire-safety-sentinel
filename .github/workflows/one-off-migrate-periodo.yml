@@ -4,9 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       script:
-        description: 'Ruta del script PHP a correr (relativa a campus-api/)'
-        required: true
-        default: 'scripts/migrate-periodo-2026-2.php'
+        description: 'Ruta de un script YA subido en campus-api/ (dejar vacío si usas "code")'
+        required: false
+        default: ''
+      code:
+        description: 'Código PHP a correr directo, sin necesidad de subir nada (dejar vacío si usas "script")'
+        required: false
+        default: ''
 
 jobs:
   run:
@@ -19,7 +23,21 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
-      - name: Run script on server
+      - name: Run inline code
+        if: ${{ github.event.inputs.code != '' }}
+        run: |
+          cat > /tmp/one-off.php <<'PHPEOF'
+          <?php
+          ${{ github.event.inputs.code }}
+          PHPEOF
+          scp -i ~/.ssh/deploy_key -P ${{ secrets.SSH_PORT }} -o UserKnownHostsFile=~/.ssh/known_hosts \
+            /tmp/one-off.php ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/campus-api/scripts/_tmp-one-off.php
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o UserKnownHostsFile=~/.ssh/known_hosts \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
+            "php ${{ secrets.DEPLOY_PATH }}/campus-api/scripts/_tmp-one-off.php; rm -f ${{ secrets.DEPLOY_PATH }}/campus-api/scripts/_tmp-one-off.php"
+
+      - name: Run existing script
+        if: ${{ github.event.inputs.script != '' }}
         run: |
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} -o UserKnownHostsFile=~/.ssh/known_hosts \
             ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
