@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2, Users, Download, Plus } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronsRight, X, Loader2, Users, Download, Plus, Pencil } from "lucide-react";
 import * as XLSX from "xlsx";
 import { apiFetch } from "@/lib/api";
 import { useCampusAuth } from "@/context/CampusAuthContext";
@@ -469,6 +469,40 @@ function PeriodoRosterPanel({
     }
   };
 
+  // Editar (renombrar y/o cambiar el peso de) un parámetro ya creado --
+  // aplica a la columna completa de esa asignatura+periodo, no fila por fila.
+  const [editandoParametro, setEditandoParametro] = useState<string | null>(null);
+  const [nombreEditado, setNombreEditado] = useState("");
+  const [pesoEditado, setPesoEditado] = useState("");
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  const [errorEdicion, setErrorEdicion] = useState("");
+
+  const abrirEdicionParametro = (parametro: string, porcentajeActual: string | null) => {
+    setEditandoParametro(parametro);
+    setNombreEditado(parametro);
+    setPesoEditado(porcentajeActual ?? "");
+    setErrorEdicion("");
+  };
+
+  const guardarEdicionParametro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editandoParametro || !nombreEditado.trim()) return;
+    setGuardandoEdicion(true);
+    setErrorEdicion("");
+    try {
+      await apiFetch<{ ok: true; actualizadas: number }>("/evaluaciones/editar-parametro.php", {
+        method: "POST",
+        json: { asignatura, periodo, parametroActual: editandoParametro, parametroNuevo: nombreEditado.trim(), porcentaje: pesoEditado || null },
+      });
+      setEditandoParametro(null);
+      onParametroCreado();
+    } catch (err) {
+      setErrorEdicion(err instanceof Error ? err.message : "Error al editar el parámetro.");
+    } finally {
+      setGuardandoEdicion(false);
+    }
+  };
+
   if (rows.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center text-slate-400 text-sm">
@@ -535,10 +569,20 @@ function PeriodoRosterPanel({
               <th className="text-left px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">N°</th>
               <th className="text-left px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">Estudiante</th>
               {parametros.map((p) => {
-                const esCuestionario = rows.find((r) => r.parametro === p)?.origen === "cuestionario";
+                const filaParametro = rows.find((r) => r.parametro === p);
+                const esCuestionario = filaParametro?.origen === "cuestionario";
                 return (
                   <th key={p} className="text-center px-3 py-2 text-slate-500 font-semibold text-xs uppercase whitespace-nowrap">
-                    {p}
+                    <span className="inline-flex items-center gap-1">
+                      {p}
+                      {canEdit && !esCuestionario && (
+                        <button
+                          onClick={() => abrirEdicionParametro(p, filaParametro?.porcentaje ?? null)}
+                          title="Editar parámetro" className="text-slate-300 hover:text-[#C41717] transition-colors">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      )}
+                    </span>
                     {esCuestionario && <span className="block normal-case font-normal text-[10px] text-slate-400">Cuestionario · no editable</span>}
                   </th>
                 );
@@ -634,6 +678,43 @@ function PeriodoRosterPanel({
                 <button type="submit" disabled={guardandoParametro || !nombreParametro.trim()}
                   className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#C41717] text-white hover:bg-[#a51313] disabled:opacity-50 text-xs font-semibold transition-all">
                   {guardandoParametro ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Crear"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {editandoParametro && (
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px]" onClick={() => setEditandoParametro(null)} />
+          <div className="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="h-1 rounded-t-2xl bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <p className="text-slate-800 font-bold text-[15px]">Editar parámetro</p>
+              <button onClick={() => setEditandoParametro(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            </div>
+            <form onSubmit={guardarEdicionParametro} className="px-5 py-4 space-y-3">
+              <p className="text-xs text-slate-500">Cambia el nombre o el peso de esta columna para <span className="font-semibold text-slate-700">{asignatura} · {periodo}</span> -- aplica a todos los estudiantes de esta columna.</p>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Nombre del parámetro</label>
+                <input autoFocus value={nombreEditado} onChange={(e) => setNombreEditado(e.target.value)}
+                  className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Porcentaje / peso (opcional)</label>
+                <input type="number" min="0" max="100" value={pesoEditado} onChange={(e) => setPesoEditado(e.target.value)}
+                  placeholder="Ej. 20"
+                  className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-[#C41717]/50 focus:ring-2 focus:ring-[#C41717]/10" />
+              </div>
+              {errorEdicion && <p className="text-xs text-red-600 font-medium">{errorEdicion}</p>}
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={() => setEditandoParametro(null)}
+                  className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-slate-600 hover:border-slate-300 text-xs font-semibold transition-all">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={guardandoEdicion || !nombreEditado.trim()}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[#C41717] text-white hover:bg-[#a51313] disabled:opacity-50 text-xs font-semibold transition-all">
+                  {guardandoEdicion ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Guardar"}
                 </button>
               </div>
             </form>
