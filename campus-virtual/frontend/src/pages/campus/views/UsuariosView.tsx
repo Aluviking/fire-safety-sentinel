@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { ResetPasswordModal } from "../ResetPasswordModal";
 import { ConfirmModal } from "../ConfirmModal";
 import { SearchableSelect } from "../SearchableSelect";
+import EnviarCorreosPanel from "../EnviarCorreosPanel";
 
 interface Perfil { id: number; nombre: string }
 
@@ -193,6 +194,7 @@ export default function UsuariosView() {
   const navigate = useNavigate();
   const isSuperAdmin = currentUser?.role === "super_admin";
   const [perfiles, setPerfiles] = useState<Perfil[]>([]);
+  const [tab, setTab] = useState<"usuarios" | "correos">("usuarios");
 
   useEffect(() => {
     if (!isSuperAdmin) return;
@@ -359,7 +361,22 @@ export default function UsuariosView() {
           <p className="text-slate-500 text-xs">Crea cuentas y asigna roles del equipo de GFO Academy.</p>
         </div>
         {isSuperAdmin && (
-          <div className="ml-auto flex flex-col items-end gap-1">
+          <div className="ml-auto flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-lg p-0.5">
+            {([
+              { v: "usuarios", label: "Usuarios" },
+              { v: "correos", label: "Enviar correos" },
+            ] as const).map((o) => (
+              <button key={o.v} onClick={() => setTab(o.v)}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
+                  tab === o.v ? "bg-[#C41717] text-white" : "text-slate-500 hover:text-slate-800"
+                }`}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {isSuperAdmin && tab === "usuarios" && (
+          <div className="flex flex-col items-end gap-1">
             <button
               onClick={sincronizarClaves} disabled={sincronizando}
               className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#C41717] disabled:opacity-60 transition-colors"
@@ -377,6 +394,9 @@ export default function UsuariosView() {
         )}
       </div>
 
+      {tab === "correos" ? (
+        <EnviarCorreosPanel />
+      ) : (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="h-1 bg-gradient-to-r from-[#C41717] via-[#E02020] to-[#C41717]/40" />
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
@@ -548,6 +568,7 @@ export default function UsuariosView() {
           </div>
         </div>
       </div>
+      )}
 
       <ResetPasswordModal
         user={resettingUser}
